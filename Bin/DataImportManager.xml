@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sections>
+  <section name="databasesettings">
+    <item key="connectionstring" value="Data Source=gigasax;Initial Catalog=DMS5_T3;Integrated Security=SSPI;" />
+    <item key="storedprocedure" value="AddNewDataset" />
+  </section>
+  <section name="logging">
+    <item key="logfilename" value="C:\Development\DIM\Bin\DataImportManager" />
+  </section>
+  <section name="programcontrol">
+    <item key="modulename" value="Data Import: WD45522" />
+    <item key="machname" value="WD45522" />
+    <item key="debuglevel" value="5" />
+    <item key="mgractive" value="True" />
+    <item key="importdelay" value="15" />
+    <item key="smtpserver" value="emailgw.pnl.gov" />
+    <item key="to" value="john.sandoval@pnl.gov" />
+    <item key="from" value="john.sandoval@pnl.gov" />
+    <item key="subject" value="Error encountered in Data Import Manager" />
+  </section>
+  <section name="commonfileandfolderlocations">
+    <item key="xferdir" value="\\Proto-5\bionetXfer\Run_Complete_Trigger" />
+  </section>
+</sections>

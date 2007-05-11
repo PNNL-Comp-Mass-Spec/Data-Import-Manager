@@ -1,0 +1,33 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "DataImportManagerBase", "DataExtractionManagerBase\DataImportManagerBase.vbproj", "{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "DataImportManagerProg", "DataExtractionManagerProg\DataImportManagerProg.vbproj", "{3471D08C-9334-4578-A113-7204336F34CE}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Debug.ActiveCfg = Debug|.NET
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Debug.Build.0 = Debug|.NET
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Release.ActiveCfg = Release|.NET
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Release.Build.0 = Release|.NET
+		{3471D08C-9334-4578-A113-7204336F34CE}.Debug.ActiveCfg = Debug|.NET
+		{3471D08C-9334-4578-A113-7204336F34CE}.Debug.Build.0 = Debug|.NET
+		{3471D08C-9334-4578-A113-7204336F34CE}.Release.ActiveCfg = Release|.NET
+		{3471D08C-9334-4578-A113-7204336F34CE}.Release.Build.0 = Release|.NET
+	EndGlobalSection
+	GlobalSection(SolutionItems) = postSolution
+		..\..\Documents and Settings\d3m480\My Documents\PRISM\DataImportManager\DataImportManager.vsd = ..\..\Documents and Settings\d3m480\My Documents\PRISM\DataImportManager\DataImportManager.vsd
+		..\..\Documents and Settings\d3m480\My Documents\PRISM\DataImportManager\DataImportManager1.vsd = ..\..\Documents and Settings\d3m480\My Documents\PRISM\DataImportManager\DataImportManager1.vsd
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal
