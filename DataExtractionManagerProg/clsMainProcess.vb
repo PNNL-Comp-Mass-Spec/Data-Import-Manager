@@ -98,7 +98,6 @@ Public Class clsMainProcess
     Public Sub DoImport()
 
         Try
-
             'Verify an error hasn't left the the system in an odd state
             If DetectStatusFlagFile() Then
                 myLogger.PostEntry("Flag file exists - unable to perform any further data import tasks", _
@@ -149,6 +148,10 @@ Public Class clsMainProcess
         Dim MachName As String = myMgrSettings.GetParam("programcontrol", "machname")
         Dim XferDir As String = myMgrSettings.GetParam("commonfileandfolderlocations", "xferdir")
         Dim runStatus As ITaskParams.CloseOutType = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
+        Dim DelBadXmlFilesDays As Integer = CInt(myMgrSettings.GetParam("programcontrol", "deletebadxmlfiles"))
+        Dim DelGoodXmlFilesDays As Integer = CInt(myMgrSettings.GetParam("programcontrol", "deletegoodxmlfiles"))
+        Dim successFolder As String = myMgrSettings.GetParam("commonfileandfolderlocations", "successfolder")
+        Dim failureFolder As String = myMgrSettings.GetParam("commonfileandfolderlocations", "failurefolder")
         Dim x As Integer
 
         Try
@@ -178,13 +181,19 @@ Public Class clsMainProcess
 
                 For Each de In m_XmlFilesToLoad
                     rslt = myDataImportTask.PostTask(CStr(de.Key))
-                    MoveXmlFile(rslt, CStr(de.Key))
+                    MoveXmlFile(rslt, CStr(de.Key), successFolder, failureFolder)
                 Next de
                 m_XmlFilesToLoad.Clear()
 
             Else
                 Exit Sub
             End If
+
+            'Remove successful XML files older than x days
+            DeleteXmlFiles(XferDir, DelBadXmlFilesDays, successFolder)
+
+            'Remove failed XML files older than x days
+            DeleteXmlFiles(XferDir, DelBadXmlFilesDays, failureFolder)
 
             ' If we got to here, then closeout the task as a success
             '
@@ -194,6 +203,11 @@ Public Class clsMainProcess
                 '                myDataImportTask.CloseTask(ITaskParams.CloseOutType.CLOSEOUT_SUCCESS, resultsFolder, myDataImportTask.GetParam("comment"))
                 myLogger.PostEntry(MachName & ": Completed task ", ILogger.logMsgType.logNormal, LOG_DATABASE)
             End If
+
+            'Copies the results to the transfer directory
+            Dim ServerXferDir As String = myMgrSettings.GetParam("commonfileandfolderlocations", "xferdir")
+            Dim filedate As DateTime
+
 
         Catch Err As System.Exception
             FailCount += 1
@@ -225,7 +239,7 @@ Public Class clsMainProcess
         Try
             Dim XmlFilesToImport() As String = Directory.GetFiles(Path.Combine(ServerXferDir, ServerXferDir))
             For Each XmlFile As String In XmlFilesToImport
-                filedate = File.GetCreationTime(Path.Combine(ServerXferDir, Path.GetFileName(XmlFile)))
+                filedate = File.GetLastWriteTime(Path.Combine(ServerXferDir, Path.GetFileName(XmlFile)))
                 m_XmlFilesToLoad.Add(XmlFile, CStr(filedate))
             Next
         Catch err As System.Exception
@@ -238,7 +252,7 @@ Public Class clsMainProcess
         Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
 
     End Function
-    Private Sub MoveXmlFile(ByVal Success As Boolean, ByVal xmlFile As String)
+    Private Sub MoveXmlFile(ByVal Success As Boolean, ByVal xmlFile As String, ByVal successFolder As String, ByVal failureFolder As String)
 
         Dim Fi As FileInfo
         Dim xmlFilePath As String
@@ -248,18 +262,18 @@ Public Class clsMainProcess
                 Fi = New FileInfo(xmlFile)
                 xmlFilePath = Fi.DirectoryName
                 xmlFileName = Fi.Name
-                If Not Directory.Exists(xmlFilePath & "\success") Then
-                    Directory.CreateDirectory(xmlFilePath & "\success")
+                If Not Directory.Exists(xmlFilePath & "\" & successFolder) Then
+                    Directory.CreateDirectory(xmlFilePath & "\" & successFolder)
                 End If
-                If Not Directory.Exists(xmlFilePath & "\failure") Then
-                    Directory.CreateDirectory(xmlFilePath & "\failure")
+                If Not Directory.Exists(xmlFilePath & "\" & failureFolder) Then
+                    Directory.CreateDirectory(xmlFilePath & "\" & failureFolder)
                 End If
 
                 If Success Then
-                    xmlFilePath = xmlFilePath & "\success"
+                    xmlFilePath = xmlFilePath & "\" & successFolder
                     File.Move(xmlFile, Path.Combine(xmlFilePath, xmlFileName))
                 Else
-                    xmlFilePath = xmlFilePath & "\failure"
+                    xmlFilePath = xmlFilePath & "\" & failureFolder
                     File.Move(xmlFile, Path.Combine(xmlFilePath, xmlFileName))
                     CreateMail("There is a problem with the following XML file: " & Path.Combine(xmlFilePath, xmlFileName) & ".  Check the log for details.")
                 End If
@@ -303,20 +317,60 @@ Public Class clsMainProcess
         Dim ErrMsg As String
         Dim msg As New MailMessage
         Dim reportName As String
+        Dim enableEmail As Boolean
 
-        msg.BodyEncoding = ASCII
-        msg.BodyFormat = MailFormat.Html
-        msg.From = myMgrSettings.GetParam("programcontrol", "from")
-        msg.To = myMgrSettings.GetParam("programcontrol", "to")
-        msg.Subject = myMgrSettings.GetParam("programcontrol", "subject")
-        msg.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & " If log message is ""could not access CDO.Message object"", then make sure smtp server is valid"
+        enableEmail = CBool(myMgrSettings.GetParam("programcontrol", "enableemail"))
+        If enableEmail Then
+
+            msg.BodyEncoding = ASCII
+            msg.BodyFormat = MailFormat.Html
+            msg.From = myMgrSettings.GetParam("programcontrol", "from")
+            msg.To = myMgrSettings.GetParam("programcontrol", "to")
+            msg.Subject = myMgrSettings.GetParam("programcontrol", "subject")
+            msg.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & " If log message is ""could not access CDO.Message object"", then make sure smtp server is valid."
+            Try
+                SmtpMail.SmtpServer = myMgrSettings.GetParam("programcontrol", "smtpserver")
+                SmtpMail.Send(msg)
+            Catch Ex As Exception
+                ErrMsg = "Exception: " & Ex.Message & vbCrLf & vbCrLf & "Sending mail message."
+                myLogger.PostEntry("Error creating email message", ILogger.logMsgType.logError, True)
+            End Try
+        End If
+
+    End Function
+
+    Private Function DeleteXmlFiles(ByVal FileDirectory As String, ByVal NoDays As Integer, ByVal subFolder As String) As ITaskParams.CloseOutType
+
+        Dim filedate As DateTime
+        Dim daysDiff As Integer
+        Dim workDirectory As String
+
+        workDirectory = FileDirectory & "\" & subFolder
+        'Verify directory exists
+        If Not Directory.Exists(workDirectory) Then
+            'There's a serious problem if the success/failure directory can't be found!!!
+            myLogger.PostEntry("Xml success/failure folder not found.", ILogger.logMsgType.logError, LOG_DATABASE)
+            Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
+        End If
+
+        'Load all the Xml File names and dates in the transfer directory into a string dictionary
         Try
-            SmtpMail.SmtpServer = myMgrSettings.GetParam("programcontrol", "smtpserver")
-            SmtpMail.Send(msg)
-        Catch Ex As Exception
-            ErrMsg = "Exception: " & Ex.Message & vbCrLf & vbCrLf & "Sending mail message."
-            myLogger.PostEntry("Error creating email message", ILogger.logMsgType.logError, True)
+            Dim XmlFilesToDelete() As String = Directory.GetFiles(Path.Combine(workDirectory, workDirectory))
+            For Each XmlFile As String In XmlFilesToDelete
+                filedate = File.GetLastWriteTime(XmlFile)
+                daysDiff = Now.Subtract(filedate).Days
+                If Now.Subtract(filedate).Days > NoDays Then
+                    File.Delete(XmlFile)
+                End If
+            Next
+        Catch err As System.Exception
+            myLogger.PostError("Error deleting Xml Data files", err, LOG_DATABASE)
+            Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End Try
+
+        'Everything must be OK if we got to here
+        Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
+
     End Function
 
 End Class

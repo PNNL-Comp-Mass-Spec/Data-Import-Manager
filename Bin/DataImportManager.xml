@@ -5,7 +5,7 @@
     <item key="storedprocedure" value="AddNewDataset" />
   </section>
   <section name="logging">
-    <item key="logfilename" value="C:\Development\DIM\Bin\DataImportManager" />
+    <item key="logfilename" value="C:\Development\DataImportManager\trunk\Bin\DataImportManager" />
   </section>
   <section name="programcontrol">
     <item key="modulename" value="Data Import: WD45522" />
@@ -13,12 +13,17 @@
     <item key="debuglevel" value="5" />
     <item key="mgractive" value="True" />
     <item key="importdelay" value="15" />
+    <item key="enableemail" value="False" />
     <item key="smtpserver" value="emailgw.pnl.gov" />
     <item key="to" value="john.sandoval@pnl.gov" />
     <item key="from" value="john.sandoval@pnl.gov" />
     <item key="subject" value="Error encountered in Data Import Manager" />
+    <item key="deletebadxmlfiles" value="30" />
+    <item key="deletegoodxmlfiles" value="7" />
   </section>
   <section name="commonfileandfolderlocations">
     <item key="xferdir" value="\\Proto-5\bionetXfer\Run_Complete_Trigger" />
+    <item key="successfolder" value="success" />
+    <item key="failurefolder" value="failure" />
   </section>
 </sections>
