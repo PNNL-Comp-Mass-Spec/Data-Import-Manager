@@ -1,0 +1,10 @@
+obj\Release\ResolveAssemblyReference.cache
+bin\DataImportManagerBase.dll.config
+bin\DataImportManagerBase.dll
+bin\DataImportManagerBase.xml
+bin\PRISM.dll
+obj\Release\DataImportManagerBase.dll
+obj\Release\DataImportManagerBase.xml
+..\bin\DataImportManagerBase.dll.config
+..\bin\DataImportManagerBase.dll
+..\bin\DataImportManagerBase.xml

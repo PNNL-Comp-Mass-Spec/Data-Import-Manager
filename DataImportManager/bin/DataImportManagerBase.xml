@@ -1,0 +1,70 @@
+﻿<?xml version="1.0"?>
+<doc>
+<assembly>
+<name>
+DataImportManagerBase
+</name>
+</assembly>
+<members>
+<member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.#ctor(System.String)">
+	<summary>
+ Constructor
+ </summary>
+	<remarks>Logs errors to a file because logging hasn't been set up. Throws exception if a problem occurs</remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.LoadSettings(System.Boolean)">
+	<summary>
+ Loads manager settings from config file and database
+ </summary>
+	<param name="Reload">True if reloading as manager is running</param>
+	<returns>True if successful; False on error</returns>
+	<remarks></remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.CheckInitialSettings(System.Collections.Specialized.StringDictionary@)">
+	<summary>
+ Tests initial settings retrieved from config file
+ </summary>
+	<param name="InpDict"></param>
+	<returns></returns>
+	<remarks></remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.LoadMgrSettingsFromFile">
+	<summary>
+ Loads the initial settings from application config file
+ </summary>
+	<returns>String dictionary containing initial settings if suceessful; NOTHING on error</returns>
+	<remarks></remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.LoadMgrSettingsFromDB(System.Collections.Specialized.StringDictionary@)">
+	<summary>
+ Gets remaining manager config settings from config database
+ </summary>
+	<param name="MgrSettingsDict">String dictionary containing parameters that have been loaded so far</param>
+	<returns>True for success; False for error</returns>
+	<remarks></remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.GetParam(System.String)">
+	<summary>
+ Gets a parameter from the parameters string dictionary
+ </summary>
+	<param name="ItemKey">Key name for item</param>
+	<returns>String value associated with specified key</returns>
+	<remarks>Returns Nothing if key isn't found</remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.SetParam(System.String,System.String)">
+	<summary>
+ Sets a parameter in the parameters string dictionary
+ </summary>
+	<param name="ItemKey">Key name for the item</param>
+	<param name="ItemValue">Value to assign to the key</param>
+	<remarks></remarks>
+</member><member name="M:DataImportManagerBase.MgrSettings.clsMgrSettings.GetAllKeys">
+	<summary>
+ Gets a collection representing all keys in the parameters string dictionary
+ </summary>
+	<returns></returns>
+	<remarks></remarks>
+</member><member name="M:DataImportManagerBase.clsEmergencyLog.WriteToLog(System.String,System.String)">
+	<summary>
+ Writes a message to the emergency log, which is used prior to establishing normal logging
+ </summary>
+	<param name="LogFileNamePath"></param>
+	<param name="LogMsg"></param>
+	<remarks></remarks>
+</member>
+</members>
+</doc>
