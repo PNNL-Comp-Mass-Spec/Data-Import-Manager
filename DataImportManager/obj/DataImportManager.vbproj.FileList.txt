@@ -1,6 +1,5 @@
 obj\Release\ResolveAssemblyReference.cache
 bin\DataImportManager.xml
-bin\PRISM.dll
 obj\Release\DataImportManager.xml
 ..\bin\DataImportManager.pdb
 ..\bin\DataImportManager.xml

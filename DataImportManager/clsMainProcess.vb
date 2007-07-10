@@ -28,6 +28,7 @@ Public Class clsMainProcess
     Private m_MgrActive As Boolean = True
     Private m_DebugLevel As Integer = 0
     Private m_XmlFilesToLoad As New StringDictionary
+    Public m_db_Err_Msg As String
     Dim m_ImportStatusCount As Integer = 0
 #End Region
 
@@ -137,20 +138,24 @@ Public Class clsMainProcess
             If m_ConfigChanged Then
                 m_ConfigChanged = False
                 If Not m_MgrSetttings.LoadSettings(True) Then
-                    m_Logger.PostEntry("Error re-reading config file", ILogger.logMsgType.logError, True)
+                    If m_MgrSetttings.ErrMsg <> "" Then
+                        'Manager has been deactivated, so report this
+                        m_Logger.PostEntry(m_MgrSetttings.ErrMsg, ILogger.logMsgType.logWarning, True)
+                    Else
+                        'Unknown problem reading config file
+                        m_Logger.PostEntry("Error re-reading config file", ILogger.logMsgType.logError, True)
+                    End If
                     m_Logger.PostEntry("===== Closing Data Import Manager =====", ILogger.logMsgType.logNormal, True)
                     Exit Sub
                 End If
-                m_FileWatcher.EnableRaisingEvents = True
-            End If
+                    m_FileWatcher.EnableRaisingEvents = True
+                End If
 
             'Check to see if excessive consecutive failures have occurred
-            If FailCount > 4 Then
-                'More than 5 consecutive failures; there must be a generic problem, so exit
-                m_Logger.PostEntry("Multiple task failures, disabling manager", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-                m_MgrActive = False
-                m_MgrSetttings.SetParam("mgractive", m_MgrActive.ToString)
-                'm_MgrSetttings.SaveSettings()
+            If FailCount > MAX_ERROR_COUNT Then
+                'More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
+                m_Logger.PostEntry("Excessive task failures, disabling manager", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                DisableManagerLocally()
             End If
 
             'Check to see if the manager is still active
@@ -175,7 +180,7 @@ Public Class clsMainProcess
 
         Dim result As ITaskParams.CloseOutType
         Dim rslt As Boolean
-        Dim MachName As String = m_MgrSetttings.GetParam("machname")
+        Dim ModName As String = m_MgrSetttings.GetParam("modulename")
         Dim XferDir As String = m_MgrSetttings.GetParam("xferdir")
         Dim runStatus As ITaskParams.CloseOutType = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
         Dim DelBadXmlFilesDays As Integer = CInt(m_MgrSetttings.GetParam("deletebadxmlfiles"))
@@ -188,7 +193,6 @@ Public Class clsMainProcess
             result = ScanXferDirectory()
 
             If result = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS And m_XmlFilesToLoad.Count > 0 Then
-                m_Logger.PostEntry(MachName & ": Started Data import task ", ILogger.logMsgType.logNormal, LOG_DATABASE)
 
                 CreateStatusFlagFile()    'Set status file for control of future runs
 
@@ -207,12 +211,17 @@ Public Class clsMainProcess
                 Dim de As DictionaryEntry
 
                 For Each de In m_XmlFilesToLoad
+                    m_Logger.PostEntry(ModName & ": Started Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
+                    m_db_Err_Msg = ""
                     rslt = myDataImportTask.PostTask(CStr(de.Key))
+                    m_db_Err_Msg = myDataImportTask.mp_db_err_msg
                     MoveXmlFile(rslt, CStr(de.Key), successFolder, failureFolder)
                 Next de
                 m_XmlFilesToLoad.Clear()
 
             Else
+                m_Logger.PostEntry(ModName & ": No Data Files to import.", ILogger.logMsgType.logNormal, LOG_DATABASE)
+                m_Logger.PostEntry(ModName & ": No Data Files to import.", ILogger.logMsgType.logHealth, LOG_DATABASE)
                 Exit Sub
             End If
 
@@ -227,7 +236,7 @@ Public Class clsMainProcess
             DeleteStatusFlagFile(m_Logger)
             FailCount = 0
             If runStatus = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS Then
-                m_Logger.PostEntry(MachName & ": Completed task ", ILogger.logMsgType.logNormal, LOG_DATABASE)
+                m_Logger.PostEntry(ModName & ": Completed task ", ILogger.logMsgType.logNormal, LOG_DATABASE)
             End If
 
             'Copies the results to the transfer directory
@@ -296,6 +305,7 @@ Public Class clsMainProcess
                 Else
                     xmlFilePath = xmlFilePath & "\" & failureFolder
                     File.Move(xmlFile, Path.Combine(xmlFilePath, xmlFileName))
+                    m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & xmlFileName, ILogger.logMsgType.logHealth, LOG_DATABASE)
                     CreateMail("There is a problem with the following XML file: " & Path.Combine(xmlFilePath, xmlFileName) & ".  Check the log for details.")
                 End If
             End If
@@ -331,7 +341,7 @@ Public Class clsMainProcess
                 'mail.To.Add(m_MgrSetttings.GetParam("to"))
                 'set the content
                 mail.Subject = m_MgrSetttings.GetParam("subject")
-                mail.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & " If log message is ""could not access CDO.Message object"", then make sure smtp server is valid."
+                mail.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & m_db_Err_Msg
                 'send the message
                 Dim smtp As New SmtpClient(m_MgrSetttings.GetParam("smtpserver"))
                 'to authenticate we set the username and password properites on the SmtpClient
@@ -377,6 +387,14 @@ Public Class clsMainProcess
         Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
 
     End Function
+
+    Private Sub DisableManagerLocally()
+
+        If Not m_MgrSetttings.WriteConfigSetting("MgrActive_Local", "False") Then
+            m_Logger.PostEntry("Error while disabling manager: " & m_MgrSetttings.ErrMsg, ILogger.logMsgType.logError, True)
+        End If
+
+    End Sub
 
 End Class
 

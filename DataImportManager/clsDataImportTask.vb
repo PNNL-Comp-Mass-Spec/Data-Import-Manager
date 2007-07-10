@@ -9,7 +9,7 @@ Imports DataImportManager.MgrSettings
 
 Public Class clsDataImportTask
     Inherits clsDBTask
-
+    Public mp_db_err_msg As String
     ' constructor
     Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
         MyBase.New(mgrParams, logger)
@@ -162,6 +162,17 @@ Public Class clsDataImportTask
         End Try
 
         LogErrorEvents()
+        'Set variable for email error
+        If m_error_list.Count > 0 Then
+            Dim s As String
+            Dim tmp_s As String
+            mp_db_err_msg = ""
+            tmp_s = ""
+            For Each s In m_error_list
+                tmp_s = Chr(13) & Chr(10) & s & tmp_s
+            Next
+            mp_db_err_msg = Chr(13) & Chr(10) & "Database Error Message:" & tmp_s
+        End If
 
         Return Outcome
 

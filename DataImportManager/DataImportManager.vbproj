@@ -71,9 +71,9 @@
     <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="PRISM">
-      <Name>PRISM</Name>
-      <HintPath>..\Bin\PRISM.dll</HintPath>
+    <Reference Include="PRISM, Version=1.0.2008.29786, Culture=neutral">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\PRISM.dll</HintPath>
     </Reference>
     <Reference Include="System">
       <Name>System</Name>

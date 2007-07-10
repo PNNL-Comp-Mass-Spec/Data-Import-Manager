@@ -5,282 +5,365 @@
 ' Copyright 2006, Battelle Memorial Institute
 ' Created 04/26/2007
 '
-' Last modified 05/01/2007
+' Last modified 05/29/2007
 '*********************************************************************************************************
 Imports PRISM.Logging
 Imports System.data.SqlClient
 Imports System.IO
 Imports System.Collections.Specialized
+Imports System.Xml
+Imports System.Configuration
+Imports System.Windows.Forms
 
 Namespace MgrSettings
+
 #Region "Interfaces"
-    Public Interface IMgrParams
-        Function GetParam(ByVal ItemKey As String) As String
-        Sub SetParam(ByVal ItemKey As String, ByVal ItemValue As String)
-    End Interface
+	Public Interface IMgrParams
+		Function GetParam(ByVal ItemKey As String) As String
+		Sub SetParam(ByVal ItemKey As String, ByVal ItemValue As String)
+	End Interface
 #End Region
 
+	Public Class clsMgrSettings
+		Implements IMgrParams
 
-    Public Class clsMgrSettings
-
-        Implements IMgrParams
-
-        '*********************************************************************************************************
-        'Class for loading, storing and accessing manager parameters.
-        '	Loads initial settings from local config file, then checks to see if remainder of settings should be
-        '		loaded or manager set to inactive. If manager active, retrieves remainder of settings from manager
-        '		parameters database.
-        '*********************************************************************************************************
+		'*********************************************************************************************************
+		'Class for loading, storing and accessing manager parameters.
+		'	Loads initial settings from local config file, then checks to see if remainder of settings should be
+		'		loaded or manager set to inactive. If manager active, retrieves remainder of settings from manager
+		'		parameters database.
+		'*********************************************************************************************************
 
 #Region "Module variables"
-        Private m_ParamDictionary As StringDictionary
-        Private m_EmerLogFile As String
+		Private m_ParamDictionary As StringDictionary
+		Private m_EmerLogFile As String
+		Private m_ErrMsg As String = ""
+#End Region
+
+#Region "Properties"
+		Public ReadOnly Property ErrMsg() As String
+			Get
+				Return m_ErrMsg
+			End Get
+		End Property
 #End Region
 
 #Region "Methods"
-        ''' <summary>
-        ''' Constructor
-        ''' </summary>
-        ''' <remarks>Logs errors to a file because logging hasn't been set up. Throws exception if a problem occurs</remarks>
-        Public Sub New(ByVal EmergencyLogFileNamePath As String)
+		''' <summary>
+		''' Constructor
+		''' </summary>
+		''' <remarks>Logs errors to a file because logging hasn't been set up. Throws exception if a problem occurs</remarks>
+		Public Sub New(ByVal EmergencyLogFileNamePath As String)
 
-            m_EmerLogFile = EmergencyLogFileNamePath
+			m_EmerLogFile = EmergencyLogFileNamePath
 
-            If Not LoadSettings(False) Then
-                Throw New ApplicationException("Unable to initialize manager settings class")
-            End If
+			If Not LoadSettings(False) Then
+				Throw New ApplicationException("Unable to initialize manager settings class")
+			End If
 
-        End Sub
+		End Sub
 
-        ''' <summary>
-        ''' Loads manager settings from config file and database
-        ''' </summary>
-        ''' <param name="Reload">True if reloading as manager is running</param>
-        ''' <returns>True if successful; False on error</returns>
-        ''' <remarks></remarks>
-        Public Function LoadSettings(ByVal Reload As Boolean) As Boolean
+		''' <summary>
+		''' Loads manager settings from config file and database
+		''' </summary>
+		''' <param name="Reload">True if reloading as manager is running</param>
+		''' <returns>True if successful; False on error</returns>
+		''' <remarks></remarks>
+		Public Function LoadSettings(ByVal Reload As Boolean) As Boolean
 
-            'If reloading, clear out the existing parameter string dictionary
-            If Reload Then
-                If m_ParamDictionary IsNot Nothing Then
-                    m_ParamDictionary.Clear()
-                End If
-                m_ParamDictionary = Nothing
-            End If
+			m_ErrMsg = ""
 
-            'Get settings from config file
-            m_ParamDictionary = LoadMgrSettingsFromFile()
+			'If reloading, clear out the existing parameter string dictionary
+			If Reload Then
+				If m_ParamDictionary IsNot Nothing Then
+					m_ParamDictionary.Clear()
+				End If
+				m_ParamDictionary = Nothing
+			End If
 
-            'Test the settings retrieved from the config file
-            If Not CheckInitialSettings(m_ParamDictionary) Then
-                'Error logging handled by CheckInitialSettings
-                Return False
-            End If
+			'Get settings from config file
+			m_ParamDictionary = LoadMgrSettingsFromFile()
 
-            'Determine if manager is deactivated locally
-            If Not Reload Then
-                'We don't want to perform this test if reloading. It will be performed by the calling program
-                If Not CBool(m_ParamDictionary("mgractive_local")) Then
-                    clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager deactivated locally")
-                    Return False
-                End If
-            End If
+			'Test the settings retrieved from the config file
+			If Not CheckInitialSettings(m_ParamDictionary) Then
+				'Error logging handled by CheckInitialSettings
+				Return False
+			End If
 
-            'Get remaining settings from database
-            If Not LoadMgrSettingsFromDB(m_ParamDictionary) Then
-                'Error logging handled by LoadMgrSettingsFromDB
-                Return False
-            End If
+			'Determine if manager is deactivated locally
+			If Not CBool(m_ParamDictionary("MgrActive_Local")) Then
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager deactivated locally")
+				m_ErrMsg = "Manager deactivated locally"
+				Return False
+			End If
 
-            'No problems found
-            Return True
+			'Get remaining settings from database
+			If Not LoadMgrSettingsFromDB(m_ParamDictionary) Then
+				'Error logging handled by LoadMgrSettingsFromDB
+				Return False
+			End If
 
-        End Function
+			'If reloading, clear the "first run" flag
+			If Reload Then
+				m_ParamDictionary.Add("FirstRun", "False")
+			Else
+				m_ParamDictionary.Add("FirstRun", "True")
+			End If
 
-        ''' <summary>
-        ''' Tests initial settings retrieved from config file
-        ''' </summary>
-        ''' <param name="InpDict"></param>
-        ''' <returns></returns>
-        ''' <remarks></remarks>
-        Private Function CheckInitialSettings(ByRef InpDict As StringDictionary) As Boolean
+			'No problems found
+			Return True
 
-            Dim MyMsg As String
+		End Function
 
-            'Verify manager settings dictionary exists
-            If m_ParamDictionary Is Nothing Then
-                'Error reporting is in LoadMgrSettingsFromFile, so none is required here
-                Return False
-            End If
+		''' <summary>
+		''' Tests initial settings retrieved from config file
+		''' </summary>
+		''' <param name="InpDict"></param>
+		''' <returns></returns>
+		''' <remarks></remarks>
+		Private Function CheckInitialSettings(ByRef InpDict As StringDictionary) As Boolean
 
-            'Verify a connection string for the manager config database was found
-            If m_ParamDictionary("mgrcnfgdbconnectstr") = "(none)" Then
-                MyMsg = "clsMgrSettings.CheckInitialSettings; Invalid manager config db connection string: " & m_ParamDictionary("mgrcnfgdbconnectstr")
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                Return False
-            End If
+			Dim MyMsg As String
 
-            'Verify a manager name was found
-            If m_ParamDictionary("mgrname") = "(none)" Then
-                MyMsg = "clsMgrSettings.CheckInitialSettings; Invalid manager name: " & m_ParamDictionary("mgrname")
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                Return False
-            End If
+			'Verify manager settings dictionary exists
+			If m_ParamDictionary Is Nothing Then
+				MyMsg = "Manager parameter string dictionary not found"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
 
-            'No problems found
-            Return True
+			'Verify intact config file was found
+			If CBool(m_ParamDictionary("UsingDefaults")) Then
+				MyMsg = "Config file problem; default settings being used"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
 
-        End Function
+			'No problems found
+			Return True
 
-        ''' <summary>
-        ''' Loads the initial settings from application config file
-        ''' </summary>
-        ''' <returns>String dictionary containing initial settings if suceessful; NOTHING on error</returns>
-        ''' <remarks></remarks>
-        Private Function LoadMgrSettingsFromFile() As StringDictionary
+		End Function
 
-            'Load initial settings into string dictionary for return
-            Dim RetDict As New StringDictionary
+		''' <summary>
+		''' Loads the initial settings from application config file
+		''' </summary>
+		''' <returns>String dictionary containing initial settings if suceessful; NOTHING on error</returns>
+		''' <remarks></remarks>
+		Private Function LoadMgrSettingsFromFile() As StringDictionary
 
-            Try
-                My.Settings.Reload()
-                RetDict.Add("mgrcnfgdbconnectstr", My.Settings.mgrcnfgdbconnectstr)
-                RetDict.Add("mgractive_local", My.Settings.mgractive_local.ToString)
-                RetDict.Add("mgrname", My.Settings.mgrname)
-            Catch ex As Exception
-                Dim MyMsg As String = "clsMgrSettings.LoadMgrSettingsFromFile; Exception reading config file: " & ex.Message
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                RetDict = Nothing
-            End Try
+			'Load initial settings into string dictionary for return
+			Dim RetDict As New StringDictionary
 
-            Return RetDict
+			My.Settings.Reload()
+            RetDict.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)
+            RetDict.Add("MgrActive_Local", My.Settings.MgrActive_Local.ToString)
+            RetDict.Add("MgrName", My.Settings.MgrName)
+			RetDict.Add("UsingDefaults", My.Settings.UsingDefaults.ToString)
 
-        End Function
+			Return RetDict
 
-        ''' <summary>
-        ''' Gets remaining manager config settings from config database
-        ''' </summary>
-        ''' <param name="MgrSettingsDict">String dictionary containing parameters that have been loaded so far</param>
-        ''' <returns>True for success; False for error</returns>
-        ''' <remarks></remarks>
-        Private Function LoadMgrSettingsFromDB(ByRef MgrSettingsDict As StringDictionary) As Boolean
+		End Function
 
-            'Requests job parameters from database. Input string specifies view to use. Performs retries if necessary.
+		''' <summary>
+		''' Gets remaining manager config settings from config database
+		''' </summary>
+		''' <param name="MgrSettingsDict">String dictionary containing parameters that have been loaded so far</param>
+		''' <returns>True for success; False for error</returns>
+		''' <remarks></remarks>
+		Private Function LoadMgrSettingsFromDB(ByRef MgrSettingsDict As StringDictionary) As Boolean
 
-            Dim RetryCount As Short = 3
-            Dim MyMsg As String
+			'Requests job parameters from database. Input string specifies view to use. Performs retries if necessary.
 
-            Dim SqlStr As String = "SELECT ParameterName, ParameterValue FROM V_MgrParams WHERE ManagerName = '" & _
-              m_ParamDictionary("mgrname") & "'"
+			Dim RetryCount As Short = 3
+			Dim MyMsg As String
 
-            'Get a table containing data for job
-            Dim Dt As DataTable
+			Dim SqlStr As String = "SELECT ParameterName, ParameterValue FROM V_MgrParams WHERE ManagerName = '" & _
+			  m_ParamDictionary("MgrName") & "'"
 
+			'Get a table containing data for job
+			Dim Dt As DataTable
 
-            'Get a datatable holding the parameters for one job
-            While RetryCount > 0
-                Try
-                    Using Cn As SqlConnection = New SqlConnection(MgrSettingsDict("mgrcnfgdbconnectstr"))
-                        Using Da As SqlDataAdapter = New SqlDataAdapter(SqlStr, Cn)
-                            Using Ds As DataSet = New DataSet
-                                Da.Fill(Ds)
-                                Dt = Ds.Tables(0)
-                            End Using  'Ds
-                        End Using  'Da
-                    End Using  'Cn
-                    Exit While
-                Catch ex As Exception
-                    RetryCount -= 1S
-                    MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Exception getting manager settings from database: " & ex.Message
-                    MyMsg &= ", RetryCount = " & RetryCount.ToString
-                    clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                    System.Threading.Thread.Sleep(1000)             'Delay for 1 second before trying again
-                Finally
-                    Dt.Dispose()
-                End Try
-            End While
+			'Get a datatable holding the parameters for one manager
+			While RetryCount > 0
+				Try
+					Using Cn As SqlConnection = New SqlConnection(MgrSettingsDict("MgrCnfgDbConnectStr"))
+						Using Da As SqlDataAdapter = New SqlDataAdapter(SqlStr, Cn)
+							Using Ds As DataSet = New DataSet
+								Da.Fill(Ds)
+								Dt = Ds.Tables(0)
+							End Using  'Ds
+						End Using  'Da
+					End Using  'Cn
+					Exit While
+				Catch ex As Exception
+					RetryCount -= 1S
+					MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Exception getting manager settings from database: " & ex.Message
+					MyMsg &= ", RetryCount = " & RetryCount.ToString
+					clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+					System.Threading.Thread.Sleep(1000)				'Delay for 1 second before trying again
+				End Try
+			End While
 
-            'If loop exited due to errors, return false
-            If RetryCount < 1 Then
-                MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Excessive failures attempting to retrieve manager settings from database"
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                Return False
-            End If
+			'If loop exited due to errors, return false
+			If RetryCount < 1 Then
+				MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Excessive failures attempting to retrieve manager settings from database"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Dt.Dispose()
+				Return False
+			End If
 
-            'Verify at least one row returned
-            If Dt.Rows.Count < 1 Then
-                'Wrong number of rows returned
-                MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Invalid row count retrieving manager settings: RowCount = "
-                MyMsg &= Dt.Rows.Count.ToString
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                Return False
-            End If
+			'Verify at least one row returned
+			If Dt.Rows.Count < 1 Then
+				'Wrong number of rows returned
+				MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Invalid row count retrieving manager settings: RowCount = "
+				MyMsg &= Dt.Rows.Count.ToString
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Dt.Dispose()
+				Return False
+			End If
 
-            'Fill a string dictionary with the manager parameters that have been found
-            Dim CurRow As DataRow
-            Try
-                For Each CurRow In Dt.Rows
-                    'Add the column heading and value to the dictionary
-                    m_ParamDictionary.Add(DbCStr(CurRow(Dt.Columns("ParameterName"))), DbCStr(CurRow(Dt.Columns("ParameterValue"))))
-                Next
-                Return True
-            Catch ex As Exception
-                MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Exception filling string dictionary from table: " & ex.Message
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                Return False
-            Finally
-                Dt.Dispose()
-            End Try
+			'Fill a string dictionary with the manager parameters that have been found
+			Dim CurRow As DataRow
+			Try
+				For Each CurRow In Dt.Rows
+					'Add the column heading and value to the dictionary
+					m_ParamDictionary.Add(DbCStr(CurRow(Dt.Columns("ParameterName"))), DbCStr(CurRow(Dt.Columns("ParameterValue"))))
+				Next
+				Return True
+			Catch ex As Exception
+				MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Exception filling string dictionary from table: " & ex.Message
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			Finally
+				Dt.Dispose()
+			End Try
 
-        End Function
+		End Function
 
-        Protected Function DbCStr(ByVal InpObj As Object) As String
+		Protected Function DbCStr(ByVal InpObj As Object) As String
 
-            'If input object is DbNull, returns "", otherwise returns String representation of object
-            If InpObj Is DBNull.Value Then
-                Return ""
-            Else
-                Return CStr(InpObj)
-            End If
+			'If input object is DbNull, returns "", otherwise returns String representation of object
+			If InpObj Is DBNull.Value Then
+				Return ""
+			Else
+				Return CStr(InpObj)
+			End If
 
-        End Function
+		End Function
 
-        ''' <summary>
-        ''' Gets a parameter from the parameters string dictionary
-        ''' </summary>
-        ''' <param name="ItemKey">Key name for item</param>
-        ''' <returns>String value associated with specified key</returns>
-        ''' <remarks>Returns Nothing if key isn't found</remarks>
-        Public Function GetParam(ByVal ItemKey As String) As String Implements IMgrParams.GetParam
+		''' <summary>
+		''' Gets a parameter from the parameters string dictionary
+		''' </summary>
+		''' <param name="ItemKey">Key name for item</param>
+		''' <returns>String value associated with specified key</returns>
+		''' <remarks>Returns Nothing if key isn't found</remarks>
+		Public Function GetParam(ByVal ItemKey As String) As String Implements IMgrParams.GetParam
 
-            Return m_ParamDictionary.Item(ItemKey)
+			Return m_ParamDictionary.Item(ItemKey)
 
-        End Function
+		End Function
 
-        ''' <summary>
-        ''' Sets a parameter in the parameters string dictionary
-        ''' </summary>
-        ''' <param name="ItemKey">Key name for the item</param>
-        ''' <param name="ItemValue">Value to assign to the key</param>
-        ''' <remarks></remarks>
-        Public Sub SetParam(ByVal ItemKey As String, ByVal ItemValue As String) Implements IMgrParams.SetParam
+		''' <summary>
+		''' Sets a parameter in the parameters string dictionary
+		''' </summary>
+		''' <param name="ItemKey">Key name for the item</param>
+		''' <param name="ItemValue">Value to assign to the key</param>
+		''' <remarks></remarks>
+		Public Sub SetParam(ByVal ItemKey As String, ByVal ItemValue As String) Implements IMgrParams.SetParam
 
-            m_ParamDictionary.Item(ItemKey) = ItemValue
+			m_ParamDictionary.Item(ItemKey) = ItemValue
 
-        End Sub
+		End Sub
 
-        ''' <summary>
-        ''' Gets a collection representing all keys in the parameters string dictionary
-        ''' </summary>
-        ''' <returns></returns>
-        ''' <remarks></remarks>
-        Public Function GetAllKeys() As ICollection
+		''' <summary>
+		''' Gets a collection representing all keys in the parameters string dictionary
+		''' </summary>
+		''' <returns></returns>
+		''' <remarks></remarks>
+		Public Function GetAllKeys() As ICollection
 
-            Return m_ParamDictionary.Keys
+			Return m_ParamDictionary.Keys
 
-        End Function
+		End Function
+
+		''' <summary>
+		''' Writes specfied value to an application config file.
+		''' </summary>
+		''' <param name="Key">Name for parameter (case sensitive)</param>
+		''' <param name="Value">New value for parameter</param>
+		''' <returns>TRUE for success; FALSE for error (ErrMsg property contains reason)</returns>
+		''' <remarks>This bit of lunacy is needed because MS doesn't supply a means to write to an app config file</remarks>
+		Public Function WriteConfigSetting(ByVal Key As String, ByVal Value As String) As Boolean
+
+			m_ErrMsg = ""
+
+			'Load the config document
+			Dim MyDoc As XmlDocument = LoadConfigDocument()
+			If MyDoc Is Nothing Then
+				'Error message has already been produced by LoadConfigDocument
+				Return False
+			End If
+
+			'Retrieve the settings node
+			Dim MyNode As XmlNode = MyDoc.SelectSingleNode("//applicationSettings")
+
+			If MyNode Is Nothing Then
+				m_ErrMsg = "clsMgrSettings.WriteConfigSettings; appSettings node not found"
+				Return False
+			End If
+
+			Try
+				'Select the eleement containing the value for the specified key containing the key
+				Dim MyElement As XmlElement = CType(MyNode.SelectSingleNode(String.Format("//setting[@name='{0}']/value", Key)), XmlElement)
+				If MyElement IsNot Nothing Then
+					'Set key to specified value
+					MyElement.InnerText = Value
+				Else
+					'Key was not found
+					m_ErrMsg = "clsMgrSettings.WriteConfigSettings; specified key not found: " & Key
+					Return False
+				End If
+				MyDoc.Save(GetConfigFilePath())
+				Return True
+			Catch ex As Exception
+				m_ErrMsg = "clsMgrSettings.WriteConfigSettings; Exception updating settings file: " & ex.Message
+				Return False
+			End Try
+
+		End Function
+
+		''' <summary>
+		''' Loads an app config file for changing parameters
+		''' </summary>
+		''' <returns>App config file as an XML document if successful; NOTHING on failure</returns>
+		''' <remarks></remarks>
+		Private Function LoadConfigDocument() As XmlDocument
+
+			Dim MyDoc As XmlDocument = Nothing
+
+			Try
+				MyDoc = New XmlDocument
+				MyDoc.Load(GetConfigFilePath)
+				Return MyDoc
+			Catch ex As Exception
+				m_ErrMsg = "clsMgrSettings.LoadConfigDocument; Exception loading settings file: " & ex.Message
+				Return Nothing
+			End Try
+
+		End Function
+
+		''' <summary>
+		''' Specifies the full name and path for the application config file
+		''' </summary>
+		''' <returns>String containing full name and path</returns>
+		''' <remarks></remarks>
+		Private Function GetConfigFilePath() As String
+
+			Return Application.ExecutablePath & ".config"
+
+		End Function
 #End Region
 
-    End Class
+	End Class
 
 End Namespace

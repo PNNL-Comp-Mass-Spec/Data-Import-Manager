@@ -57,9 +57,9 @@ Namespace My
         <Global.System.Configuration.ApplicationScopedSettingAttribute(),  _
          Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
          Global.System.Configuration.DefaultSettingValueAttribute("True")>  _
-        Public ReadOnly Property mgractive_local() As Boolean
+        Public ReadOnly Property MgrActive_Local() As Boolean
             Get
-                Return CType(Me("mgractive_local"),Boolean)
+                Return CType(Me("MgrActive_Local"),Boolean)
             End Get
         End Property
         
@@ -67,18 +67,27 @@ Namespace My
          Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
          Global.System.Configuration.DefaultSettingValueAttribute("Data Source=proteinseqs;Initial Catalog=Manager_Control_T3;Integrated Security=SS"& _ 
             "PI;")>  _
-        Public ReadOnly Property mgrcnfgdbconnectstr() As String
+        Public ReadOnly Property MgrCnfgDbConnectStr() As String
             Get
-                Return CType(Me("mgrcnfgdbconnectstr"),String)
+                Return CType(Me("MgrCnfgDbConnectStr"),String)
             End Get
         End Property
         
         <Global.System.Configuration.ApplicationScopedSettingAttribute(),  _
          Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
          Global.System.Configuration.DefaultSettingValueAttribute("WD45522_DatImpMan")>  _
-        Public ReadOnly Property mgrname() As String
+        Public ReadOnly Property MgrName() As String
             Get
-                Return CType(Me("mgrname"),String)
+                Return CType(Me("MgrName"),String)
+            End Get
+        End Property
+        
+        <Global.System.Configuration.ApplicationScopedSettingAttribute(),  _
+         Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
+         Global.System.Configuration.DefaultSettingValueAttribute("False")>  _
+        Public ReadOnly Property UsingDefaults() As Boolean
+            Get
+                Return CType(Me("UsingDefaults"),Boolean)
             End Get
         End Property
     End Class
