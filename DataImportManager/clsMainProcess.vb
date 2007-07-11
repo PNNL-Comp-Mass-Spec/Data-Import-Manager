@@ -305,7 +305,7 @@ Public Class clsMainProcess
                 Else
                     xmlFilePath = xmlFilePath & "\" & failureFolder
                     File.Move(xmlFile, Path.Combine(xmlFilePath, xmlFileName))
-                    m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & xmlFileName, ILogger.logMsgType.logHealth, LOG_DATABASE)
+                    m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & xmlFileName, ILogger.logMsgType.logError, LOG_DATABASE)
                     CreateMail("There is a problem with the following XML file: " & Path.Combine(xmlFilePath, xmlFileName) & ".  Check the log for details.")
                 End If
             End If
