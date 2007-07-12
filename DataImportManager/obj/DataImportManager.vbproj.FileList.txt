@@ -16,3 +16,8 @@ bin\Release\DataImportManager.exe.config
 bin\Release\DataImportManager.exe
 bin\Release\DataImportManager.xml
 bin\Release\PRISM.dll
+bin\Debug\DataImportManager.exe.config
+bin\Debug\DataImportManager.exe
+bin\Debug\DataImportManager.pdb
+bin\Debug\DataImportManager.xml
+bin\Debug\PRISM.dll

@@ -50,13 +50,14 @@ Public Class clsMainProcess
             Return False
         End Try
 
+        Dim FInfo As FileInfo = New FileInfo(Application.ExecutablePath)
         Try
             'Load initial settings
             m_MgrActive = CBool(m_MgrSetttings.GetParam("mgractive"))
             m_DebugLevel = CInt(m_MgrSetttings.GetParam("debuglevel"))
 
             ' create the object that will manage the logging
-            LogFile = m_MgrSetttings.GetParam("logfilename")
+            LogFile = Path.Combine(FInfo.DirectoryName, m_MgrSetttings.GetParam("logfilename"))
             ConnectStr = m_MgrSetttings.GetParam("connectionstring")
             ModName = m_MgrSetttings.GetParam("modulename")
             m_Logger = New clsQueLogger(New clsDBLogger(ModName, ConnectStr, LogFile))
@@ -70,7 +71,6 @@ Public Class clsMainProcess
         End Try
 
         'Setup the logger
-        Dim FInfo As FileInfo = New FileInfo(Application.ExecutablePath)
         Dim LogFileName As String = Path.Combine(FInfo.DirectoryName, m_MgrSetttings.GetParam("logfilename"))
         Dim DbLogger As New clsDBLogger
         DbLogger.LogFilePath = LogFileName

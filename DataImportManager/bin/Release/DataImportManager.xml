@@ -58,6 +58,26 @@ DataImportManager
  </summary>
 	<returns></returns>
 	<remarks></remarks>
+</member><member name="M:DataImportManager.MgrSettings.clsMgrSettings.WriteConfigSetting(System.String,System.String)">
+	<summary>
+ Writes specfied value to an application config file.
+ </summary>
+	<param name="Key">Name for parameter (case sensitive)</param>
+	<param name="Value">New value for parameter</param>
+	<returns>TRUE for success; FALSE for error (ErrMsg property contains reason)</returns>
+	<remarks>This bit of lunacy is needed because MS doesn't supply a means to write to an app config file</remarks>
+</member><member name="M:DataImportManager.MgrSettings.clsMgrSettings.LoadConfigDocument">
+	<summary>
+ Loads an app config file for changing parameters
+ </summary>
+	<returns>App config file as an XML document if successful; NOTHING on failure</returns>
+	<remarks></remarks>
+</member><member name="M:DataImportManager.MgrSettings.clsMgrSettings.GetConfigFilePath">
+	<summary>
+ Specifies the full name and path for the application config file
+ </summary>
+	<returns>String containing full name and path</returns>
+	<remarks></remarks>
 </member><member name="M:DataImportManager.clsEmergencyLog.WriteToLog(System.String,System.String)">
 	<summary>
  Writes a message to the emergency log, which is used prior to establishing normal logging
