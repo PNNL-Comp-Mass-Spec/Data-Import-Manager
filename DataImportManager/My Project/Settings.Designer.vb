@@ -65,8 +65,8 @@ Namespace My
         
         <Global.System.Configuration.ApplicationScopedSettingAttribute(),  _
          Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
-         Global.System.Configuration.DefaultSettingValueAttribute("Data Source=proteinseqs;Initial Catalog=Manager_Control_T3;Integrated Security=SS"& _ 
-            "PI;")>  _
+         Global.System.Configuration.DefaultSettingValueAttribute("Data Source=proteinseqs;Initial Catalog=Manager_Control;Integrated Security=SSPI;"& _ 
+            "")>  _
         Public ReadOnly Property MgrCnfgDbConnectStr() As String
             Get
                 Return CType(Me("MgrCnfgDbConnectStr"),String)
@@ -75,7 +75,7 @@ Namespace My
         
         <Global.System.Configuration.ApplicationScopedSettingAttribute(),  _
          Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
-         Global.System.Configuration.DefaultSettingValueAttribute("WD45522_DatImpMan")>  _
+         Global.System.Configuration.DefaultSettingValueAttribute("Proto-3_DIM")>  _
         Public ReadOnly Property MgrName() As String
             Get
                 Return CType(Me("MgrName"),String)

@@ -6,10 +6,10 @@
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="MgrCnfgDbConnectStr" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">Data Source=proteinseqs;Initial Catalog=Manager_Control_T3;Integrated Security=SSPI;</Value>
+      <Value Profile="(Default)">Data Source=proteinseqs;Initial Catalog=Manager_Control;Integrated Security=SSPI;</Value>
     </Setting>
     <Setting Name="MgrName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">WD45522_DatImpMan</Value>
+      <Value Profile="(Default)">Proto-3_DIM</Value>
     </Setting>
     <Setting Name="UsingDefaults" Type="System.Boolean" Scope="Application">
       <Value Profile="(Default)">True</Value>
