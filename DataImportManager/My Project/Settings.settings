@@ -9,7 +9,7 @@
       <Value Profile="(Default)">Data Source=proteinseqs;Initial Catalog=Manager_Control;Integrated Security=SSPI;</Value>
     </Setting>
     <Setting Name="MgrName" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">Proto-3_DIM</Value>
+      <Value Profile="(Default)">WD45522_DatImpMan</Value>
     </Setting>
     <Setting Name="UsingDefaults" Type="System.Boolean" Scope="Application">
       <Value Profile="(Default)">True</Value>

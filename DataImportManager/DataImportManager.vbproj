@@ -111,9 +111,11 @@
     <Compile Include="clsGlobal.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsXMLTimeValidation.vb" />
     <Compile Include="ITaskParams.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="IXMLValidateStatus.vb" />
     <Compile Include="My Project\Settings.Designer.vb">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>

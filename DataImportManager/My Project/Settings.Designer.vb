@@ -75,7 +75,7 @@ Namespace My
         
         <Global.System.Configuration.ApplicationScopedSettingAttribute(),  _
          Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
-         Global.System.Configuration.DefaultSettingValueAttribute("Proto-3_DIM")>  _
+         Global.System.Configuration.DefaultSettingValueAttribute("WD45522_DatImpMan")>  _
         Public ReadOnly Property MgrName() As String
             Get
                 Return CType(Me("MgrName"),String)
