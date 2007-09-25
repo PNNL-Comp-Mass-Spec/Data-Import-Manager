@@ -223,8 +223,9 @@ Public Class clsMainProcess
                         Else
                             moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
                             m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                            CreateMail("There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details.")
+                            CreateMail("There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details.", "", " - Database error.")
                         End If
+                        m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
                     End If
                 Next de
                 m_XmlFilesToLoad.Clear()
@@ -338,7 +339,7 @@ Public Class clsMainProcess
         m_FileWatcher.EnableRaisingEvents = False  'Turn off change detection until current change has been acted upon
     End Sub
 
-    Function CreateMail(ByVal mailMsg As String) As Boolean
+    Function CreateMail(ByVal mailMsg As String, ByVal addtnlRecipient As String, ByVal overrideSubject As String) As Boolean
         Dim ErrMsg As String
         Dim enableEmail As Boolean
         Dim emailAddress As String
@@ -353,9 +354,17 @@ Public Class clsMainProcess
                 For Each emailAddress In Split(m_MgrSettings.GetParam("to"), ";")
                     mail.To.Add(emailAddress)
                 Next
+                If addtnlRecipient <> "" Then
+                    mail.To.Add(addtnlRecipient)
+                End If
+
                 'mail.To.Add(m_MgrSettings.GetParam("to"))
                 'set the content
-                mail.Subject = m_MgrSettings.GetParam("subject")
+                If overrideSubject = "" Then
+                    mail.Subject = m_MgrSettings.GetParam("subject")
+                Else
+                    mail.Subject = m_MgrSettings.GetParam("subject") + overrideSubject
+                End If
                 mail.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & m_db_Err_Msg
                 'send the message
                 Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
@@ -418,6 +427,7 @@ Public Class clsMainProcess
             Dim xmlRslt As IXMLValidateStatus.XmlValidateStatus
             Dim timeValFolder As String = m_MgrSettings.GetParam("timevalidationfolder")
             Dim moveLocPath As String = ""
+            Dim mail_msg As String = ""
             Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
 
             myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger)
@@ -428,7 +438,11 @@ Public Class clsMainProcess
                 m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logHealth, LOG_DATABASE)
                 moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
                 m_Logger.PostEntry("Time validation error. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                CreateMail("There was a time validation error with the following XML file: " & moveLocPath & ".  Check the log for details.")
+                mail_msg = "Operator: " & myDataXMLValidation.m_operator_Name
+                mail_msg = mail_msg & Chr(13) & Chr(10) & "There was a time validation error with the following XML file: " & Chr(13) & Chr(10) & moveLocPath
+                mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
+                mail_msg = mail_msg + "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
+                CreateMail(mail_msg, myDataXMLValidation.m_operator_Email, " - Time validation error.")
                 Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
                 m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logNormal, LOG_DATABASE)
@@ -438,7 +452,11 @@ Public Class clsMainProcess
                 moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
                 m_Logger.PostEntry(ModName & ": The dataset data is not available.", ILogger.logMsgType.logNormal, LOG_DATABASE)
                 m_Logger.PostEntry(ModName & ": The dataset data is not available.", ILogger.logMsgType.logHealth, LOG_DATABASE)
-                CreateMail("There dataset data is not available for capture and was not added to DMS for dataset: " & moveLocPath & ".  Check the log for details.")
+                mail_msg = "Operator: " & myDataXMLValidation.m_operator_Name
+                mail_msg = mail_msg & Chr(13) & Chr(10) & "The dataset data is not available for capture and was not added to DMS for dataset: " & Chr(13) & Chr(10) & moveLocPath
+                mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
+                mail_msg = mail_msg + "Dataset not found in following location: " + myDataXMLValidation.m_dataset_Path
+                CreateMail(mail_msg, myDataXMLValidation.m_operator_Email, " - Dataset not found.")
                 Return False
             End If
         Catch ex As Exception

@@ -17,9 +17,12 @@ Public Class clsXMLTimeValidation
     Private m_run_Finish_Utc As Date = CDate("1/1/1960")
     Private m_capture_Type As String = ""
     Private m_source_path As String = ""
-    Private m_raw_Data_Type As String = ""
+    Public m_operator_PRN As String = ""
+    Public m_operator_Email As String = ""
+    Public m_operator_Name As String = ""
+    Public m_dataset_Path As String = ""
+    '    Private m_raw_Data_Type As String = ""
     Private m_UseBioNet As Boolean = False
-    Public m_ins_Operator_Name As String = ""
     Protected m_ShareConnector As ShareConnector
     Protected m_SleepInterval As Integer = 30
     ' constructor
@@ -53,15 +56,16 @@ Public Class clsXMLTimeValidation
         End Try
 
         Try
-            rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_CHECK
-            If GetXMLParameters(xmlFile) Then
-                If SetDbInstrumentParameters(m_ins_Name) Then
+            rslt = GetXMLParameters(xmlFile)
+            If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
+                rslt = SetDbInstrumentParameters(m_ins_Name)
+                If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
                     rslt = PerformValidation()
                 Else
-                    Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+                    Return rslt
                 End If
             Else
-                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+                Return rslt
             End If
 
         Catch Err As System.Exception
@@ -82,7 +86,7 @@ Public Class clsXMLTimeValidation
 
     'Take the xml file and load into a dataset
     'iterate through the dataset to retrieve the instrument name
-    Private Function GetXMLParameters(ByVal xmlFilename As String) As Boolean
+    Private Function GetXMLParameters(ByVal xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
         Dim parameterName As String
         Try
             Dim xmlDataSet As New DataSet()
@@ -100,22 +104,29 @@ Public Class clsXMLTimeValidation
                             m_dataset_Name = row("Value").ToString()
                         Case "Run Finish UTC"
                             m_run_Finish_Utc = CDate(row("Value").ToString())
+                        Case "Operator (PRN)"
+                            m_operator_PRN = row("Value").ToString()
                     End Select
                 Next row
             Next table
 
-            Return True
+            If m_ins_Name = "" Then
+                m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), The instrument name was blank.", ILogger.logMsgType.logError, True)
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
+            End If
+
+            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
 
         Catch Err As System.Exception
-            m_logger.PostEntry("clsXMLTimeValidation.GetInstrumentName(), Error reading XML File, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return False
+            m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), Error reading XML File, " & Err.Message, ILogger.logMsgType.logError, True)
+            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
     End Function
 
     'Query to get the instrument data from the database and then 
     'iterate through the dataset to retrieve the capture type and source path
-    Private Function SetDbInstrumentParameters(ByVal insName As String) As Boolean
+    Private Function SetDbInstrumentParameters(ByVal insName As String) As IXMLValidateStatus.XmlValidateStatus
 
         Try
             'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
@@ -123,9 +134,10 @@ Public Class clsXMLTimeValidation
             SQL = "SELECT Name, Class, RawDataType, Capture, SourcePath "
             SQL = SQL + "        FROM dbo.V_Instrument_List_Export "
             SQL = SQL + "        WHERE (Status <> 'inactive') "
+            SQL = SQL + "              AND Name = '" + insName + "'"
             SQL = SQL + "        ORDER BY Name "
 
-            'Get a list of all records in database (hopefully just one) matching the task number
+            'Get a list of all records in database (hopefully just one) matching the instrument name
             Dim Cn As New SqlConnection(m_connection_str)
             Dim Da As New SqlDataAdapter(SQL, Cn)
             Dim Ds As DataSet = New DataSet
@@ -135,29 +147,29 @@ Public Class clsXMLTimeValidation
             Catch ex As Exception
                 m_logger.PostEntry("clsXMLTimeValidation.GetSourcePathAndCaptureType(), Filling data adapter, " & ex.Message, _
                  ILogger.logMsgType.logError, True)
-                Return False
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End Try
 
             Dim table As DataTable
-            Dim dbInsName As String = ""
             For Each table In Ds.Tables
                 Dim row As DataRow
                 For Each row In table.Rows
-                    dbInsName = row("Name").ToString()
-                    If dbInsName = insName Then
-                        m_capture_Type = row("Capture").ToString()
-                        m_source_path = row("SourcePath").ToString
-                        m_raw_Data_Type = row("RawDataType").ToString
-                        Exit For
-                    End If
+                    m_capture_Type = row("Capture").ToString()
+                    m_source_path = row("SourcePath").ToString
+                    '                    m_raw_Data_Type = row("RawDataType").ToString
                 Next row
             Next table
 
-            Return True
+            If m_capture_Type = "" Or m_source_path = "" Then
+                m_logger.PostEntry("clsXMLTimeValidation.GetSourcePathAndCaptureType(), Error retrieving source path and capture type.", ILogger.logMsgType.logError, True)
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+            End If
+
+            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
 
         Catch Err As System.Exception
             m_logger.PostEntry("clsXMLTimeValidation.GetSourcePathAndCaptureType(), Error retrieving source path and capture type, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return False
+            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
     End Function
@@ -198,6 +210,8 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.None          'No raw dataset file or folder found
                         m_logger.PostEntry("Dataset " & m_dataset_Name & " not found", ILogger.logMsgType.logError, True)
                         'Disconnect from BioNet if necessary
+                        SetOperatorName()
+                        m_dataset_Path = Path.Combine(m_source_path, RawFName)
                         If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                         Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
 
@@ -206,6 +220,8 @@ Public Class clsXMLTimeValidation
                         If Not VerifyConstantFileSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
                             m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
+                            SetOperatorName()
+                            m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
                         End If
                         If m_run_Finish_Utc <> CDate("1/1/1960") Then
@@ -215,6 +231,10 @@ Public Class clsXMLTimeValidation
                             If fileModDate <= runFinishwTolerance Then
                                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
                             Else
+                                SetOperatorName()
+                                m_dataset_Path = Path.Combine(m_source_path, RawFName)
+                                m_logger.PostEntry("Time validation error.  Dataset file modification date: " & CStr(fileModDate), ILogger.logMsgType.logError, False)
+                                m_logger.PostEntry("Time validation error.  Run Finish UTC date with tolerance: " & CStr(runFinishwTolerance), ILogger.logMsgType.logError, False)
                                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
                             End If
                         End If
@@ -224,6 +244,8 @@ Public Class clsXMLTimeValidation
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
                             m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
+                            SetOperatorName()
+                            m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
                         End If
 
@@ -232,6 +254,8 @@ Public Class clsXMLTimeValidation
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
                             m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
+                            SetOperatorName()
+                            m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
                         End If
                     Case Else
@@ -408,5 +432,48 @@ Public Class clsXMLTimeValidation
 
     End Function
 
+    Private Function SetOperatorName() As Boolean
+
+        Try
+            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+            Dim SQL As String
+            SQL = "SELECT U_email, U_Name "
+            SQL = SQL + "        FROM dbo.T_Users "
+            SQL = SQL + "        WHERE U_PRN = '" + m_operator_PRN + "'"
+
+            'Get a list of all records in database (hopefully just one) matching the user PRN
+            Dim Cn As New SqlConnection(m_connection_str)
+            Dim Da As New SqlDataAdapter(SQL, Cn)
+            Dim Ds As DataSet = New DataSet
+
+            Try
+                Da.Fill(Ds)
+            Catch ex As Exception
+                m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Filling data adapter, " & ex.Message, _
+                 ILogger.logMsgType.logError, True)
+                Return False
+            End Try
+            m_operator_Email = ""
+            m_operator_Name = ""
+            Dim table As DataTable
+            For Each table In Ds.Tables
+                Dim row As DataRow
+                For Each row In table.Rows
+                    m_operator_Email = row("U_email").ToString()
+                    m_operator_Name = row("U_Name").ToString()
+                Next row
+            Next table
+            If m_operator_Name = "" Then
+                m_operator_Name = "Operator not found (" + m_operator_PRN + ")."
+            End If
+
+            Return True
+
+        Catch Err As System.Exception
+            m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name, " & Err.Message, ILogger.logMsgType.logError, True)
+            Return False
+        End Try
+
+    End Function
 
 End Class
