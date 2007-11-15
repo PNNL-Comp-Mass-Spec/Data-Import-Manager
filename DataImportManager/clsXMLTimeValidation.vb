@@ -88,6 +88,10 @@ Public Class clsXMLTimeValidation
     'iterate through the dataset to retrieve the instrument name
     Private Function GetXMLParameters(ByVal xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
         Dim parameterName As String
+        Dim rslt As IXMLValidateStatus.XmlValidateStatus
+        'initialize return value
+        rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
+
         Try
             Dim xmlDataSet As New DataSet()
             xmlDataSet.ReadXml(xmlFilename)       'Everything must be OK if we got to here
@@ -115,10 +119,43 @@ Public Class clsXMLTimeValidation
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
             End If
 
-            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
+            If m_ins_Name.StartsWith("SW") Or m_ins_Name.StartsWith("11T") Then
+                rslt = InstrumentWaitDelay(xmlFilename)
+            End If
+
+            If rslt <> IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
+                Return rslt
+            Else
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
+            End If
 
         Catch Err As System.Exception
             m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), Error reading XML File, " & Err.Message, ILogger.logMsgType.logError, True)
+            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+        End Try
+
+    End Function
+
+    Private Function InstrumentWaitDelay(ByVal xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
+
+        Try
+            Dim fileModDate As DateTime
+            Dim fileModDateDelay As DateTime
+            Dim dateNow As DateTime
+            Dim delayValue As Integer
+            delayValue = CInt(m_mgrParams.GetParam("xmlfiledelay"))
+            fileModDate = File.GetLastWriteTimeUtc(xmlFilename)
+            fileModDateDelay = fileModDate.AddMinutes(delayValue)
+            dateNow = DateTime.UtcNow
+            If dateNow < fileModDateDelay Then
+                m_logger.PostEntry("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + xmlFilename, ILogger.logMsgType.logError, True)
+                Return IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES
+            End If
+
+            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
+
+        Catch Err As System.Exception
+            m_logger.PostEntry("clsXMLTimeValidation.InstrumentWaitDelay(), Error determining wait delay, " & Err.Message, ILogger.logMsgType.logError, True)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -145,7 +182,7 @@ Public Class clsXMLTimeValidation
             Try
                 Da.Fill(Ds)
             Catch ex As Exception
-                m_logger.PostEntry("clsXMLTimeValidation.GetSourcePathAndCaptureType(), Filling data adapter, " & ex.Message, _
+                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Filling data adapter, " & ex.Message, _
                  ILogger.logMsgType.logError, True)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End Try
@@ -161,14 +198,14 @@ Public Class clsXMLTimeValidation
             Next table
 
             If m_capture_Type = "" Or m_source_path = "" Then
-                m_logger.PostEntry("clsXMLTimeValidation.GetSourcePathAndCaptureType(), Error retrieving source path and capture type.", ILogger.logMsgType.logError, True)
+                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Error retrieving source path and capture type.", ILogger.logMsgType.logError, True)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
 
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
 
         Catch Err As System.Exception
-            m_logger.PostEntry("clsXMLTimeValidation.GetSourcePathAndCaptureType(), Error retrieving source path and capture type, " & Err.Message, ILogger.logMsgType.logError, True)
+            m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Error retrieving source path and capture type, " & Err.Message, ILogger.logMsgType.logError, True)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -205,12 +242,12 @@ Public Class clsXMLTimeValidation
                 End If
                 'Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
                 resType = GetRawDSType(m_source_path, m_dataset_Name, RawFName)
+                SetOperatorName()
                 Select Case resType
 
                     Case RawDSTypes.None          'No raw dataset file or folder found
                         m_logger.PostEntry("Dataset " & m_dataset_Name & " not found", ILogger.logMsgType.logError, True)
                         'Disconnect from BioNet if necessary
-                        SetOperatorName()
                         m_dataset_Path = Path.Combine(m_source_path, RawFName)
                         If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                         Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -220,7 +257,6 @@ Public Class clsXMLTimeValidation
                         If Not VerifyConstantFileSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
                             m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
-                            SetOperatorName()
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
                         End If
@@ -231,7 +267,6 @@ Public Class clsXMLTimeValidation
                             If fileModDate <= runFinishwTolerance Then
                                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
                             Else
-                                SetOperatorName()
                                 m_dataset_Path = Path.Combine(m_source_path, RawFName)
                                 m_logger.PostEntry("Time validation error.  Dataset file modification date: " & CStr(fileModDate), ILogger.logMsgType.logError, False)
                                 m_logger.PostEntry("Time validation error.  Run Finish UTC date with tolerance: " & CStr(runFinishwTolerance), ILogger.logMsgType.logError, False)
@@ -244,7 +279,6 @@ Public Class clsXMLTimeValidation
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
                             m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
-                            SetOperatorName()
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
                         End If
@@ -254,7 +288,6 @@ Public Class clsXMLTimeValidation
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
                             m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
-                            SetOperatorName()
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
                         End If

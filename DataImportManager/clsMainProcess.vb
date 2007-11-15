@@ -29,6 +29,8 @@ Public Class clsMainProcess
     Private m_DebugLevel As Integer = 0
     Private m_XmlFilesToLoad As New StringDictionary
     Public m_db_Err_Msg As String
+    Private m_xml_operator_Name As String
+    Private m_xml_operator_email As String
     Dim m_ImportStatusCount As Integer = 0
     Private myDataXMLValidation As clsXMLTimeValidation
 #End Region
@@ -189,6 +191,7 @@ Public Class clsMainProcess
         Dim successFolder As String = m_MgrSettings.GetParam("successfolder")
         Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
         Dim moveLocPath As String = ""
+        Dim mail_msg As String = ""
 
         Try
 
@@ -223,7 +226,9 @@ Public Class clsMainProcess
                         Else
                             moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
                             m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                            CreateMail("There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details.", "", " - Database error.")
+                            mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
+                            mail_msg = mail_msg + Chr(13) & Chr(10) & "Operator: " & m_xml_operator_Name
+                            CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
                         End If
                         m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
                     End If
@@ -237,10 +242,10 @@ Public Class clsMainProcess
             End If
 
             'Remove successful XML files older than x days
-            DeleteXmlFiles(XferDir, DelBadXmlFilesDays, successFolder)
+            DeleteXmlFiles(successFolder, DelGoodXmlFilesDays)
 
             'Remove failed XML files older than x days
-            DeleteXmlFiles(XferDir, DelBadXmlFilesDays, failureFolder)
+            DeleteXmlFiles(failureFolder, DelBadXmlFilesDays)
 
             ' If we got to here, then closeout the task as a success
             '
@@ -293,20 +298,21 @@ Public Class clsMainProcess
     Private Function MoveXmlFile(ByVal xmlFile As String, ByVal moveFolder As String) As String
 
         Dim Fi As FileInfo
-        Dim xmlFilePath As String = ""
+        'Dim xmlFilePath As String = ""
         Dim xmlFileName As String = ""
         Dim xmlFileNewLoc As String = ""
         Try
             If File.Exists(xmlFile) Then
                 Fi = New FileInfo(xmlFile)
-                xmlFilePath = Fi.DirectoryName
                 xmlFileName = Fi.Name
-                If Not Directory.Exists(xmlFilePath & "\" & moveFolder) Then
-                    Directory.CreateDirectory(xmlFilePath & "\" & moveFolder)
+                If Not Directory.Exists(moveFolder) Then
+                    Directory.CreateDirectory(moveFolder)
                 End If
 
-                xmlFilePath = xmlFilePath & "\" & moveFolder
-                xmlFileNewLoc = Path.Combine(xmlFilePath, xmlFileName)
+                xmlFileNewLoc = Path.Combine(moveFolder, xmlFileName)
+                If File.Exists(xmlFileNewLoc) Then
+                    File.Delete(xmlFileNewLoc)
+                End If
                 File.Move(xmlFile, xmlFileNewLoc)
 
             End If
@@ -325,7 +331,7 @@ Public Class clsMainProcess
                 xmlFilePath = Fi.DirectoryName
             End If
         Catch Err As System.Exception
-            m_Logger.PostEntry("MoveXmlFile, " & Err.Message, ILogger.logMsgType.logError, True)
+            m_Logger.PostEntry("GetDirectory, " & Err.Message, ILogger.logMsgType.logError, True)
         End Try
         Return xmlFilePath
 
@@ -341,12 +347,14 @@ Public Class clsMainProcess
 
     Function CreateMail(ByVal mailMsg As String, ByVal addtnlRecipient As String, ByVal overrideSubject As String) As Boolean
         Dim ErrMsg As String
+        Dim addMsg As String
         Dim enableEmail As Boolean
         Dim emailAddress As String
 
         enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
         If enableEmail Then
             Try
+                addMsg = Chr(13) & Chr(10) & Chr(13) & Chr(10) & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
                 'create the mail message
                 Dim mail As New System.Net.Mail.MailMessage()
                 'set the addresses
@@ -365,7 +373,7 @@ Public Class clsMainProcess
                 Else
                     mail.Subject = m_MgrSettings.GetParam("subject") + overrideSubject
                 End If
-                mail.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & m_db_Err_Msg
+                mail.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & m_db_Err_Msg & addMsg
                 'send the message
                 Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
                 'to authenticate we set the username and password properites on the SmtpClient
@@ -378,13 +386,13 @@ Public Class clsMainProcess
 
     End Function
 
-    Private Function DeleteXmlFiles(ByVal FileDirectory As String, ByVal NoDays As Integer, ByVal subFolder As String) As ITaskParams.CloseOutType
+    Private Function DeleteXmlFiles(ByVal FileDirectory As String, ByVal NoDays As Integer) As ITaskParams.CloseOutType
 
         Dim filedate As DateTime
         Dim daysDiff As Integer
         Dim workDirectory As String
 
-        workDirectory = FileDirectory & "\" & subFolder
+        workDirectory = FileDirectory
         'Verify directory exists
         If Not Directory.Exists(workDirectory) Then
             'There's a serious problem if the success/failure directory can't be found!!!
@@ -433,30 +441,34 @@ Public Class clsMainProcess
             myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger)
 
             xmlRslt = myDataXMLValidation.ValidateXMLFile(xmlFilename)
+            m_xml_operator_Name = myDataXMLValidation.m_operator_Name
+            m_xml_operator_email = myDataXMLValidation.m_operator_Email
             If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
                 m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logNormal, LOG_DATABASE)
                 m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logHealth, LOG_DATABASE)
                 moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
                 m_Logger.PostEntry("Time validation error. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                mail_msg = "Operator: " & myDataXMLValidation.m_operator_Name
+                mail_msg = "Operator: " & m_xml_operator_Name
                 mail_msg = mail_msg & Chr(13) & Chr(10) & "There was a time validation error with the following XML file: " & Chr(13) & Chr(10) & moveLocPath
                 mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
                 mail_msg = mail_msg + "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
-                CreateMail(mail_msg, myDataXMLValidation.m_operator_Email, " - Time validation error.")
+                CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
                 Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
                 m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logNormal, LOG_DATABASE)
                 m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logHealth, LOG_DATABASE)
                 Return False
+            ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
+                Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA Then
                 moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
                 m_Logger.PostEntry(ModName & ": The dataset data is not available.", ILogger.logMsgType.logNormal, LOG_DATABASE)
                 m_Logger.PostEntry(ModName & ": The dataset data is not available.", ILogger.logMsgType.logHealth, LOG_DATABASE)
-                mail_msg = "Operator: " & myDataXMLValidation.m_operator_Name
+                mail_msg = "Operator: " & m_xml_operator_Name
                 mail_msg = mail_msg & Chr(13) & Chr(10) & "The dataset data is not available for capture and was not added to DMS for dataset: " & Chr(13) & Chr(10) & moveLocPath
                 mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
                 mail_msg = mail_msg + "Dataset not found in following location: " + myDataXMLValidation.m_dataset_Path
-                CreateMail(mail_msg, myDataXMLValidation.m_operator_Email, " - Dataset not found.")
+                CreateMail(mail_msg, m_xml_operator_email, " - Dataset not found.")
                 Return False
             End If
         Catch ex As Exception

@@ -151,13 +151,13 @@ Public Class clsDataImportTask
                 '
                 Outcome = True
             Else
-                m_logger.PostEntry("Problem posting dataset: " _
+                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " _
                   & CStr(sc.Parameters("@message").Value), ILogger.logMsgType.logError, True)
                 Outcome = False
             End If
 
         Catch ex As System.Exception
-            m_logger.PostError("Error posting dataset: ", ex, True)
+            m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
             Outcome = False
         End Try
 
