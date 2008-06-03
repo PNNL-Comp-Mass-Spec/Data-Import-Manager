@@ -216,21 +216,27 @@ Public Class clsMainProcess
                 Dim de As DictionaryEntry
 
                 For Each de In m_XmlFilesToLoad
+                    'Validate the xml file
                     If ValidateXMLFile(CStr(de.Key)) Then
                         m_Logger.PostEntry(ModName & ": Started Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
                         m_db_Err_Msg = ""
                         rslt = myDataImportTask.PostTask(CStr(de.Key))
                         m_db_Err_Msg = myDataImportTask.mp_db_err_msg
-                        If rslt Then
-                            moveLocPath = MoveXmlFile(CStr(de.Key), successFolder)
+                        If m_db_Err_Msg.Contains("Timeout expired.") Then
+                            'post the error and leave the file for another attempt
+                            m_Logger.PostEntry(ModName & ": Encountered database timeout error for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
                         Else
-                            moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
-                            m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                            mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
-                            mail_msg = mail_msg + Chr(13) & Chr(10) & "Operator: " & m_xml_operator_Name
-                            CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
+                            If rslt Then
+                                moveLocPath = MoveXmlFile(CStr(de.Key), successFolder)
+                            Else
+                                moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
+                                m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
+                                mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
+                                mail_msg = mail_msg + Chr(13) & Chr(10) & "Operator: " & m_xml_operator_Name
+                                CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
+                            End If
+                            m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
                         End If
-                        m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
                     End If
                 Next de
                 m_XmlFilesToLoad.Clear()

@@ -89,13 +89,16 @@ Public Class clsXMLTimeValidation
     Private Function GetXMLParameters(ByVal xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
         Dim parameterName As String
         Dim rslt As IXMLValidateStatus.XmlValidateStatus
+        Dim xmlFileContents As String
         'initialize return value
         rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
-
+        xmlFileContents = LoadXmlFileContentsIntoString(xmlFilename, m_logger)
+        'Load into a string reader after '&' was fixed
+        Dim xmlStringReader As TextReader
+        xmlStringReader = New StringReader(xmlFileContents)
         Try
             Dim xmlDataSet As New DataSet()
-            xmlDataSet.ReadXml(xmlFilename)       'Everything must be OK if we got to here
-
+            xmlDataSet.ReadXml(xmlStringReader)  'Everything must be OK if we got to here
             Dim table As DataTable
             For Each table In xmlDataSet.Tables
                 Dim row As DataRow
@@ -119,7 +122,7 @@ Public Class clsXMLTimeValidation
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
             End If
 
-            If m_ins_Name.StartsWith("SW") Or m_ins_Name.StartsWith("11T") Then
+            If m_ins_Name.StartsWith("9T") Or m_ins_Name.StartsWith("11T") Then
                 rslt = InstrumentWaitDelay(xmlFilename)
             End If
 

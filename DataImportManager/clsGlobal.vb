@@ -56,4 +56,33 @@ Public Class clsGlobal
 
     End Function
 
+    Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFile As String, ByVal MyLogger As ILogger) As String
+        Dim xmlFileContents As String
+        Try
+            xmlFileContents = ""
+            'Read the contents of the xml file into a string which will be passed into a stored procedure.
+            If Not File.Exists(xmlFile) Then
+                MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & xmlFile & " does not exist.", ILogger.logMsgType.logError, True)
+                Return ""
+            End If
+            Dim sr As StreamReader = File.OpenText(xmlFile)
+            Dim input As String
+            input = sr.ReadLine()
+            xmlFileContents = input
+            While Not input Is Nothing
+                input = sr.ReadLine()
+                If Not input Is Nothing Then
+                    input = input.Replace("&", "&#38;")
+                End If
+                xmlFileContents = xmlFileContents + Chr(13) + Chr(10) + input
+            End While
+            sr.Close()
+            Return xmlFileContents
+        Catch Err As System.Exception
+            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & Err.Message, ILogger.logMsgType.logError, True)
+            Return ""
+        End Try
+
+    End Function
+
 End Class

@@ -35,7 +35,7 @@ Public Class clsDataImportTask
 
         Try
             ' call request stored procedure
-            mp_xmlContents = RetrieveXmlFileContents(xmlFile)
+            mp_xmlContents = LoadXmlFileContentsIntoString(xmlFile, m_logger) 'RetrieveXmlFileContents(xmlFile)
             If mp_xmlContents = "" Then
                 Return False
             End If
@@ -53,31 +53,6 @@ Public Class clsDataImportTask
         End Try
 
         Return m_fileImported
-
-    End Function
-
-    Private Function RetrieveXmlFileContents(ByVal xmlFile As String) As String
-        Dim xmlFileContents As String
-        Try
-            xmlFileContents = ""
-            'Read the contents of the xml file into a string which will be passed into a stored procedure.
-            If Not File.Exists(xmlFile) Then
-                m_logger.PostEntry("clsDataImportTask.RetrieveXmlFileContents(), File: " & xmlFile & " does not exist.", ILogger.logMsgType.logError, True)
-            End If
-            Dim sr As StreamReader = File.OpenText(xmlFile)
-            Dim input As String
-            input = sr.ReadLine()
-            xmlFileContents = input
-            While Not input Is Nothing
-                input = sr.ReadLine()
-                xmlFileContents = xmlFileContents + Chr(13) + Chr(10) + input
-            End While
-            sr.Close()
-            Return xmlFileContents
-        Catch Err As System.Exception
-            m_logger.PostEntry("clsDataImportTask.RetrieveXmlFileContents(), Error reading xml file, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return ""
-        End Try
 
     End Function
 
@@ -110,6 +85,8 @@ Public Class clsDataImportTask
         Dim Outcome As Boolean = False
 
         Try
+            'initialize database error message
+            mp_db_err_msg = ""
             m_error_list.Clear()
             ' create the command object
             '
@@ -117,6 +94,7 @@ Public Class clsDataImportTask
 
             sc = New SqlCommand(mp_stored_proc, m_DBCn)
             sc.CommandType = CommandType.StoredProcedure
+            sc.CommandTimeout = 45
 
             ' define parameters for command object
             '
@@ -158,6 +136,7 @@ Public Class clsDataImportTask
 
         Catch ex As System.Exception
             m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
+            mp_db_err_msg = Chr(13) & Chr(10) & "Database Error Message:" & ex.Message
             Outcome = False
         End Try
 
@@ -166,7 +145,6 @@ Public Class clsDataImportTask
         If m_error_list.Count > 0 Then
             Dim s As String
             Dim tmp_s As String
-            mp_db_err_msg = ""
             tmp_s = ""
             For Each s In m_error_list
                 tmp_s = Chr(13) & Chr(10) & s & tmp_s
