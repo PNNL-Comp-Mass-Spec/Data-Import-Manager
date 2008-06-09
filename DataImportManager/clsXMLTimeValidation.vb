@@ -122,7 +122,7 @@ Public Class clsXMLTimeValidation
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
             End If
 
-            If m_ins_Name.StartsWith("9T") Or m_ins_Name.StartsWith("11T") Then
+            If m_ins_Name.StartsWith("9T") Or m_ins_Name.StartsWith("11T") Or m_ins_Name.StartsWith("12T") Then
                 rslt = InstrumentWaitDelay(xmlFilename)
             End If
 

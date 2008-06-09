@@ -156,4 +156,47 @@ Public Class clsDataImportTask
 
     End Function
 
+    'Query to get the solution description from error text provided 
+    Public Function GetDbErrorSolution(ByRef errorText As String) As Boolean
+
+        Try
+            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+            Dim SQL As String
+            SQL = "SELECT Solution, Error_Text "
+            SQL = SQL + "  FROM T_DIM_Error_Solution "
+            SQL = SQL + "  ORDER BY Error_Text "
+
+            'Get a list of all records in database (hopefully just one) matching the instrument name
+            Dim Cn As New SqlConnection(m_connection_str)
+            Dim Da As New SqlDataAdapter(SQL, Cn)
+            Dim Ds As DataSet = New DataSet
+
+            Try
+                Da.Fill(Ds)
+            Catch ex As Exception
+                m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Filling data adapter, " & ex.Message, _
+                 ILogger.logMsgType.logError, True)
+                Return False
+            End Try
+
+            Dim table As DataTable
+            For Each table In Ds.Tables
+                Dim row As DataRow
+                For Each row In table.Rows
+                    If errorText.Contains(row("Error_Text").ToString()) Then
+                        errorText = row("Solution").ToString
+                    End If
+                Next row
+            Next table
+
+            Return True
+
+        Catch Err As System.Exception
+            m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Error retrieving solution text, " & Err.Message, ILogger.logMsgType.logError, True)
+            Return False
+        End Try
+
+    End Function
+
+
 End Class

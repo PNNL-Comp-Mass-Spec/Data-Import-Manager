@@ -229,10 +229,12 @@ Public Class clsMainProcess
                             If rslt Then
                                 moveLocPath = MoveXmlFile(CStr(de.Key), successFolder)
                             Else
+                                'myDataImportTask.GetReturnValue()
                                 moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
                                 m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
                                 mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
                                 mail_msg = mail_msg + Chr(13) & Chr(10) & "Operator: " & m_xml_operator_Name
+                                rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
                                 CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
                             End If
                             m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_DATABASE)
@@ -443,6 +445,8 @@ Public Class clsMainProcess
             Dim moveLocPath As String = ""
             Dim mail_msg As String = ""
             Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
+            Dim rslt As Boolean
+            myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)
 
             myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger)
 
@@ -474,6 +478,11 @@ Public Class clsMainProcess
                 mail_msg = mail_msg & Chr(13) & Chr(10) & "The dataset data is not available for capture and was not added to DMS for dataset: " & Chr(13) & Chr(10) & moveLocPath
                 mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
                 mail_msg = mail_msg + "Dataset not found in following location: " + myDataXMLValidation.m_dataset_Path
+                m_db_Err_Msg = "The dataset data is not available for capture"
+                rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
+                If Not rslt Then
+                    m_db_Err_Msg = ""
+                End If
                 CreateMail(mail_msg, m_xml_operator_email, " - Dataset not found.")
                 Return False
             End If
