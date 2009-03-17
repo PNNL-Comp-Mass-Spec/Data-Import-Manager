@@ -289,7 +289,7 @@ Public Class clsMainProcess
 
         'Load all the Xml File names and dates in the transfer directory into a string dictionary
         Try
-            Dim XmlFilesToImport() As String = Directory.GetFiles(Path.Combine(ServerXferDir, ServerXferDir))
+            Dim XmlFilesToImport() As String = Directory.GetFiles(Path.Combine(ServerXferDir, ServerXferDir), "*.xml")
             For Each XmlFile As String In XmlFilesToImport
                 filedate = File.GetLastWriteTime(Path.Combine(ServerXferDir, Path.GetFileName(XmlFile)))
                 m_XmlFilesToLoad.Add(XmlFile, CStr(filedate))
