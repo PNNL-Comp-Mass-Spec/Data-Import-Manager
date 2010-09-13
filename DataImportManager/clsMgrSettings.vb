@@ -37,7 +37,8 @@ Namespace MgrSettings
 #Region "Module variables"
 		Private m_ParamDictionary As StringDictionary
 		Private m_EmerLogFile As String
-		Private m_ErrMsg As String = ""
+        Private m_ErrMsg As String = ""
+        Private m_ManagerDeactivated As Boolean
 #End Region
 
 #Region "Properties"
@@ -45,7 +46,13 @@ Namespace MgrSettings
 			Get
 				Return m_ErrMsg
 			End Get
-		End Property
+        End Property
+
+        Public ReadOnly Property ManagerDeactivated() As Boolean
+            Get
+                Return m_ManagerDeactivated
+            End Get
+        End Property
 #End Region
 
 #Region "Methods"
@@ -57,9 +64,11 @@ Namespace MgrSettings
 
 			m_EmerLogFile = EmergencyLogFileNamePath
 
-			If Not LoadSettings(False) Then
-				Throw New ApplicationException("Unable to initialize manager settings class")
-			End If
+            If Not LoadSettings(False) Then
+                If Not m_ManagerDeactivated Then
+                    Throw New ApplicationException("Unable to initialize manager settings class")
+                End If
+            End If
 
 		End Sub
 
@@ -91,11 +100,12 @@ Namespace MgrSettings
 			End If
 
 			'Determine if manager is deactivated locally
-			If Not CBool(m_ParamDictionary("MgrActive_Local")) Then
-				clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager deactivated locally")
-				m_ErrMsg = "Manager deactivated locally"
-				Return False
-			End If
+            If Not CBool(m_ParamDictionary("MgrActive_Local")) Then
+                m_ManagerDeactivated = True
+                clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager deactivated locally")
+                m_ErrMsg = "Manager deactivated locally"
+                Return False
+            End If
 
 			'Get remaining settings from database
 			If Not LoadMgrSettingsFromDB(m_ParamDictionary) Then
@@ -205,12 +215,11 @@ Namespace MgrSettings
 			End While
 
 			'If loop exited due to errors, return false
-			If RetryCount < 1 Then
-				MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Excessive failures attempting to retrieve manager settings from database"
-				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-				Dt.Dispose()
-				Return False
-			End If
+            If RetryCount < 1 OrElse Dt Is Nothing Then
+                MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Excessive failures attempting to retrieve manager settings from database"
+                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+                Return False
+            End If
 
 			'Verify at least one row returned
 			If Dt.Rows.Count < 1 Then

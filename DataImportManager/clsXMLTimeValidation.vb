@@ -36,6 +36,26 @@ Public Class clsXMLTimeValidation
     End Enum
 #End Region
 
+    Public ReadOnly Property DatasetName() As String
+        Get
+            If m_dataset_Name Is Nothing Then
+                Return String.Empty
+            Else
+                Return m_dataset_Name
+            End If
+
+        End Get
+    End Property
+
+    Public ReadOnly Property SourcePath() As String
+        Get
+            If m_source_path Is Nothing Then
+                Return String.Empty
+            Else
+                Return m_source_path
+            End If
+        End Get
+    End Property
 
     Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
         MyBase.New(mgrParams, logger)
@@ -249,7 +269,7 @@ Public Class clsXMLTimeValidation
                 Select Case resType
 
                     Case RawDSTypes.None          'No raw dataset file or folder found
-                        m_logger.PostEntry("Dataset " & m_dataset_Name & " not found", ILogger.logMsgType.logError, True)
+                        m_logger.PostEntry("Dataset " & m_dataset_Name & " not found at " & m_source_path, ILogger.logMsgType.logError, True)
                         'Disconnect from BioNet if necessary
                         m_dataset_Path = Path.Combine(m_source_path, RawFName)
                         If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
