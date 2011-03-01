@@ -478,9 +478,14 @@ Public Class clsMainProcess
                 mail_msg = mail_msg + "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
                 CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
                 Return False
-            ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
-                m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logWarning, LOG_DATABASE)
-                Return False
+				ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
+					moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
+					m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logWarning, LOG_DATABASE)
+					mail_msg = "XML error encountered during validation process for the following XML file: " & Chr(13) & Chr(10) & moveLocPath
+					mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
+					mail_msg = mail_msg + "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
+					CreateMail(mail_msg, "", " - XML validation error.")
+					Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
                 Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA Then
