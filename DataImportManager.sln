@@ -1,5 +1,5 @@
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CC9260CC-7E76-4508-A5DE-6635DBE233BE}"
 EndProject
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "DataImportManager", "DataImportManager\DataImportManager.vbproj", "{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}"

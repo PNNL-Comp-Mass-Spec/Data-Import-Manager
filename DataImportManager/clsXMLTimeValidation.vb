@@ -258,11 +258,24 @@ Public Class clsXMLTimeValidation
                     If m_ShareConnector.Connect Then
                         m_Connected = True
                     Else
-                        m_logger.PostEntry("Error " & m_ShareConnector.ErrorMessage & " connecting to " & Path.Combine(m_source_path, m_dataset_Name), _
+                        m_logger.PostEntry("Error " & m_ShareConnector.ErrorMessage & " connecting to " & Path.Combine(m_source_path, m_dataset_Name) & " using 'secfso'", _
                          ILogger.logMsgType.logError, True)
+
+                        If m_ShareConnector.ErrorMessage.Contains("1326") Then
+                            m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query:", _
+                             ILogger.logMsgType.logError, True)
+                        Else
+                            m_logger.PostEntry("You can diagnose the problem using this query:", _
+                             ILogger.logMsgType.logError, True)
+                        End If
+
+                        m_logger.PostEntry("SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID WHERE IN_Name = '" & m_ins_Name & "'", _
+                         ILogger.logMsgType.logError, True)
+
                         Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
                     End If
                 End If
+
                 'Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
                 resType = GetRawDSType(m_source_path, m_dataset_Name, RawFName)
                 SetOperatorName()
