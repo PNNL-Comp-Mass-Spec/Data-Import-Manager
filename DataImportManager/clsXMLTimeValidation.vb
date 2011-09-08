@@ -12,20 +12,18 @@ Public Class clsXMLTimeValidation
 
     Inherits clsDBTask
     Public mp_db_err_msg As String
-    Private m_ins_Name As String = ""
-    Private m_dataset_Name As String = ""
+    Private m_ins_Name As String = String.Empty
+    Private m_dataset_Name As String = String.Empty
     Private m_run_Finish_Utc As Date = CDate("1/1/1960")
-    Private m_capture_Type As String = ""
-    Private m_source_path As String = ""
-    Public m_operator_PRN As String = ""
-    Public m_operator_Email As String = ""
-    Public m_operator_Name As String = ""
-    Public m_dataset_Path As String = ""
-    '    Private m_raw_Data_Type As String = ""
+    Private m_capture_Type As String = String.Empty
+    Private m_source_path As String = String.Empty
+    Public m_operator_PRN As String = String.Empty
+    Public m_operator_Email As String = String.Empty
+    Public m_operator_Name As String = String.Empty
+    Public m_dataset_Path As String = String.Empty
     Private m_UseBioNet As Boolean = False
     Protected m_ShareConnector As ShareConnector
     Protected m_SleepInterval As Integer = 30
-    ' constructor
 
 #Region "Enums"
     Protected Enum RawDSTypes
@@ -137,7 +135,7 @@ Public Class clsXMLTimeValidation
                 Next row
             Next table
 
-            If m_ins_Name = "" Then
+            If String.IsNullOrEmpty(m_ins_Name) Then
                 m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), The instrument name was blank.", ILogger.logMsgType.logError, True)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
             End If
@@ -217,10 +215,11 @@ Public Class clsXMLTimeValidation
                     m_capture_Type = row("Capture").ToString()
                     m_source_path = row("SourcePath").ToString
                     '                    m_raw_Data_Type = row("RawDataType").ToString
+                    Exit For
                 Next row
             Next table
 
-            If m_capture_Type = "" Or m_source_path = "" Then
+            If String.IsNullOrEmpty(m_capture_Type) OrElse String.IsNullOrEmpty(m_source_path) Then
                 m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Error retrieving source path and capture type.", ILogger.logMsgType.logError, True)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
@@ -236,18 +235,18 @@ Public Class clsXMLTimeValidation
 
     Private Function PerformValidation() As IXMLValidateStatus.XmlValidateStatus
         Dim m_Connected As Boolean = False
-        Dim m_UserName As String = ""
-        Dim m_Pwd As String = ""
+        Dim m_UserName As String = String.Empty
+        Dim m_Pwd As String = String.Empty
         Dim Pwd As String
         Dim fileModDate As DateTime
-        Dim RawFName As String = ""
+        Dim RawFName As String = String.Empty
         Dim resType As RawDSTypes
         Dim runFinishwTolerance As Date
         Dim timevaltolerance As Integer
 
         Try
 
-            If m_capture_Type <> "" And m_source_path <> "" Then
+            If Not String.IsNullOrEmpty(m_capture_Type) AndAlso Not String.IsNullOrEmpty(m_source_path) Then
                 'it is a bionet location so establish a connection
                 If m_capture_Type = "secfso" Then
                     m_UserName = m_mgrParams.GetParam("bionetuser")
@@ -258,14 +257,17 @@ Public Class clsXMLTimeValidation
                     If m_ShareConnector.Connect Then
                         m_Connected = True
                     Else
-                        m_logger.PostEntry("Error " & m_ShareConnector.ErrorMessage & " connecting to " & Path.Combine(m_source_path, m_dataset_Name) & " using 'secfso'", _
+                        m_logger.PostEntry("Error " & m_ShareConnector.ErrorMessage & " connecting to " & Path.Combine(m_source_path, m_dataset_Name) & " as user " & m_UserName & " using 'secfso'", _
                          ILogger.logMsgType.logError, True)
 
-                        If m_ShareConnector.ErrorMessage.Contains("1326") Then
-                            m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query:", _
+                        If m_ShareConnector.ErrorMessage = "1326" Then
+                            m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query: ", _
+                             ILogger.logMsgType.logError, True)
+                        ElseIf m_ShareConnector.ErrorMessage = "53" Then
+                            m_logger.PostEntry("The password may need to be reset; diagnose things further using the following query: ", _
                              ILogger.logMsgType.logError, True)
                         Else
-                            m_logger.PostEntry("You can diagnose the problem using this query:", _
+                            m_logger.PostEntry("You can diagnose the problem using this query: ", _
                              ILogger.logMsgType.logError, True)
                         End If
 
@@ -274,6 +276,12 @@ Public Class clsXMLTimeValidation
 
                         Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
                     End If
+                End If
+
+                ' Make sure m_SleepInterval isn't too large
+                If m_SleepInterval > 900 Then
+                    m_logger.PostEntry("Sleep interval of " & m_SleepInterval & " seconds is too large; decreasing to 900 seconds", ILogger.logMsgType.logWarning, True)
+                    m_SleepInterval = 900
                 End If
 
                 'Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
@@ -291,7 +299,7 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.File          'Dataset file found
                         'Check the file size
                         If Not VerifyConstantFileSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
-                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
+                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -313,7 +321,7 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.FolderExt         'Dataset found in a folder with an extension
                         'Verify the folder size is constant
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
-                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
+                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -322,7 +330,7 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.FolderNoExt
                         'Verify the folder size is constant
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
-                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready", ILogger.logMsgType.logWarning, False)
+                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, False)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -356,7 +364,7 @@ Public Class clsXMLTimeValidation
         Dim TempStr As String
         Dim Indx As Integer
 
-        TempStr = ""
+        TempStr = String.Empty
 
         Indx = 1
         Do While Indx <= Len(EnPwd)
@@ -386,7 +394,7 @@ Public Class clsXMLTimeValidation
 
         'Verify instrument transfer folder exists
         If Not Directory.Exists(InstFolder) Then
-            MyName = ""
+            MyName = String.Empty
             Return RawDSTypes.None
         End If
 
@@ -407,7 +415,7 @@ Public Class clsXMLTimeValidation
             '	might be an extension. Apparently when sending in a string, Path can't tell a file from
             '	a directory
             If Path.GetFileNameWithoutExtension(TestFolder).ToLower = DSName.ToLower Then
-                If Path.GetExtension(TestFolder) = "" Then
+                If Path.GetExtension(TestFolder).Length = 0 Then
                     'Found a directory that has no extension
                     MyName = Path.GetFileName(TestFolder)
                     Return RawDSTypes.FolderNoExt
@@ -420,7 +428,7 @@ Public Class clsXMLTimeValidation
         Next
 
         'If we got to here, then the raw dataset wasn't found, so there was a problem
-        MyName = ""
+        MyName = String.Empty
         Return RawDSTypes.None
 
     End Function
@@ -478,9 +486,9 @@ Public Class clsXMLTimeValidation
         Dim InitialFileSize As Long
         Dim FinalFileSize As Long
 
-        'Verify maximum sleep interval
-        If (CLng(SleepInt) * 1000) > [Integer].MaxValue Then
-            SleepInt = CInt([Integer].MaxValue / 1000)
+        If SleepInt > 900 Then
+            ' Sleep interval should be no more than 15 minutes
+            SleepInt = 900
         End If
 
         'Get the initial size of the folder
@@ -491,7 +499,7 @@ Public Class clsXMLTimeValidation
         System.Threading.Thread.Sleep(SleepInt * 1000)      'Delay for specified interval
 
         'Get the final size of the file and compare
-        Fi = New FileInfo(FileName)
+        Fi.Refresh()
         FinalFileSize = Fi.Length
         If FinalFileSize = InitialFileSize Then
             Return True
@@ -503,45 +511,100 @@ Public Class clsXMLTimeValidation
 
     Private Function SetOperatorName() As Boolean
 
+        Dim strOperatorName As String = String.Empty
+        Dim strOperatorEmail As String = String.Empty
+        Dim strPRN As String = String.Empty
+
+        Dim intUserCountMatched As Integer = 0
+        Dim blnSuccess As Boolean
+
         Try
             'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
             Dim SQL As String
-            SQL = "SELECT U_email, U_Name "
-            SQL = SQL + "        FROM dbo.T_Users "
-            SQL = SQL + "        WHERE U_PRN = '" + m_operator_PRN + "'"
+            SQL = "  SELECT U_email, U_Name, U_PRN "
+            SQL += " FROM dbo.T_Users "
+            SQL += " WHERE U_PRN = '" + m_operator_PRN + "'"
+            SQL += " ORDER BY ID desc"
 
-            'Get a list of all records in database (hopefully just one) matching the user PRN
-            Dim Cn As New SqlConnection(m_connection_str)
-            Dim Da As New SqlDataAdapter(SQL, Cn)
-            Dim Ds As DataSet = New DataSet
+            blnSuccess = LookupOperatorName(SQL, strOperatorName, strOperatorEmail, strPRN, intUserCountMatched)
 
-            Try
-                Da.Fill(Ds)
-            Catch ex As Exception
-                m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Filling data adapter, " & ex.Message, _
-                 ILogger.logMsgType.logError, True)
-                Return False
-            End Try
-            m_operator_Email = ""
-            m_operator_Name = ""
-            Dim table As DataTable
-            For Each table In Ds.Tables
-                Dim row As DataRow
-                For Each row In table.Rows
-                    m_operator_Email = row("U_email").ToString()
-                    m_operator_Name = row("U_Name").ToString()
-                Next row
-            Next table
-            If m_operator_Name = "" Then
-                m_operator_Name = "Operator not found (" + m_operator_PRN + ")."
+            If blnSuccess AndAlso Not String.IsNullOrEmpty(strOperatorName) Then
+                m_operator_Name = strOperatorName
+                m_operator_Email = strOperatorEmail
+                Return True
             End If
 
-            Return True
+            ' m_operator_PRN may contain the person's name instead of their PRN; check for this
+            ' In other words, m_operator_PRN may be "Baker, Erin M" instead of "D3P347"
+
+            SQL = "  SELECT U_email, U_Name, U_PRN "
+            SQL += " FROM dbo.T_Users "
+            SQL += " WHERE U_Name LIKE '" + m_operator_PRN + "%'"
+            SQL += " ORDER BY ID desc"
+
+            blnSuccess = LookupOperatorName(SQL, strOperatorName, strOperatorEmail, strPRN, intUserCountMatched)
+
+            If blnSuccess AndAlso Not String.IsNullOrEmpty(strOperatorName) Then
+                If intUserCountMatched = 1 Then
+                    m_operator_Name = strOperatorName
+                    m_operator_Email = strOperatorEmail
+                    m_operator_PRN = strPRN
+                    Return True
+                ElseIf intUserCountMatched > 1 Then
+                    m_operator_Name = "Ambiguous match found for operator (" + strOperatorName + "); use network login instead, e.g. D3E154"
+                    ' Update operator e-mail anwyway; that way at least somebody will get the e-mail
+                    m_operator_Email = strOperatorEmail
+                    Return False
+                End If
+            End If
+
+            m_operator_Name = "Operator not found (" + m_operator_PRN + "); should be network login name, e.g. D3E154"
+            Return False
 
         Catch Err As System.Exception
             m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name, " & Err.Message, ILogger.logMsgType.logError, True)
             Return False
         End Try
+
+    End Function
+
+    Private Function LookupOperatorName(ByVal SQL As String, ByRef strOperatorName As String, ByRef strOperatorEmail As String, ByRef strPRN As String, ByRef intUserCountMatched As Integer) As Boolean
+
+        'Get a list of all records in database (hopefully just one) matching the user PRN
+        Dim Cn As New SqlConnection(m_connection_str)
+        Dim Da As New SqlDataAdapter(SQL, Cn)
+        Dim Ds As DataSet = New DataSet
+        Dim blnSuccess As Boolean
+
+        blnSuccess = False
+        intUserCountMatched = 0
+
+        Try
+            Da.Fill(Ds)
+        Catch ex As Exception
+            m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Filling data adapter, " & ex.Message, _
+             ILogger.logMsgType.logError, True)
+            Return False
+        End Try
+
+        strOperatorEmail = String.Empty
+        strOperatorName = String.Empty
+        Dim table As DataTable
+        For Each table In Ds.Tables
+            intUserCountMatched = table.Rows.Count
+
+            Dim row As DataRow
+            For Each row In table.Rows
+                strOperatorEmail = row("U_email").ToString()
+                strOperatorName = row("U_Name").ToString()
+                strPRN = row("U_PRN").ToString()
+                blnSuccess = True
+                Exit For
+            Next row
+            Exit For
+        Next table
+
+        Return blnSuccess
 
     End Function
 

@@ -37,7 +37,7 @@ Namespace MgrSettings
 #Region "Module variables"
 		Private m_ParamDictionary As StringDictionary
 		Private m_EmerLogFile As String
-        Private m_ErrMsg As String = ""
+        Private m_ErrMsg As String = String.Empty
         Private m_ManagerDeactivated As Boolean
 #End Region
 
@@ -80,7 +80,7 @@ Namespace MgrSettings
 		''' <remarks></remarks>
 		Public Function LoadSettings(ByVal Reload As Boolean) As Boolean
 
-			m_ErrMsg = ""
+            m_ErrMsg = String.Empty
 
 			'If reloading, clear out the existing parameter string dictionary
 			If Reload Then
@@ -251,9 +251,9 @@ Namespace MgrSettings
 
 		Protected Function DbCStr(ByVal InpObj As Object) As String
 
-			'If input object is DbNull, returns "", otherwise returns String representation of object
+            'If input object is DbNull, returns String.empty, otherwise returns String representation of object
 			If InpObj Is DBNull.Value Then
-				Return ""
+                Return String.Empty
 			Else
 				Return CStr(InpObj)
 			End If
@@ -304,7 +304,7 @@ Namespace MgrSettings
 		''' <remarks>This bit of lunacy is needed because MS doesn't supply a means to write to an app config file</remarks>
 		Public Function WriteConfigSetting(ByVal Key As String, ByVal Value As String) As Boolean
 
-			m_ErrMsg = ""
+            m_ErrMsg = String.Empty
 
 			'Load the config document
 			Dim MyDoc As XmlDocument = LoadConfigDocument()

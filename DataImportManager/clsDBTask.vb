@@ -79,20 +79,19 @@ Public MustInherit Class clsDBTask
   ' errors and warnings sent from the SQL server are caught here
   '
   Private Sub OnInfoMessage(ByVal sender As Object, ByVal args As SqlInfoMessageEventArgs)
-    Dim err As SqlError
-    Dim s As String
-    For Each err In args.Errors
-      s = ""
-      s &= "Message: " & err.Message
-      s &= ", Source: " & err.Source
-      s &= ", Class: " & err.Class
-      s &= ", State: " & err.State
-      s &= ", Number: " & err.Number
-      s &= ", LineNumber: " & err.LineNumber
-      s &= ", Procedure:" & err.Procedure
-      s &= ", Server: " & err.Server
-      m_error_list.Add(s)
-    Next
+        Dim err As SqlError
+        Dim s As String
+        For Each err In args.Errors
+            s = "Message: " & err.Message & _
+                ", Source: " & err.Source & _
+                ", Class: " & err.Class & _
+                ", State: " & err.State & _
+                ", Number: " & err.Number & _
+                ", LineNumber: " & err.LineNumber & _
+                ", Procedure:" & err.Procedure & _
+                ", Server: " & err.Server
+            m_error_list.Add(s)
+        Next
   End Sub
 
 End Class

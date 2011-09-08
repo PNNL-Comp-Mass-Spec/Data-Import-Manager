@@ -9,7 +9,7 @@ Public Class clsGlobal
     Public Const LOG_LOCAL_ONLY As Boolean = True
 	Public Const LOG_DATABASE As Boolean = False
 	Public Shared FailCount As Integer = 0
-	Public Shared AppFilePath As String = ""
+    Public Shared AppFilePath As String = String.Empty
 
     Public Shared Sub CreateStatusFlagFile()
 
@@ -59,11 +59,11 @@ Public Class clsGlobal
     Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFile As String, ByVal MyLogger As ILogger) As String
         Dim xmlFileContents As String
         Try
-            xmlFileContents = ""
+            xmlFileContents = String.Empty
             'Read the contents of the xml file into a string which will be passed into a stored procedure.
             If Not File.Exists(xmlFile) Then
                 MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & xmlFile & " does not exist.", ILogger.logMsgType.logError, True)
-                Return ""
+                Return String.Empty
             End If
             Dim sr As StreamReader = File.OpenText(xmlFile)
             Dim input As String
@@ -80,7 +80,7 @@ Public Class clsGlobal
             Return xmlFileContents
         Catch Err As System.Exception
             MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return ""
+            Return String.Empty
         End Try
 
     End Function

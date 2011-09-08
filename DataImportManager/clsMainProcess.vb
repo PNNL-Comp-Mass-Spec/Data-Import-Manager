@@ -147,9 +147,8 @@ Public Class clsMainProcess
 
             'Verify an error hasn't left the the system in an odd state
             If DetectStatusFlagFile() Then
-                m_Logger.PostEntry("Flag file exists - unable to perform any further data import tasks", _
-                ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-                m_Logger.PostEntry("===== Closing Data Import Manager =====", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+                m_Logger.PostEntry("Flag file exists - auto-deleting it", ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                DeleteStatusFlagFile(m_Logger)
                 Exit Sub
             End If
 
@@ -157,7 +156,7 @@ Public Class clsMainProcess
             If m_ConfigChanged Then
                 m_ConfigChanged = False
                 If Not m_MgrSettings.LoadSettings(True) Then
-                    If m_MgrSettings.ErrMsg <> "" Then
+                    If Not String.IsNullOrEmpty(m_MgrSettings.ErrMsg) Then
                         'Manager has been deactivated, so report this
                         m_Logger.PostEntry(m_MgrSettings.ErrMsg, ILogger.logMsgType.logWarning, True)
                     Else
@@ -206,8 +205,8 @@ Public Class clsMainProcess
         Dim DelGoodXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletegoodxmlfiles"))
         Dim successFolder As String = m_MgrSettings.GetParam("successfolder")
         Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
-        Dim moveLocPath As String = ""
-        Dim mail_msg As String = ""
+        Dim moveLocPath As String = String.Empty
+        Dim mail_msg As String = String.Empty
 
         Try
 
@@ -235,7 +234,7 @@ Public Class clsMainProcess
                     'Validate the xml file
                     If ValidateXMLFile(CStr(de.Key)) Then
                         m_Logger.PostEntry(ModName & ": Started Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
-                        m_db_Err_Msg = ""
+                        m_db_Err_Msg = String.Empty
                         rslt = myDataImportTask.PostTask(CStr(de.Key))
                         m_db_Err_Msg = myDataImportTask.mp_db_err_msg
                         If m_db_Err_Msg.Contains("Timeout expired.") Then
@@ -249,7 +248,7 @@ Public Class clsMainProcess
                                 moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
                                 m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
                                 mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
-                                mail_msg = mail_msg + Chr(13) & Chr(10) & "Operator: " & m_xml_operator_Name
+                                mail_msg &= ControlChars.NewLine & "Operator: " & m_xml_operator_Name
                                 rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
                                 CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
                             End If
@@ -295,7 +294,7 @@ Public Class clsMainProcess
         'Verify transfer directory exists
         If Not Directory.Exists(ServerXferDir) Then
             'There's a serious problem is the xfer directory can't be found!!!
-            m_Logger.PostEntry("Xml transfer folder not found. ", ILogger.logMsgType.logError, LOG_DATABASE)
+            m_Logger.PostEntry("Xml transfer folder not found: " & ServerXferDir, ILogger.logMsgType.logError, LOG_DATABASE)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End If
 
@@ -304,7 +303,7 @@ Public Class clsMainProcess
 
         'Load all the Xml File names and dates in the transfer directory into a string dictionary
         Try
-            Dim XmlFilesToImport() As String = Directory.GetFiles(Path.Combine(ServerXferDir, ServerXferDir), "*.xml")
+            Dim XmlFilesToImport() As String = Directory.GetFiles(ServerXferDir, "*.xml")
             For Each XmlFile As String In XmlFilesToImport
                 filedate = File.GetLastWriteTime(Path.Combine(ServerXferDir, Path.GetFileName(XmlFile)))
                 m_XmlFilesToLoad.Add(XmlFile, CStr(filedate))
@@ -313,7 +312,7 @@ Public Class clsMainProcess
             m_Logger.PostError("Error loading Xml Data files", err, LOG_DATABASE)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End Try
-        m_XmlFilesToLoad.Values.GetEnumerator()
+
         'Everything must be OK if we got to here
         Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
 
@@ -321,9 +320,8 @@ Public Class clsMainProcess
     Private Function MoveXmlFile(ByVal xmlFile As String, ByVal moveFolder As String) As String
 
         Dim Fi As FileInfo
-        'Dim xmlFilePath As String = ""
-        Dim xmlFileName As String = ""
-        Dim xmlFileNewLoc As String = ""
+        Dim xmlFileName As String = String.Empty
+        Dim xmlFileNewLoc As String = String.Empty
         Try
             If File.Exists(xmlFile) Then
                 Fi = New FileInfo(xmlFile)
@@ -347,7 +345,7 @@ Public Class clsMainProcess
     Private Function GetDirectory(ByVal xmlFile As String) As String
 
         Dim Fi As FileInfo
-        Dim xmlFilePath As String = ""
+        Dim xmlFilePath As String = String.Empty
         Try
             If File.Exists(xmlFile) Then
                 Fi = New FileInfo(xmlFile)
@@ -368,7 +366,7 @@ Public Class clsMainProcess
         m_FileWatcher.EnableRaisingEvents = False  'Turn off change detection until current change has been acted upon
     End Sub
 
-    Function CreateMail(ByVal mailMsg As String, ByVal addtnlRecipient As String, ByVal overrideSubject As String) As Boolean
+    Function CreateMail(ByVal mailMsg As String, ByVal addtnlRecipient As String, ByVal subjectAppend As String) As Boolean
         Dim ErrMsg As String
         Dim addMsg As String
         Dim enableEmail As Boolean
@@ -377,26 +375,29 @@ Public Class clsMainProcess
         enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
         If enableEmail Then
             Try
-                addMsg = Chr(13) & Chr(10) & Chr(13) & Chr(10) & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
+                addMsg = ControlChars.NewLine & ControlChars.NewLine & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
+
                 'create the mail message
                 Dim mail As New System.Net.Mail.MailMessage()
+
                 'set the addresses
                 mail.From = New MailAddress(m_MgrSettings.GetParam("from"))
                 For Each emailAddress In Split(m_MgrSettings.GetParam("to"), ";")
                     mail.To.Add(emailAddress)
                 Next
-                If addtnlRecipient <> "" Then
+
+                If Not String.IsNullOrEmpty(addtnlRecipient) Then
                     mail.To.Add(addtnlRecipient)
                 End If
 
-                'mail.To.Add(m_MgrSettings.GetParam("to"))
                 'set the content
-                If overrideSubject = "" Then
+                If String.IsNullOrEmpty(subjectAppend) Then
                     mail.Subject = m_MgrSettings.GetParam("subject")
                 Else
-                    mail.Subject = m_MgrSettings.GetParam("subject") + overrideSubject
+                    mail.Subject = m_MgrSettings.GetParam("subject") + subjectAppend
                 End If
-                mail.Body = mailMsg & Chr(13) & Chr(10) & Chr(13) & Chr(10) & m_db_Err_Msg & addMsg
+                mail.Body = mailMsg & ControlChars.NewLine & ControlChars.NewLine & m_db_Err_Msg & addMsg
+
                 'send the message
                 Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
                 'to authenticate we set the username and password properites on the SmtpClient
@@ -457,8 +458,8 @@ Public Class clsMainProcess
             Dim ModName As String = m_MgrSettings.GetParam("modulename")
             Dim xmlRslt As IXMLValidateStatus.XmlValidateStatus
             Dim timeValFolder As String = m_MgrSettings.GetParam("timevalidationfolder")
-            Dim moveLocPath As String = ""
-            Dim mail_msg As String = ""
+            Dim moveLocPath As String = String.Empty
+            Dim mail_msg As String = String.Empty
             Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
             Dim rslt As Boolean
             myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)
@@ -472,33 +473,33 @@ Public Class clsMainProcess
                 m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logWarning, LOG_DATABASE)
                 moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
                 m_Logger.PostEntry("Time validation error. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                mail_msg = "Operator: " & m_xml_operator_Name
-                mail_msg = mail_msg & Chr(13) & Chr(10) & "There was a time validation error with the following XML file: " & Chr(13) & Chr(10) & moveLocPath
-                mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
-                mail_msg = mail_msg + "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
+                mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
+                mail_msg &= "There was a time validation error with the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
+                mail_msg &= "Check the log for details.  " & ControlChars.NewLine
+                mail_msg &= "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
                 CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
                 Return False
-				ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
-					moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
-					m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logWarning, LOG_DATABASE)
-					mail_msg = "XML error encountered during validation process for the following XML file: " & Chr(13) & Chr(10) & moveLocPath
-					mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
-					mail_msg = mail_msg + "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
-					CreateMail(mail_msg, "", " - XML validation error.")
-					Return False
+            ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
+                moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
+                m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logWarning, LOG_DATABASE)
+                mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
+                mail_msg &= "Check the log for details.  " & ControlChars.NewLine
+                mail_msg &= "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
+                CreateMail(mail_msg, "", " - XML validation error.")
+                Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
                 Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA Then
                 moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
                 m_Logger.PostEntry(ModName & ": Dataset " & myDataXMLValidation.DatasetName & " not found at " & myDataXMLValidation.SourcePath, ILogger.logMsgType.logWarning, LOG_DATABASE)
-                mail_msg = "Operator: " & m_xml_operator_Name
-                mail_msg = mail_msg & Chr(13) & Chr(10) & "The dataset data is not available for capture and was not added to DMS for dataset: " & Chr(13) & Chr(10) & moveLocPath
-                mail_msg = mail_msg & Chr(13) & Chr(10) & "Check the log for details.  " & Chr(13) & Chr(10)
-                mail_msg = mail_msg + "Dataset not found in following location: " + myDataXMLValidation.m_dataset_Path
+                mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
+                mail_msg &= "The dataset data is not available for capture and was not added to DMS for dataset: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
+                mail_msg &= "Check the log for details.  " & ControlChars.NewLine
+                mail_msg &= "Dataset not found in following location: " + myDataXMLValidation.m_dataset_Path
                 m_db_Err_Msg = "The dataset data is not available for capture"
                 rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
                 If Not rslt Then
-                    m_db_Err_Msg = ""
+                    m_db_Err_Msg = String.Empty
                 End If
                 CreateMail(mail_msg, m_xml_operator_email, " - Dataset not found.")
                 Return False

@@ -36,7 +36,7 @@ Public Class clsDataImportTask
         Try
             ' call request stored procedure
             mp_xmlContents = LoadXmlFileContentsIntoString(xmlFile, m_logger) 'RetrieveXmlFileContents(xmlFile)
-            If mp_xmlContents = "" Then
+            If String.IsNullOrEmpty(mp_xmlContents) Then
                 Return False
             End If
             m_fileImported = ImportDataTask(mp_xmlContents)
@@ -86,7 +86,7 @@ Public Class clsDataImportTask
 
         Try
             'initialize database error message
-            mp_db_err_msg = ""
+            mp_db_err_msg = String.Empty
             m_error_list.Clear()
             ' create the command object
             '
@@ -136,7 +136,7 @@ Public Class clsDataImportTask
 
         Catch ex As System.Exception
             m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
-            mp_db_err_msg = Chr(13) & Chr(10) & "Database Error Message:" & ex.Message
+            mp_db_err_msg = ControlChars.NewLine & "Database Error Message:" & ex.Message
             Outcome = False
         End Try
 
@@ -145,11 +145,11 @@ Public Class clsDataImportTask
         If m_error_list.Count > 0 Then
             Dim s As String
             Dim tmp_s As String
-            tmp_s = ""
+            tmp_s = String.Empty
             For Each s In m_error_list
-                tmp_s = Chr(13) & Chr(10) & s & tmp_s
+                tmp_s = ControlChars.NewLine & s & tmp_s
             Next
-            mp_db_err_msg = Chr(13) & Chr(10) & "Database Error Message:" & tmp_s
+            mp_db_err_msg = ControlChars.NewLine & "Database Error Message:" & tmp_s
         End If
 
         Return Outcome
