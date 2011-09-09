@@ -203,8 +203,7 @@ Public Class clsXMLTimeValidation
             Try
                 Da.Fill(Ds)
             Catch ex As Exception
-                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Filling data adapter, " & ex.Message, _
-                 ILogger.logMsgType.logError, True)
+                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Filling data adapter, " & ex.Message, ILogger.logMsgType.logError, True)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End Try
 
@@ -299,7 +298,7 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.File          'Dataset file found
                         'Check the file size
                         If Not VerifyConstantFileSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
-                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, False)
+                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -321,7 +320,7 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.FolderExt         'Dataset found in a folder with an extension
                         'Verify the folder size is constant
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
-                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, False)
+                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -330,7 +329,7 @@ Public Class clsXMLTimeValidation
                     Case RawDSTypes.FolderNoExt
                         'Verify the folder size is constant
                         If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
-                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, False)
+                            m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
                             If m_Connected Then DisconnectShare(m_ShareConnector, m_Connected)
                             m_dataset_Path = Path.Combine(m_source_path, RawFName)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
@@ -517,6 +516,7 @@ Public Class clsXMLTimeValidation
 
         Dim intUserCountMatched As Integer = 0
         Dim blnSuccess As Boolean
+        Dim strLogMsg As String
 
         Try
             'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
@@ -544,6 +544,9 @@ Public Class clsXMLTimeValidation
                 strQueryName = strQueryName.Substring(0, strQueryName.IndexOf("(")).Trim()
             End If
 
+            strLogMsg = "clsXMLTimeValidation.SetOperatorName: '" & m_operator_PRN & "' not found in T_Users.U_PRN; will try '" & strQueryName & "'"
+            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, True)
+
             SQL = "  SELECT U_email, U_Name, U_PRN "
             SQL += " FROM dbo.T_Users "
             SQL += " WHERE U_Name LIKE '" + strQueryName + "%'"
@@ -560,6 +563,8 @@ Public Class clsXMLTimeValidation
                     m_operator_PRN = strPRN
                     Return True
                 ElseIf intUserCountMatched > 1 Then
+                    strLogMsg = "clsXMLTimeValidation.SetOperatorName: Ambiguous match found for '" & strOperatorName & "' in T_Users.U_PRN; will e-mail '" & strOperatorEmail & "'"
+                    m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, True)
                     m_operator_Name = "Ambiguous match found for operator (" + strOperatorName + "); use network login instead, e.g. D3E154"
                     ' Update operator e-mail anwyway; that way at least somebody will get the e-mail
                     m_operator_Email = strOperatorEmail
@@ -567,11 +572,15 @@ Public Class clsXMLTimeValidation
                 End If
             End If
 
+            strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator not found in T_Users.U_PRN: " & m_operator_PRN
+            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, True)
+
             m_operator_Name = "Operator not found (" + m_operator_PRN + "); should be network login name, e.g. D3E154"
             Return False
 
         Catch Err As System.Exception
-            m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name, " & Err.Message, ILogger.logMsgType.logError, True)
+            strLogMsg = "clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name, " & Err.Message
+            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logError, True)
             Return False
         End Try
 
@@ -591,8 +600,7 @@ Public Class clsXMLTimeValidation
         Try
             Da.Fill(Ds)
         Catch ex As Exception
-            m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Filling data adapter, " & ex.Message, _
-             ILogger.logMsgType.logError, True)
+            m_logger.PostEntry("clsXMLTimeValidation.RetrieveOperatorName(), Filling data adapter, " & ex.Message, ILogger.logMsgType.logError, True)
             Return False
         End Try
 

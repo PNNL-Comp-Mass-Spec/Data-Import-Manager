@@ -342,6 +342,7 @@ Public Class clsMainProcess
         End Try
         Return xmlFileNewLoc
     End Function
+
     Private Function GetDirectory(ByVal xmlFile As String) As String
 
         Dim Fi As FileInfo
@@ -470,7 +471,7 @@ Public Class clsMainProcess
             m_xml_operator_Name = myDataXMLValidation.m_operator_Name
             m_xml_operator_email = myDataXMLValidation.m_operator_Email
             If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
-                m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logWarning, LOG_DATABASE)
+                m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
                 moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
                 m_Logger.PostEntry("Time validation error. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
                 mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
