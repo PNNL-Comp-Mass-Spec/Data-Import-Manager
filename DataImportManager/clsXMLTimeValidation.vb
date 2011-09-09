@@ -537,15 +537,24 @@ Public Class clsXMLTimeValidation
             ' m_operator_PRN may contain the person's name instead of their PRN; check for this
             ' In other words, m_operator_PRN may be "Baker, Erin M" instead of "D3P347"
 
+            Dim strQueryName As String = String.Copy(m_operator_PRN)
+            If strQueryName.IndexOf("(" > 0) Then
+                ' Name likely is something like: Baker, Erin M (D3P347)
+                ' Truncate any text after the parenthesis
+                strQueryName = strQueryName.Substring(0, strQueryName.IndexOf("(")).Trim()
+            End If
+
             SQL = "  SELECT U_email, U_Name, U_PRN "
             SQL += " FROM dbo.T_Users "
-            SQL += " WHERE U_Name LIKE '" + m_operator_PRN + "%'"
+            SQL += " WHERE U_Name LIKE '" + strQueryName + "%'"
             SQL += " ORDER BY ID desc"
 
             blnSuccess = LookupOperatorName(SQL, strOperatorName, strOperatorEmail, strPRN, intUserCountMatched)
 
             If blnSuccess AndAlso Not String.IsNullOrEmpty(strOperatorName) Then
                 If intUserCountMatched = 1 Then
+                    ' We matched a single user using strQueryName
+                    ' Update the operator name, e-mail, and PRN
                     m_operator_Name = strOperatorName
                     m_operator_Email = strOperatorEmail
                     m_operator_PRN = strPRN
