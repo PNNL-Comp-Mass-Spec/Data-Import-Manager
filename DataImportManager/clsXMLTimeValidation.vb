@@ -538,10 +538,10 @@ Public Class clsXMLTimeValidation
             ' In other words, m_operator_PRN may be "Baker, Erin M" instead of "D3P347"
 
             Dim strQueryName As String = String.Copy(m_operator_PRN)
-            If strQueryName.IndexOf("(" > 0) Then
+            If strQueryName.IndexOf("("c) > 0 Then
                 ' Name likely is something like: Baker, Erin M (D3P347)
                 ' Truncate any text after the parenthesis
-                strQueryName = strQueryName.Substring(0, strQueryName.IndexOf("(")).Trim()
+                strQueryName = strQueryName.Substring(0, strQueryName.IndexOf("("c)).Trim()
             End If
 
             strLogMsg = "clsXMLTimeValidation.SetOperatorName: '" & m_operator_PRN & "' not found in T_Users.U_PRN; will try '" & strQueryName & "'"
