@@ -58,7 +58,7 @@ Public Class clsMainProcess
 			Return False
 		End Try
 
-		Dim FInfo As FileInfo = New FileInfo(Application.ExecutablePath)
+		Dim FInfo As FileInfo = New FileInfo(GetExePath())
 		Try
 			'Load initial settings
 			m_MgrActive = CBool(m_MgrSettings.GetParam("mgractive"))
@@ -246,7 +246,7 @@ Public Class clsMainProcess
 							Else
 								'myDataImportTask.GetReturnValue()
 								moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
-								m_Logger.PostEntry("Error posting xml file to database. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
+								m_Logger.PostEntry("Error posting xml file to database. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 								mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
 								mail_msg &= ControlChars.NewLine & "Operator: " & m_xml_operator_Name
 								rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
@@ -317,6 +317,7 @@ Public Class clsMainProcess
 		Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
 
 	End Function
+
 	Private Function MoveXmlFile(ByVal xmlFile As String, ByVal moveFolder As String) As String
 
 		Dim Fi As FileInfo
@@ -371,7 +372,6 @@ Public Class clsMainProcess
 		Dim ErrMsg As String
 		Dim addMsg As String
 		Dim enableEmail As Boolean
-		Dim emailAddress As String
 
 		enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
 		If enableEmail Then
@@ -383,7 +383,8 @@ Public Class clsMainProcess
 
 				'set the addresses
 				mail.From = New MailAddress(m_MgrSettings.GetParam("from"))
-				For Each emailAddress In Split(m_MgrSettings.GetParam("to"), ";")
+
+				For Each emailAddress As String In Split(m_MgrSettings.GetParam("to"), ";")
 					mail.To.Add(emailAddress)
 				Next
 
@@ -453,6 +454,40 @@ Public Class clsMainProcess
 
 	End Sub
 
+	Private Function GetExePath() As String
+		' Could use Application.ExecutablePath
+		' Instead, use reflection
+		Return System.Reflection.Assembly.GetExecutingAssembly().Location
+	End Function
+
+	''' <summary>
+	''' Returns a string with the path to the log file, assuming the file can be access with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
+	''' </summary>
+	''' <returns></returns>
+	''' <remarks></remarks>
+	Private Function GetLogFileSharePath() As String
+
+		Dim strLogFilePath As String
+		
+		Dim FInfo As FileInfo = New FileInfo(GetExePath())
+
+		strLogFilePath = Path.Combine(FInfo.Directory.Name, m_MgrSettings.GetParam("logfilename"))
+
+		' strLogFilePath should look like this:
+		'	DataImportManager\Logs\DataImportManager
+
+		' Prepend the computer name and share name, giving a string similar to:
+		' \\proto-3\DMS_Programs\DataImportManager\Logs\DataImportManager
+
+		strLogFilePath = "\\" & Environment.MachineName & "\DMS_Programs\" & strLogFilePath
+
+		' Append the date stamp to the log
+		strLogFilePath &= "_" & System.DateTime.Now.ToString("MM-dd-yyyy") & ".txt"
+
+		Return strLogFilePath
+
+	End Function
+
 	Private Function ValidateXMLFile(ByVal xmlFilename As String) As Boolean
 
 		Try
@@ -473,7 +508,7 @@ Public Class clsMainProcess
 			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
 				m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 				moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
-				m_Logger.PostEntry("Time validation error. View details in log for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
+				m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 				mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
 				mail_msg &= "There was a time validation error with the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
