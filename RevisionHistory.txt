@@ -1,0 +1,15 @@
+Data Import Manager History
+
+Version 1.2.4297; October 7, 2011
+	 - Now including the log file path in the text posted to the database when an error occurs
+
+Version 1.2.4269; September 9, 2011
+	- Added support for operator names that look like "Baker, Erin M (D3P347)"
+
+Version 1.2.4268; September 8, 2011
+	- Now allowing Operator PRN to be operator name instead of PRN
+	- Added additional error/warning messages
+
+Version 1.2.4241; August 12, 2011
+	- Updated to Visual Studio 2010
+	- Added detailed message when failure connecting via secfso
