@@ -256,8 +256,8 @@ Public Class clsXMLTimeValidation
                     If m_ShareConnector.Connect Then
                         m_Connected = True
                     Else
-                        m_logger.PostEntry("Error " & m_ShareConnector.ErrorMessage & " connecting to " & Path.Combine(m_source_path, m_dataset_Name) & " as user " & m_UserName & " using 'secfso'", _
-                         ILogger.logMsgType.logError, True)
+						m_logger.PostEntry("Error " & m_ShareConnector.ErrorMessage & " connecting to " & m_source_path & " as user " & m_UserName & " using 'secfso'", _
+						 ILogger.logMsgType.logError, True)
 
                         If m_ShareConnector.ErrorMessage = "1326" Then
                             m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query: ", _
