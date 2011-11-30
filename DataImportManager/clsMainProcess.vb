@@ -506,7 +506,7 @@ Public Class clsMainProcess
 			m_xml_operator_Name = myDataXMLValidation.m_operator_Name
 			m_xml_operator_email = myDataXMLValidation.m_operator_Email
 			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
-				m_Logger.PostEntry(ModName & ": XML Time validation error.", ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+				m_Logger.PostEntry(ModName & ": XML Time validation error, file " & xmlFilename, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 				moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
 				m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 				mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
@@ -517,7 +517,7 @@ Public Class clsMainProcess
 				Return False
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
 				moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
-				m_Logger.PostEntry(ModName & ": An error was encountered during the validation process.", ILogger.logMsgType.logWarning, LOG_DATABASE)
+				m_Logger.PostEntry(ModName & ": An error was encountered during the validation process, file " & xmlFilename, ILogger.logMsgType.logWarning, LOG_DATABASE)
 				mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
 				mail_msg &= "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
