@@ -20,41 +20,41 @@ Public Class clsDataImportTask
     Private mp_xmlContents As String
 #End Region
 
-    Public Function PostTask(ByVal xmlFile As String) As Boolean
+	Public Function PostTask(ByVal xmlFilePath As String) As Boolean
 
-        m_connection_str = m_mgrParams.GetParam("ConnectionString")
-        Dim m_fileImported As Boolean
-        m_fileImported = False
+		m_connection_str = m_mgrParams.GetParam("ConnectionString")
+		Dim m_fileImported As Boolean
+		m_fileImported = False
 
-        Try
-            OpenConnection()
-        Catch Err As System.Exception
-            m_logger.PostEntry("clsDatasetImportTask.PostTask(), error opening connection, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return False
-        End Try
+		Try
+			OpenConnection()
+		Catch Err As System.Exception
+			m_logger.PostEntry("clsDatasetImportTask.PostTask(), error opening connection, " & Err.Message, ILogger.logMsgType.logError, True)
+			Return False
+		End Try
 
-        Try
-            ' call request stored procedure
-            mp_xmlContents = LoadXmlFileContentsIntoString(xmlFile, m_logger) 'RetrieveXmlFileContents(xmlFile)
-            If String.IsNullOrEmpty(mp_xmlContents) Then
-                Return False
-            End If
-            m_fileImported = ImportDataTask(mp_xmlContents)
-        Catch Err As System.Exception
-            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return False
-        End Try
+		Try
+			' call request stored procedure
+			mp_xmlContents = LoadXmlFileContentsIntoString(xmlFilePath, m_logger) 'RetrieveXmlFileContents(xmlFile)
+			If String.IsNullOrEmpty(mp_xmlContents) Then
+				Return False
+			End If
+			m_fileImported = ImportDataTask(mp_xmlContents)
+		Catch Err As System.Exception
+			m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & Err.Message, ILogger.logMsgType.logError, True)
+			Return False
+		End Try
 
-        Try
-            CloseConnection()
-        Catch Err As System.Exception
-            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error closing connection, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return False
-        End Try
+		Try
+			CloseConnection()
+		Catch Err As System.Exception
+			m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error closing connection, " & Err.Message, ILogger.logMsgType.logError, True)
+			Return False
+		End Try
 
-        Return m_fileImported
+		Return m_fileImported
 
-    End Function
+	End Function
 
     Public Sub CloseTask(ByVal closeOut As ITaskParams.CloseOutType, ByVal resultsFolderName As String, ByVal comment As String)
         If (closeOut = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS) Or (closeOut = ITaskParams.CloseOutType.CLOSEOUT_NO_DATA) Then

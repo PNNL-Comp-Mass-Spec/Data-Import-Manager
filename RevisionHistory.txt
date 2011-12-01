@@ -1,9 +1,12 @@
 Data Import Manager History
 
+Version 1.2.4351; November 30, 2011
+	- Now including the XML file path in additional error messages
+
 Version 1.2.4350; November 29, 2011
 	- No longer filtering out inactive instruments when querying V_Instrument_List_Export
 	- Now logging instrument name when there is a problem looking up info from V_Instrument_List_Export
-	- Now logging XML file name when error "An error was encountered during the validation process" is encountered
+	- Now logging XML file path when error "An error was encountered during the validation process" is encountered
 
 Version 1.2.4297; October 7, 2011
 	 - Now including the log file path in the text posted to the database when an error occurs

@@ -59,7 +59,7 @@ Public Class clsXMLTimeValidation
 		MyBase.New(mgrParams, logger)
 	End Sub
 
-	Public Function ValidateXMLFile(ByVal xmlFile As String) As IXMLValidateStatus.XmlValidateStatus
+	Public Function ValidateXMLFile(ByVal xmlFilePath As String) As IXMLValidateStatus.XmlValidateStatus
 		Dim rslt As IXMLValidateStatus.XmlValidateStatus
 
 		m_connection_str = m_mgrParams.GetParam("ConnectionString")
@@ -74,7 +74,7 @@ Public Class clsXMLTimeValidation
 		End Try
 
 		Try
-			rslt = GetXMLParameters(xmlFile)
+			rslt = GetXMLParameters(xmlFilePath)
 			If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
 				rslt = SetDbInstrumentParameters(m_ins_Name)
 				If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then

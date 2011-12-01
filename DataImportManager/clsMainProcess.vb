@@ -197,7 +197,7 @@ Public Class clsMainProcess
 	Private Sub DoDataImportTask()
 
 		Dim result As ITaskParams.CloseOutType
-		Dim rslt As Boolean
+		Dim blnSuccess As Boolean
 		Dim ModName As String = m_MgrSettings.GetParam("modulename")
 		Dim XferDir As String = m_MgrSettings.GetParam("xferdir")
 		Dim runStatus As ITaskParams.CloseOutType = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
@@ -228,34 +228,43 @@ Public Class clsMainProcess
 				System.Threading.Thread.Sleep(CInt(importDelay) * 1000)
 
 				Dim myEnumerator As IEnumerator = m_XmlFilesToLoad.GetEnumerator()
-				Dim de As DictionaryEntry
+				Dim deXMLFile As DictionaryEntry
 
-				For Each de In m_XmlFilesToLoad
-					'Validate the xml file
-					If ValidateXMLFile(CStr(de.Key)) Then
-						m_Logger.PostEntry(ModName & ": Started Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+				For Each deXMLFile In m_XmlFilesToLoad
+					' Validate the xml file
+
+					Dim xmlFilePath As String = CStr(deXMLFile.Key)
+
+					If ValidateXMLFile(xmlFilePath) Then
+						m_Logger.PostEntry(ModName & ": Started Data import task for dataset: " & xmlFilePath, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 						m_db_Err_Msg = String.Empty
-						rslt = myDataImportTask.PostTask(CStr(de.Key))
+						blnSuccess = myDataImportTask.PostTask(xmlFilePath)
+
 						m_db_Err_Msg = myDataImportTask.mp_db_err_msg
 						If m_db_Err_Msg.Contains("Timeout expired.") Then
 							'post the error and leave the file for another attempt
-							m_Logger.PostEntry(ModName & ": Encountered database timeout error for dataset: " & CStr(de.Key), ILogger.logMsgType.logError, LOG_DATABASE)
+							m_Logger.PostEntry(ModName & ": Encountered database timeout error for dataset: " & xmlFilePath, ILogger.logMsgType.logError, LOG_DATABASE)
 						Else
-							If rslt Then
-								moveLocPath = MoveXmlFile(CStr(de.Key), successFolder)
+							If blnSuccess Then
+								moveLocPath = MoveXmlFile(xmlFilePath, successFolder)
 							Else
 								'myDataImportTask.GetReturnValue()
-								moveLocPath = MoveXmlFile(CStr(de.Key), failureFolder)
+								moveLocPath = MoveXmlFile(xmlFilePath, failureFolder)
 								m_Logger.PostEntry("Error posting xml file to database. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 								mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
 								mail_msg &= ControlChars.NewLine & "Operator: " & m_xml_operator_Name
-								rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
+
+								' Send m_db_Err_Msg to see if there is a suggested solution in table T_DIM_Error_Solution for the error 
+								' If a solution is found, then m_db_Err_Msg will get auto-updated with the suggested course of action
+								blnSuccess = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
+
+								' Send an e-mail
 								CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
 							End If
-							m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & CStr(de.Key), ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+							m_Logger.PostEntry(ModName & ": Completed Data import task for dataset: " & xmlFilePath, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 						End If
 					End If
-				Next de
+				Next deXMLFile
 				m_XmlFilesToLoad.Clear()
 
 			Else
@@ -309,7 +318,7 @@ Public Class clsMainProcess
 				m_XmlFilesToLoad.Add(XmlFile, CStr(filedate))
 			Next
 		Catch err As System.Exception
-			m_Logger.PostError("Error loading Xml Data files", err, LOG_DATABASE)
+			m_Logger.PostError("Error loading Xml Data files from " & ServerXferDir, err, LOG_DATABASE)
 			Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
 		End Try
 
@@ -318,14 +327,14 @@ Public Class clsMainProcess
 
 	End Function
 
-	Private Function MoveXmlFile(ByVal xmlFile As String, ByVal moveFolder As String) As String
+	Private Function MoveXmlFile(ByVal xmlFilePath As String, ByVal moveFolder As String) As String
 
 		Dim Fi As FileInfo
 		Dim xmlFileName As String = String.Empty
 		Dim xmlFileNewLoc As String = String.Empty
 		Try
-			If File.Exists(xmlFile) Then
-				Fi = New FileInfo(xmlFile)
+			If File.Exists(xmlFilePath) Then
+				Fi = New FileInfo(xmlFilePath)
 				xmlFileName = Fi.Name
 				If Not Directory.Exists(moveFolder) Then
 					Directory.CreateDirectory(moveFolder)
@@ -335,7 +344,7 @@ Public Class clsMainProcess
 				If File.Exists(xmlFileNewLoc) Then
 					File.Delete(xmlFileNewLoc)
 				End If
-				File.Move(xmlFile, xmlFileNewLoc)
+				File.Move(xmlFilePath, xmlFileNewLoc)
 
 			End If
 		Catch Err As System.Exception
@@ -344,19 +353,20 @@ Public Class clsMainProcess
 		Return xmlFileNewLoc
 	End Function
 
-	Private Function GetDirectory(ByVal xmlFile As String) As String
+	Private Function GetDirectory(ByVal xmlFilePath As String) As String
 
 		Dim Fi As FileInfo
-		Dim xmlFilePath As String = String.Empty
+		Dim xmlFileDirectoryPath As String = String.Empty
 		Try
-			If File.Exists(xmlFile) Then
-				Fi = New FileInfo(xmlFile)
-				xmlFilePath = Fi.DirectoryName
+			If File.Exists(xmlFilePath) Then
+				Fi = New FileInfo(xmlFilePath)
+				xmlFileDirectoryPath = Fi.DirectoryName
 			End If
 		Catch Err As System.Exception
 			m_Logger.PostEntry("GetDirectory, " & Err.Message, ILogger.logMsgType.logError, True)
 		End Try
-		Return xmlFilePath
+
+		Return xmlFileDirectoryPath
 
 	End Function
 
@@ -437,7 +447,7 @@ Public Class clsMainProcess
 				End If
 			Next
 		Catch err As System.Exception
-			m_Logger.PostError("Error deleting Xml Data files", err, LOG_DATABASE)
+			m_Logger.PostError("Error deleting old Xml Data files at " & FileDirectory, err, LOG_DATABASE)
 			Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
 		End Try
 
@@ -488,7 +498,7 @@ Public Class clsMainProcess
 
 	End Function
 
-	Private Function ValidateXMLFile(ByVal xmlFilename As String) As Boolean
+	Private Function ValidateXMLFile(ByVal xmlFilePath As String) As Boolean
 
 		Try
 			Dim ModName As String = m_MgrSettings.GetParam("modulename")
@@ -502,12 +512,13 @@ Public Class clsMainProcess
 
 			myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger)
 
-			xmlRslt = myDataXMLValidation.ValidateXMLFile(xmlFilename)
+			xmlRslt = myDataXMLValidation.ValidateXMLFile(xmlFilePath)
 			m_xml_operator_Name = myDataXMLValidation.m_operator_Name
 			m_xml_operator_email = myDataXMLValidation.m_operator_Email
+
 			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
-				m_Logger.PostEntry(ModName & ": XML Time validation error, file " & xmlFilename, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
-				moveLocPath = MoveXmlFile(xmlFilename, timeValFolder)
+				moveLocPath = MoveXmlFile(xmlFilePath, timeValFolder)
+				m_Logger.PostEntry(ModName & ": XML Time validation error, file " & moveLocPath, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 				m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 				mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
 				mail_msg &= "There was a time validation error with the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
@@ -516,8 +527,8 @@ Public Class clsMainProcess
 				CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
 				Return False
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
-				moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
-				m_Logger.PostEntry(ModName & ": An error was encountered during the validation process, file " & xmlFilename, ILogger.logMsgType.logWarning, LOG_DATABASE)
+				moveLocPath = MoveXmlFile(xmlFilePath, failureFolder)
+				m_Logger.PostEntry(ModName & ": An error was encountered during the validation process, file " & moveLocPath, ILogger.logMsgType.logWarning, LOG_DATABASE)
 				mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
 				mail_msg &= "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
@@ -526,7 +537,7 @@ Public Class clsMainProcess
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
 				Return False
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA Then
-				moveLocPath = MoveXmlFile(xmlFilename, failureFolder)
+				moveLocPath = MoveXmlFile(xmlFilePath, failureFolder)
 				m_Logger.PostEntry(ModName & ": Dataset " & myDataXMLValidation.DatasetName & " not found at " & myDataXMLValidation.SourcePath, ILogger.logMsgType.logWarning, LOG_DATABASE)
 				mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
 				mail_msg &= "The dataset data is not available for capture and was not added to DMS for dataset: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
@@ -541,7 +552,7 @@ Public Class clsMainProcess
 				Return False
 			End If
 		Catch ex As Exception
-			m_Logger.PostError("Error validating Xml Data file", ex, LOG_DATABASE)
+			m_Logger.PostError("Error validating Xml Data file, file " & xmlFilePath, ex, LOG_DATABASE)
 			Return False
 		End Try
 
