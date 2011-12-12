@@ -140,7 +140,8 @@ Public Class clsDataImportTask
             Outcome = False
         End Try
 
-        LogErrorEvents()
+		LogErrorEvents()
+
         'Set variable for email error
         If m_error_list.Count > 0 Then
             Dim s As String

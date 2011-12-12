@@ -29,8 +29,11 @@ Public Class clsMainProcess
 	Private m_DebugLevel As Integer = 0
 	Private m_XmlFilesToLoad As New StringDictionary
 	Public m_db_Err_Msg As String
-	Private m_xml_operator_Name As String
-	Private m_xml_operator_email As String
+
+	Private m_xml_operator_Name As String = String.Empty
+	Private m_xml_operator_email As String = String.Empty
+	Private m_xml_dataset_path As String = String.Empty
+
 	Dim m_ImportStatusCount As Integer = 0
 	Private myDataXMLValidation As clsXMLTimeValidation
 #End Region
@@ -234,6 +237,7 @@ Public Class clsMainProcess
 					' Validate the xml file
 
 					Dim xmlFilePath As String = CStr(deXMLFile.Key)
+					m_db_Err_Msg = String.Empty
 
 					If ValidateXMLFile(xmlFilePath) Then
 						m_Logger.PostEntry(ModName & ": Started Data import task for dataset: " & xmlFilePath, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
@@ -379,30 +383,33 @@ Public Class clsMainProcess
 	End Sub
 
 	Function CreateMail(ByVal mailMsg As String, ByVal addtnlRecipient As String, ByVal subjectAppend As String) As Boolean
-		Dim ErrMsg As String
 		Dim addMsg As String
 		Dim enableEmail As Boolean
+		Dim mailRecipients As String
 
 		enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
 		If enableEmail Then
 			Try
 				addMsg = ControlChars.NewLine & ControlChars.NewLine & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
 
-				'create the mail message
+				' Create the mail message
 				Dim mail As New System.Net.Mail.MailMessage()
 
-				'set the addresses
+				' Set the addresses
 				mail.From = New MailAddress(m_MgrSettings.GetParam("from"))
 
-				For Each emailAddress As String In Split(m_MgrSettings.GetParam("to"), ";")
+				mailRecipients = m_MgrSettings.GetParam("to")
+				For Each emailAddress As String In mailRecipients.Split(";"c)
 					mail.To.Add(emailAddress)
 				Next
 
+				' Possibly update the e-mail address for addtnlRecipient
 				If Not String.IsNullOrEmpty(addtnlRecipient) Then
 					mail.To.Add(addtnlRecipient)
+					mailRecipients &= "; " & addtnlRecipient
 				End If
 
-				'set the content
+				' Set the Subject and Body
 				If String.IsNullOrEmpty(subjectAppend) Then
 					mail.Subject = m_MgrSettings.GetParam("subject")
 				Else
@@ -410,13 +417,14 @@ Public Class clsMainProcess
 				End If
 				mail.Body = mailMsg & ControlChars.NewLine & ControlChars.NewLine & m_db_Err_Msg & addMsg
 
-				'send the message
+				m_Logger.PostEntry("E-mailing " & mailRecipients & " regarding " & m_xml_dataset_path, ILogger.logMsgType.logDebug, True)
+
+				' Send the message
 				Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
-				'to authenticate we set the username and password properites on the SmtpClient
 				smtp.Send(mail)
+
 			Catch Ex As Exception
-				ErrMsg = "Exception: " & Ex.Message & vbCrLf & vbCrLf & "Sending mail message."
-				m_Logger.PostEntry("Error creating email message", ILogger.logMsgType.logError, True)
+				m_Logger.PostEntry("Error sending email message: " & Ex.Message, ILogger.logMsgType.logError, True)
 			End Try
 		End If
 
@@ -513,8 +521,9 @@ Public Class clsMainProcess
 			myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger)
 
 			xmlRslt = myDataXMLValidation.ValidateXMLFile(xmlFilePath)
-			m_xml_operator_Name = myDataXMLValidation.m_operator_Name
-			m_xml_operator_email = myDataXMLValidation.m_operator_Email
+			m_xml_operator_Name = myDataXMLValidation.OperatorName()
+			m_xml_operator_email = myDataXMLValidation.OperatorEMail()
+			m_xml_dataset_path = myDataXMLValidation.DatasetPath()
 
 			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
 				moveLocPath = MoveXmlFile(xmlFilePath, timeValFolder)
@@ -523,7 +532,7 @@ Public Class clsMainProcess
 				mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
 				mail_msg &= "There was a time validation error with the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
-				mail_msg &= "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
+				mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
 				CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
 				Return False
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
@@ -531,7 +540,7 @@ Public Class clsMainProcess
 				m_Logger.PostEntry(ModName & ": An error was encountered during the validation process, file " & moveLocPath, ILogger.logMsgType.logWarning, LOG_DATABASE)
 				mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
-				mail_msg &= "Dataset filename and location: " + myDataXMLValidation.m_dataset_Path
+				mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
 				CreateMail(mail_msg, "", " - XML validation error.")
 				Return False
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
@@ -542,7 +551,7 @@ Public Class clsMainProcess
 				mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
 				mail_msg &= "The dataset data is not available for capture and was not added to DMS for dataset: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
-				mail_msg &= "Dataset not found in following location: " + myDataXMLValidation.m_dataset_Path
+				mail_msg &= "Dataset not found in following location: " + m_xml_dataset_path
 				m_db_Err_Msg = "The dataset data is not available for capture"
 				rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
 				If Not rslt Then

@@ -84,6 +84,13 @@ DataImportManager
  </summary>
 	<returns></returns>
 	<remarks></remarks>
+</member><member name="M:DataImportManager.clsXMLTimeValidation.#ctor(DataImportManager.MgrSettings.IMgrParams,PRISM.Logging.ILogger)">
+	<summary>
+ Constructor
+ </summary>
+	<param name="mgrParams"></param>
+	<param name="logger"></param>
+	<remarks></remarks>
 </member><member name="M:DataImportManager.clsEmergencyLog.WriteToLog(System.String,System.String)">
 	<summary>
  Writes a message to the emergency log, which is used prior to establishing normal logging

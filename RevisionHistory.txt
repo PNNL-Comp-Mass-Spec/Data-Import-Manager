@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.4363; December 12, 2011
+	- Added additional log messages
+
 Version 1.2.4351; November 30, 2011
 	- Now including the XML file path in additional error messages
 
