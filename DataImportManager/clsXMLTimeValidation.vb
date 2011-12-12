@@ -325,10 +325,10 @@ Public Class clsXMLTimeValidation
 				End If
 
 				'Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
-				currentTask = "Determining dataset type for " & RawFName & " at " & m_source_path
+				currentTask = "Determining dataset type for " & m_dataset_Name & " at " & m_source_path
 				resType = GetRawDSType(m_source_path, m_dataset_Name, RawFName)
 
-				currentTask = "Validating operator name " & m_operator_PRN & "for " & RawFName & " at " & m_source_path
+				currentTask = "Validating operator name " & m_operator_PRN & "for " & m_dataset_Name & " at " & m_source_path
 				SetOperatorName()
 
 				Select Case resType
@@ -336,8 +336,7 @@ Public Class clsXMLTimeValidation
 					Case RawDSTypes.None		  'No raw dataset file or folder found
 						currentTask = "Dataset not found at " & m_source_path
 
-						m_logger.PostEntry("Dataset " & m_dataset_Name & " not found at " & m_source_path, ILogger.logMsgType.logError, True)
-						m_dataset_Path = Path.Combine(m_source_path, RawFName)
+						m_dataset_Path = Path.Combine(m_source_path, m_dataset_Name)
 
 						'Disconnect from BioNet if necessary
 						If m_Connected Then
@@ -350,8 +349,9 @@ Public Class clsXMLTimeValidation
 					Case RawDSTypes.File		  'Dataset file found
 						'Check the file size
 						currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
+						m_dataset_Path = Path.Combine(m_source_path, RawFName)
 
-						If Not VerifyConstantFileSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
+						If Not VerifyConstantFileSize(m_dataset_Path, m_SleepInterval) Then
 							m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
 
 							If m_Connected Then
@@ -359,7 +359,6 @@ Public Class clsXMLTimeValidation
 								DisconnectShare(m_ShareConnector, m_Connected)
 							End If
 
-							m_dataset_Path = Path.Combine(m_source_path, RawFName)
 							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
 						End If
 
@@ -367,14 +366,13 @@ Public Class clsXMLTimeValidation
 						If m_run_Finish_Utc <> CDate("1/1/1960") Then
 							currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) & ")"
 
-							fileModDate = File.GetLastWriteTimeUtc(Path.Combine(m_source_path, RawFName))
+							fileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
 							timevaltolerance = m_mgrParams.GetParam("timevalidationtolerance")
 							runFinishwTolerance = m_run_Finish_Utc.AddMinutes(timevaltolerance)
 
 							If fileModDate <= runFinishwTolerance Then
 								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 							Else
-								m_dataset_Path = Path.Combine(m_source_path, RawFName)
 								m_logger.PostEntry("Time validation error.  Dataset file modification date: " & CStr(fileModDate), ILogger.logMsgType.logError, False)
 								m_logger.PostEntry("Time validation error.  Run Finish UTC date with tolerance: " & CStr(runFinishwTolerance), ILogger.logMsgType.logError, False)
 								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
@@ -384,8 +382,9 @@ Public Class clsXMLTimeValidation
 					Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt		   'Dataset found in a folder with an extension
 						'Verify the folder size is constant
 						currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant"
+						m_dataset_Path = Path.Combine(m_source_path, RawFName)
 
-						If Not VerifyConstantFolderSize(Path.Combine(m_source_path, RawFName), m_SleepInterval) Then
+						If Not VerifyConstantFolderSize(m_dataset_Path, m_SleepInterval) Then
 							m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
 
 							If m_Connected Then
@@ -393,7 +392,6 @@ Public Class clsXMLTimeValidation
 								DisconnectShare(m_ShareConnector, m_Connected)
 							End If
 
-							m_dataset_Path = Path.Combine(m_source_path, RawFName)
 							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
 						End If
 
@@ -416,7 +414,13 @@ Public Class clsXMLTimeValidation
 
 		Catch Err As System.Exception
 			m_logger.PostEntry("clsXMLTimeValidation.GetInstrumentName(), Error reading XML File, current task: " & currentTask & "; " & Err.Message, ILogger.logMsgType.logError, True)
-			Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+
+			If Err.Message.Contains("unknown user name or bad password") Then
+				Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
+			Else
+				Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+			End If
+
 		End Try
 
 	End Function
