@@ -84,6 +84,13 @@ DataImportManager
  </summary>
 	<returns></returns>
 	<remarks></remarks>
+</member><member name="M:DataImportManager.clsMainProcess.ValidateXMLFileMain(System.String)">
+	<summary>
+ Process the specified XML file
+ </summary>
+	<param name="xmlFilePath">XML file to process</param>
+	<returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
+	<remarks></remarks>
 </member><member name="M:DataImportManager.clsXMLTimeValidation.#ctor(DataImportManager.MgrSettings.IMgrParams,PRISM.Logging.ILogger)">
 	<summary>
  Constructor

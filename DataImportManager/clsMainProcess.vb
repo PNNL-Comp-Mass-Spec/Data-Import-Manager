@@ -524,6 +524,12 @@ Public Class clsMainProcess
 		Return lstRandomized
 	End Function
 
+	''' <summary>
+	''' Process the specified XML file
+	''' </summary>
+	''' <param name="xmlFilePath">XML file to process</param>
+	''' <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
+	''' <remarks></remarks>
 	Private Function ValidateXMLFileMain(ByVal xmlFilePath As String) As Boolean
 
 		Try
@@ -565,14 +571,13 @@ Public Class clsMainProcess
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE Then
 				' Logon failure; Do not move the XML file
-				m_Logger.PostEntry("A logon failure occurred during the validation process, file " & xmlFilePath, ILogger.logMsgType.logWarning, LOG_DATABASE)
-				mail_msg = "Logon failure encountered during validation process for the following XML file: " & ControlChars.NewLine & xmlFilePath & ControlChars.NewLine
-				mail_msg &= "Will try processing this .XML file again. " & ControlChars.NewLine
-				mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
-				CreateMail(mail_msg, "", " - Logon Failure")
 				Return False
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
+				Return False
+
+			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED Then
+				' Size changed; Do not move the XML file
 				Return False
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA Then

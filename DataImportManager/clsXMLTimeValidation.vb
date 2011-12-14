@@ -351,15 +351,25 @@ Public Class clsXMLTimeValidation
 						currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
 						m_dataset_Path = Path.Combine(m_source_path, RawFName)
 
-						If Not VerifyConstantFileSize(m_dataset_Path, m_SleepInterval) Then
-							m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
+						Dim blnLogonFailure As Boolean = False
+
+						If Not VerifyConstantFileSize(m_dataset_Path, m_SleepInterval, blnLogonFailure) Then
+
+							If Not blnLogonFailure Then
+								m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
+							End If
 
 							If m_Connected Then
 								currentTask = "Dataset size changed; disconnecting from " & m_source_path
 								DisconnectShare(m_ShareConnector, m_Connected)
 							End If
 
-							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
+							If blnLogonFailure Then
+								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
+							Else
+								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
+							End If
+
 						End If
 
 						currentTask = "Dataset found at " & m_source_path & " and is unchanged"
@@ -392,7 +402,7 @@ Public Class clsXMLTimeValidation
 								DisconnectShare(m_ShareConnector, m_Connected)
 							End If
 
-							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
+							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
 						End If
 
 					Case Else
@@ -549,33 +559,51 @@ Public Class clsXMLTimeValidation
 
 	End Function
 
-	Protected Function VerifyConstantFileSize(ByVal FileName As String, ByVal SleepInt As Integer) As Boolean
+	Protected Function VerifyConstantFileSize(ByVal FileName As String, ByVal SleepInt As Integer, ByRef blnLogonFailure As Boolean) As Boolean
 
 		'Determines if the size of a file changes over specified time interval
 		Dim Fi As FileInfo
 		Dim InitialFileSize As Long
 		Dim FinalFileSize As Long
 
+		blnLogonFailure = False
+
 		If SleepInt > 900 Then
 			' Sleep interval should be no more than 15 minutes
 			SleepInt = 900
 		End If
 
-		'Get the initial size of the folder
-		Fi = New FileInfo(FileName)
-		InitialFileSize = Fi.Length
+		Try
+			'Get the initial size of the folder
+			Fi = New FileInfo(FileName)
+			InitialFileSize = Fi.Length
 
-		'Wait for specified sleep interval
-		System.Threading.Thread.Sleep(SleepInt * 1000)		'Delay for specified interval
+			'Wait for specified sleep interval
+			System.Threading.Thread.Sleep(SleepInt * 1000)		'Delay for specified interval
 
-		'Get the final size of the file and compare
-		Fi.Refresh()
-		FinalFileSize = Fi.Length
-		If FinalFileSize = InitialFileSize Then
-			Return True
-		Else
-			Return False
-		End If
+			'Get the final size of the file and compare
+			Fi.Refresh()
+			FinalFileSize = Fi.Length
+			If FinalFileSize = InitialFileSize Then
+				Return True
+			Else
+				Return False
+			End If
+
+		Catch ex As Exception
+			m_logger.PostEntry("Error accessing '" & FileName & "': " & ex.Message, ILogger.logMsgType.logWarning, True)
+
+			' Check for "Logon failure: unknown user name or bad password."
+
+			If ex.Message.Contains("unknown user name or bad password") Then
+				' This error occasionally occurs when monitoring a .UIMF file on an IMS instrument
+				' We'll treat this as an indicator that the file size is not constant					
+			Else
+				Throw ex
+			End If
+		End Try
+
+		Return False
 
 	End Function
 
