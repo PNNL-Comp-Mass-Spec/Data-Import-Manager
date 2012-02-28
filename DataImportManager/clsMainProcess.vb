@@ -299,7 +299,6 @@ Public Class clsMainProcess
 
 		'Copies the results to the transfer directory
 		Dim ServerXferDir As String = m_MgrSettings.GetParam("xferdir")
-		Dim filedate As DateTime
 
 		'Verify transfer directory exists
 		If Not Directory.Exists(ServerXferDir) Then
@@ -315,7 +314,6 @@ Public Class clsMainProcess
 		Try
 			Dim XmlFilesToImport() As String = Directory.GetFiles(ServerXferDir, "*.xml")
 			For Each XmlFile As String In XmlFilesToImport
-				filedate = File.GetLastWriteTimeUtc(Path.Combine(ServerXferDir, Path.GetFileName(XmlFile)))
 				m_XmlFilesToLoad.Add(XmlFile)
 			Next
 		Catch err As System.Exception

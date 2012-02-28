@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.4440; February 27, 2012
+	- Removed extra code in ScanXferDirectory
+
 Version 1.2.4364; December 13, 2011
 	- Now silently handling error "unknown user name or bad password" (no longer sending an e-mail)
 	- If a dataset file or folder is found to change size, the program now leaves the trigger .XML file in the original folder to allow the dataset to be evaluated again on the next try
