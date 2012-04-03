@@ -135,11 +135,7 @@ Public Class clsMainProcess
 		Catch Err As System.Exception
 			'Report any exceptions not handled at a lower level to the system application log
 			ErrMsg = "Critical exception starting application: " & Err.Message
-			Dim Ev As New EventLog("Application", ".", "DMSDataImportManager")
-			Trace.Listeners.Add(New EventLogTraceListener("DMSDataImportManager"))
-			Trace.WriteLine(ErrMsg)
-			Ev.Close()
-			Exit Sub
+			PostToEventLog(ErrMsg)
 		End Try
 
 	End Sub
@@ -521,6 +517,32 @@ Public Class clsMainProcess
 
 		Return lstRandomized
 	End Function
+
+	Private Shared Sub PostToEventLog(ByVal ErrMsg As String)
+		Const EVENT_LOG_NAME As String = "DMSDataImportManager"
+
+		Try
+			Console.WriteLine()
+			Console.WriteLine("===============================================================")
+			Console.WriteLine(ErrMsg)
+			Console.WriteLine("===============================================================")
+			Console.WriteLine()
+			Console.WriteLine("You may need to run this application once from an elevated (administrative level) command prompt so that it can create the " & EVENT_LOG_NAME & " application log")
+			Console.WriteLine()
+
+			Dim Ev As New EventLog("Application", ".", EVENT_LOG_NAME)
+			Trace.Listeners.Add(New EventLogTraceListener(EVENT_LOG_NAME))
+			Trace.WriteLine(ErrMsg)
+			Ev.Close()
+
+		Catch ex As Exception
+			Console.WriteLine()
+			Console.WriteLine("Exception logging to the event log: " & ex.Message)
+		End Try
+
+		System.Threading.Thread.Sleep(500)
+
+	End Sub
 
 	''' <summary>
 	''' Process the specified XML file

@@ -1,5 +1,9 @@
 Data Import Manager History
 
+Version 1.2.4475; April 2, 2012
+	- Now silently handling error "Access to the path '\\server\share\file' is denied"
+	- New version of Prism.DLL
+
 Version 1.2.4440; February 27, 2012
 	- Removed extra code in ScanXferDirectory
 

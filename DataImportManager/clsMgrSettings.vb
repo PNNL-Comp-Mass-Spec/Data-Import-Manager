@@ -191,7 +191,7 @@ Namespace MgrSettings
 			  m_ParamDictionary("MgrName") & "'"
 
 			'Get a table containing data for job
-			Dim Dt As DataTable
+			Dim Dt As DataTable = Nothing
 
 			'Get a datatable holding the parameters for one manager
 			While RetryCount > 0
