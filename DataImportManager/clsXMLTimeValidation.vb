@@ -265,11 +265,11 @@ Public Class clsXMLTimeValidation
 		Dim m_UserName As String = String.Empty
 		Dim m_Pwd As String = String.Empty
 		Dim Pwd As String
-		Dim fileModDate As DateTime
 		Dim RawFName As String = String.Empty
 		Dim resType As RawDSTypes
-		Dim runFinishwTolerance As Date
-		Dim timevaltolerance As Integer
+		Dim dtFileModDate As DateTime
+		Dim dtRunFinishWithTolerance As DateTime
+		Dim intTimeValTolerance As Integer
 
 		Dim currentTaskBase As String = String.Empty
 		Dim currentTask As String = String.Empty
@@ -376,15 +376,14 @@ Public Class clsXMLTimeValidation
 						If m_run_Finish_Utc <> CDate("1/1/1960") Then
 							currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) & ")"
 
-							fileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
-							timevaltolerance = m_mgrParams.GetParam("timevalidationtolerance")
-							runFinishwTolerance = m_run_Finish_Utc.AddMinutes(timevaltolerance)
+							dtFileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
+							intTimeValTolerance = m_mgrParams.GetParam("timevalidationtolerance")
+							dtRunFinishWithTolerance = m_run_Finish_Utc.AddMinutes(intTimeValTolerance)
 
-							If fileModDate <= runFinishwTolerance Then
+							If dtFileModDate <= dtRunFinishWithTolerance Then
 								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 							Else
-								m_logger.PostEntry("Time validation error.  Dataset file modification date: " & CStr(fileModDate), ILogger.logMsgType.logError, False)
-								m_logger.PostEntry("Time validation error.  Run Finish UTC date with tolerance: " & CStr(runFinishwTolerance), ILogger.logMsgType.logError, False)
+								m_logger.PostEntry("Time validation error for " & m_dataset_Name & ": file modification date (UTC): " & CStr(dtFileModDate) & " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValTolerance & " minute tolerance)", ILogger.logMsgType.logError, False)
 								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
 							End If
 						End If
@@ -406,7 +405,7 @@ Public Class clsXMLTimeValidation
 						End If
 
 					Case Else
-						m_logger.PostEntry("Invalid dataset type found: " & resType.ToString, ILogger.logMsgType.logError, False)
+						m_logger.PostEntry("Invalid dataset type for " & m_dataset_Name & ": " & resType.ToString, ILogger.logMsgType.logError, False)
 						If m_Connected Then
 							currentTask = "Invalid dataset type; disconnecting from " & m_source_path
 							DisconnectShare(m_ShareConnector, m_Connected)
