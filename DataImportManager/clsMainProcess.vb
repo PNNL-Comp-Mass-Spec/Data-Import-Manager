@@ -10,8 +10,7 @@ Imports System.Collections.Specialized
 Imports System.Windows.Forms
 
 Public Class clsMainProcess
-	'**
-	' This is the main class that does the following:
+
 
 #Region "Constants"
 	Private Const EMERG_LOG_FILE As String = "DataImportMan_log.txt"
