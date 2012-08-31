@@ -597,7 +597,7 @@ Public Class clsMainProcess
 				mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 				mail_msg &= "Check the log for details.  " & ControlChars.NewLine
 				mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
-				CreateMail(mail_msg, "", " - XML validation error.")
+				CreateMail(mail_msg, m_xml_operator_email, " - XML validation error.")
 				Return False
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE Then

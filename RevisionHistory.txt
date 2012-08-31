@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.4626; August 31, 2012
+	- Now including the operator on every call to CreateMail 
+
 Version 1.2.4521; May 18, 2012
 	- Updated to .NET 4
 
