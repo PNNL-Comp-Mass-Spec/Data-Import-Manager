@@ -392,6 +392,7 @@ Public Class clsXMLTimeValidation
 						'Verify the folder size is constant
 						currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant"
 						m_dataset_Path = Path.Combine(m_source_path, RawFName)
+						currentTask &= " for " & m_dataset_Path
 
 						If Not VerifyConstantFolderSize(m_dataset_Path, m_SleepInterval) Then
 							m_logger.PostEntry("Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)", ILogger.logMsgType.logWarning, True)
