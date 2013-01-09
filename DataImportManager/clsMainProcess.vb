@@ -38,7 +38,6 @@ Public Class clsMainProcess
 #End Region
 
 	Public Sub New()
-
 	End Sub
 
 	Private Function InitMgr() As Boolean

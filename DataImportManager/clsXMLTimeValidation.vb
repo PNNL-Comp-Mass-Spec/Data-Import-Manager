@@ -1,6 +1,5 @@
 Imports PRISM.Logging
 Imports PRISM.Files
-Imports PRISM.Files.clsFileTools
 Imports DataImportManager.MgrSettings
 Imports System.Data.SqlClient
 Imports System.IO
@@ -13,7 +12,7 @@ Public Class clsXMLTimeValidation
 
 	Private m_ins_Name As String = String.Empty
 	Private m_dataset_Name As String = String.Empty
-	Private m_run_Finish_Utc As Date = CDate("1/1/1960")
+	Private m_run_Finish_Utc As System.DateTime = New System.DateTime(1960, 1, 1)
 	Private m_capture_Type As String = String.Empty
 	Private m_source_path As String = String.Empty
 	Private m_operator_PRN As String = String.Empty
@@ -23,6 +22,8 @@ Public Class clsXMLTimeValidation
 	Private m_UseBioNet As Boolean = False
 	Protected m_ShareConnector As ShareConnector
 	Protected m_SleepInterval As Integer = 30
+
+	Protected WithEvents m_FileTools As PRISM.Files.clsFileTools
 
 	Public ReadOnly Property DatasetName() As String
 		Get
@@ -78,6 +79,7 @@ Public Class clsXMLTimeValidation
 	''' <remarks></remarks>
 	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
 		MyBase.New(mgrParams, logger)
+		m_FileTools = New PRISM.Files.clsFileTools
 	End Sub
 
 	Private Function FixNull(ByVal strText As String) As String
@@ -373,7 +375,7 @@ Public Class clsXMLTimeValidation
 						End If
 
 						currentTask = "Dataset found at " & m_source_path & " and is unchanged"
-						If m_run_Finish_Utc <> CDate("1/1/1960") Then
+						If m_run_Finish_Utc <> New System.DateTime(1960, 1, 1) Then
 							currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) & ")"
 
 							dtFileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
@@ -538,25 +540,24 @@ Public Class clsXMLTimeValidation
 	End Sub
 
 
-	Protected Function VerifyConstantFolderSize(ByVal FolderName As String, ByVal SleepInt As Integer) As Boolean
+	Protected Function VerifyConstantFolderSize(ByVal FolderName As String, ByVal SleepIntervalSeconds As Integer) As Boolean
 
 		'Determines if the size of a folder changes over specified time interval
 		Dim InitialFolderSize As Long
 		Dim FinalFolderSize As Long
 
-		'Verify maximum sleep interval
-		If (CLng(SleepInt) * 1000) > [Integer].MaxValue Then
-			SleepInt = CInt([Integer].MaxValue / 1000)
-		End If
+		' Sleep interval should be no more than 15 minutes (900 seconds)
+		If SleepIntervalSeconds > 900 Then SleepIntervalSeconds = 900
+		If SleepIntervalSeconds < 1 Then SleepIntervalSeconds = 1
 
 		'Get the initial size of the folder
-		InitialFolderSize = GetDirectorySize(FolderName)
+		InitialFolderSize = m_FileTools.GetDirectorySize(FolderName)
 
 		'Wait for specified sleep interval
-		System.Threading.Thread.Sleep(SleepInt * 1000)		'Delay for specified interval
+		System.Threading.Thread.Sleep(SleepIntervalSeconds * 1000)		'Delay for specified interval
 
 		'Get the final size of the folder and compare
-		FinalFolderSize = GetDirectorySize(FolderName)
+		FinalFolderSize = m_FileTools.GetDirectorySize(FolderName)
 		If FinalFolderSize = InitialFolderSize Then
 			Return True
 		Else
@@ -565,7 +566,7 @@ Public Class clsXMLTimeValidation
 
 	End Function
 
-	Protected Function VerifyConstantFileSize(ByVal FileName As String, ByVal SleepInt As Integer, ByRef blnLogonFailure As Boolean) As Boolean
+	Protected Function VerifyConstantFileSize(ByVal FileName As String, ByVal SleepIntervalSeconds As Integer, ByRef blnLogonFailure As Boolean) As Boolean
 
 		'Determines if the size of a file changes over specified time interval
 		Dim Fi As FileInfo
@@ -574,10 +575,9 @@ Public Class clsXMLTimeValidation
 
 		blnLogonFailure = False
 
-		If SleepInt > 900 Then
-			' Sleep interval should be no more than 15 minutes
-			SleepInt = 900
-		End If
+		' Sleep interval should be no more than 15 minutes (900 seconds)
+		If SleepIntervalSeconds > 900 Then SleepIntervalSeconds = 900
+		If SleepIntervalSeconds < 1 Then SleepIntervalSeconds = 1
 
 		Try
 			'Get the initial size of the folder
@@ -585,7 +585,7 @@ Public Class clsXMLTimeValidation
 			InitialFileSize = Fi.Length
 
 			'Wait for specified sleep interval
-			System.Threading.Thread.Sleep(SleepInt * 1000)		'Delay for specified interval
+			System.Threading.Thread.Sleep(SleepIntervalSeconds * 1000)		'Delay for specified interval
 
 			'Get the final size of the file and compare
 			Fi.Refresh()
