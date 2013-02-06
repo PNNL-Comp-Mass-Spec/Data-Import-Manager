@@ -271,7 +271,9 @@ Public Class clsXMLTimeValidation
 		Dim resType As RawDSTypes
 		Dim dtFileModDate As DateTime
 		Dim dtRunFinishWithTolerance As DateTime
-		Dim intTimeValTolerance As Integer
+
+		Dim strValue As String
+		Dim intTimeValToleranceMinutes As Integer
 
 		Dim currentTaskBase As String = String.Empty
 		Dim currentTask As String = String.Empty
@@ -379,13 +381,17 @@ Public Class clsXMLTimeValidation
 							currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) & ")"
 
 							dtFileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
-							intTimeValTolerance = m_mgrParams.GetParam("timevalidationtolerance")
-							dtRunFinishWithTolerance = m_run_Finish_Utc.AddMinutes(intTimeValTolerance)
+
+							strValue = m_mgrParams.GetParam("timevalidationtolerance")
+							If Not Integer.TryParse(strValue, intTimeValToleranceMinutes) Then
+								intTimeValToleranceMinutes = 800
+							End If
+							dtRunFinishWithTolerance = m_run_Finish_Utc.AddMinutes(intTimeValToleranceMinutes)
 
 							If dtFileModDate <= dtRunFinishWithTolerance Then
 								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 							Else
-								m_logger.PostEntry("Time validation error for " & m_dataset_Name & ": file modification date (UTC): " & CStr(dtFileModDate) & " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValTolerance & " minute tolerance)", ILogger.logMsgType.logError, False)
+								m_logger.PostEntry("Time validation error for " & m_dataset_Name & ": file modification date (UTC): " & CStr(dtFileModDate) & " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValToleranceMinutes & " minute tolerance)", ILogger.logMsgType.logError, False)
 								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
 							End If
 						End If

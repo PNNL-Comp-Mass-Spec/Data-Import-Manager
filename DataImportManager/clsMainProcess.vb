@@ -217,8 +217,11 @@ Public Class clsMainProcess
 				'
 				Application.DoEvents()
 
-				'Add a delay
+				' Add a delay
 				Dim importDelay As String = m_MgrSettings.GetParam("importdelay")
+				If Environment.MachineName.ToLower().StartsWith("monroe") Then
+					importDelay = "1"
+				End If
 				System.Threading.Thread.Sleep(CInt(importDelay) * 1000)
 
 				' Randomize order of files in m_XmlFilesToLoad

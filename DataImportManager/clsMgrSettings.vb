@@ -268,7 +268,14 @@ Namespace MgrSettings
 		''' <remarks>Returns Nothing if key isn't found</remarks>
 		Public Function GetParam(ByVal ItemKey As String) As String Implements IMgrParams.GetParam
 
-			Return m_ParamDictionary.Item(ItemKey)
+			Dim strValue As String = String.Empty
+
+			If m_ParamDictionary.ContainsKey(ItemKey) Then
+				strValue = m_ParamDictionary.Item(ItemKey)
+				If String.IsNullOrEmpty(strValue) Then strValue = String.Empty
+			End If
+
+			Return strValue
 
 		End Function
 

@@ -111,6 +111,10 @@ Public Class clsDataImportTask
             myParm.Direction = ParameterDirection.Input
             myParm.Value = mp_xmlContents
 
+			myParm = sc.Parameters.Add("@mode", SqlDbType.VarChar, 24)
+			myParm.Direction = ParameterDirection.Input
+			myParm.Value = "add"
+
             myParm = sc.Parameters.Add("@message", SqlDbType.VarChar, 512)
             myParm.Direction = ParameterDirection.Output
 
