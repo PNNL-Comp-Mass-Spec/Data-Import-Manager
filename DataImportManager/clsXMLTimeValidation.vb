@@ -23,6 +23,7 @@ Public Class clsXMLTimeValidation
 	Protected m_ShareConnector As ShareConnector
 	Protected m_SleepInterval As Integer = 30
 
+	Protected m_InstrumentsToSkip As Generic.Dictionary(Of String, Integer)
 	Protected WithEvents m_FileTools As PRISM.Files.clsFileTools
 
 	Public ReadOnly Property DatasetName() As String
@@ -34,6 +35,12 @@ Public Class clsXMLTimeValidation
 	Public ReadOnly Property DatasetPath() As String
 		Get
 			Return FixNull(m_dataset_Path)
+		End Get
+	End Property
+
+	Public ReadOnly Property InstrumentName() As String
+		Get
+			Return m_ins_Name
 		End Get
 	End Property
 
@@ -77,9 +84,10 @@ Public Class clsXMLTimeValidation
 	''' <param name="mgrParams"></param>
 	''' <param name="logger"></param>
 	''' <remarks></remarks>
-	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
+	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger, dctInstrumentsToSkip As Generic.Dictionary(Of String, Integer))
 		MyBase.New(mgrParams, logger)
 		m_FileTools = New PRISM.Files.clsFileTools
+		m_InstrumentsToSkip = dctInstrumentsToSkip
 	End Sub
 
 	Private Function FixNull(ByVal strText As String) As String
@@ -98,6 +106,19 @@ Public Class clsXMLTimeValidation
 		m_xmlFileValid = False
 
 		Try
+			rslt = GetXMLParameters(xmlFilePath)
+		Catch ex As Exception
+			m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error reading the XML file " & IO.Path.GetFileName(xmlFilePath) & ": " & ex.Message, ILogger.logMsgType.logError, True)
+			Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+		End Try
+
+		If rslt <> IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
+			Return rslt
+		ElseIf m_InstrumentsToSkip.ContainsKey(m_ins_Name) Then
+			Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT
+		End If
+
+		Try
 			OpenConnection()
 		Catch Err As System.Exception
 			m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), error opening connection, " & Err.Message, ILogger.logMsgType.logError, True)
@@ -105,20 +126,16 @@ Public Class clsXMLTimeValidation
 		End Try
 
 		Try
-			rslt = GetXMLParameters(xmlFilePath)
+
+			rslt = SetDbInstrumentParameters(m_ins_Name)
 			If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
-				rslt = SetDbInstrumentParameters(m_ins_Name)
-				If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
-					rslt = PerformValidation()
-				Else
-					Return rslt
-				End If
+				rslt = PerformValidation()
 			Else
 				Return rslt
 			End If
 
 		Catch Err As System.Exception
-			m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error running ValidateXMLFile, " & Err.Message, ILogger.logMsgType.logError, True)
+			m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation, " & Err.Message, ILogger.logMsgType.logError, True)
 			Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
 		End Try
 
@@ -310,6 +327,10 @@ Public Class clsXMLTimeValidation
 						ElseIf m_ShareConnector.ErrorMessage = "53" Then
 							m_logger.PostEntry("The password may need to be reset; diagnose things further using the following query: ", _
 							 ILogger.logMsgType.logError, True)
+						ElseIf m_ShareConnector.ErrorMessage = "1219" OrElse m_ShareConnector.ErrorMessage = "1203" Then
+							' Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
+							' Need to completely exit the manager
+							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
 						Else
 							m_logger.PostEntry("You can diagnose the problem using this query: ", _
 							 ILogger.logMsgType.logError, True)

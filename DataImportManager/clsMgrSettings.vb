@@ -35,7 +35,7 @@ Namespace MgrSettings
 		'*********************************************************************************************************
 
 #Region "Module variables"
-		Private m_ParamDictionary As StringDictionary
+		Private m_ParamDictionary As Generic.Dictionary(Of String, String)
 		Private m_EmerLogFile As String
         Private m_ErrMsg As String = String.Empty
         Private m_ManagerDeactivated As Boolean
@@ -94,30 +94,36 @@ Namespace MgrSettings
 			m_ParamDictionary = LoadMgrSettingsFromFile()
 
 			'Test the settings retrieved from the config file
-			If Not CheckInitialSettings(m_ParamDictionary) Then
+			If Not CheckInitialSettings() Then
 				'Error logging handled by CheckInitialSettings
 				Return False
 			End If
 
 			'Determine if manager is deactivated locally
-            If Not CBool(m_ParamDictionary("MgrActive_Local")) Then
-                m_ManagerDeactivated = True
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager deactivated locally")
-                m_ErrMsg = "Manager deactivated locally"
-                Return False
-            End If
+			Dim strMgrActive As String = Me.GetParam("MgrActive_Local")
+			If String.IsNullOrEmpty(strMgrActive) Then
+				m_ManagerDeactivated = True
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager setting MgrActive_Local not defined")
+				m_ErrMsg = "Manager deactivated locally"
+				Return False
+			ElseIf Not CBool(strMgrActive) Then
+				m_ManagerDeactivated = True
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, "Manager deactivated locally")
+				m_ErrMsg = "Manager deactivated locally"
+				Return False
+			End If
 
 			'Get remaining settings from database
-			If Not LoadMgrSettingsFromDB(m_ParamDictionary) Then
+			If Not LoadMgrSettingsFromDB() Then
 				'Error logging handled by LoadMgrSettingsFromDB
 				Return False
 			End If
 
 			'If reloading, clear the "first run" flag
 			If Reload Then
-				m_ParamDictionary.Add("FirstRun", "False")
+				UpdateManagerSetting("FirstRun", "False")
 			Else
-				m_ParamDictionary.Add("FirstRun", "True")
+				UpdateManagerSetting("FirstRun", "True")
 			End If
 
 			'No problems found
@@ -128,23 +134,36 @@ Namespace MgrSettings
 		''' <summary>
 		''' Tests initial settings retrieved from config file
 		''' </summary>
-		''' <param name="InpDict"></param>
 		''' <returns></returns>
 		''' <remarks></remarks>
-		Private Function CheckInitialSettings(ByRef InpDict As StringDictionary) As Boolean
+		Private Function CheckInitialSettings() As Boolean
 
 			Dim MyMsg As String
 
 			'Verify manager settings dictionary exists
 			If m_ParamDictionary Is Nothing Then
-				MyMsg = "Manager parameter string dictionary not found"
+				MyMsg = "Manager parameter string dictionary m_ParamDictionary is null"
 				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
 				Return False
 			End If
 
 			'Verify intact config file was found
-			If CBool(m_ParamDictionary("UsingDefaults")) Then
-				MyMsg = "Config file problem; default settings being used"
+			Dim strUsingDefaults As String = Me.GetParam("UsingDefaults")
+			If String.IsNullOrEmpty(strUsingDefaults) Then
+				MyMsg = "Config file problem; UsingDefaults manager setting not found"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
+
+			Dim blnUsingDefaults As Boolean
+			If Not Boolean.TryParse(strUsingDefaults, blnUsingDefaults) Then
+				MyMsg = "Config file problem; UsingDefaults manager setting is not True or False"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
+
+			If blnUsingDefaults Then
+				MyMsg = "Config file problem; default settings being used (UsingDefaults=True)"
 				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
 				Return False
 			End If
@@ -159,15 +178,15 @@ Namespace MgrSettings
 		''' </summary>
 		''' <returns>String dictionary containing initial settings if suceessful; NOTHING on error</returns>
 		''' <remarks></remarks>
-		Private Function LoadMgrSettingsFromFile() As StringDictionary
+		Private Function LoadMgrSettingsFromFile() As Generic.Dictionary(Of String, String)
 
 			'Load initial settings into string dictionary for return
-			Dim RetDict As New StringDictionary
+			Dim RetDict As New Generic.Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
 
 			My.Settings.Reload()
-            RetDict.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)
-            RetDict.Add("MgrActive_Local", My.Settings.MgrActive_Local.ToString)
-            RetDict.Add("MgrName", My.Settings.MgrName)
+			RetDict.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)
+			RetDict.Add("MgrActive_Local", My.Settings.MgrActive_Local.ToString)
+			RetDict.Add("MgrName", My.Settings.MgrName)
 			RetDict.Add("UsingDefaults", My.Settings.UsingDefaults.ToString)
 
 			Return RetDict
@@ -177,18 +196,30 @@ Namespace MgrSettings
 		''' <summary>
 		''' Gets remaining manager config settings from config database
 		''' </summary>
-		''' <param name="MgrSettingsDict">String dictionary containing parameters that have been loaded so far</param>
 		''' <returns>True for success; False for error</returns>
 		''' <remarks></remarks>
-		Private Function LoadMgrSettingsFromDB(ByRef MgrSettingsDict As StringDictionary) As Boolean
+		Private Function LoadMgrSettingsFromDB() As Boolean
 
 			'Requests job parameters from database. Input string specifies view to use. Performs retries if necessary.
 
 			Dim RetryCount As Short = 3
 			Dim MyMsg As String
+			Dim strConnectionString As String = Me.GetParam("MgrCnfgDbConnectStr")
+			Dim strManagerName As String = Me.GetParam("MgrName")
 
-			Dim SqlStr As String = "SELECT ParameterName, ParameterValue FROM V_MgrParams WHERE ManagerName = '" & _
-			  m_ParamDictionary("MgrName") & "'"
+			If String.IsNullOrWhiteSpace(strConnectionString) Then
+				MyMsg = "Manager settings does not contain key MgrCnfgDbConnectStr"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
+
+			If String.IsNullOrWhiteSpace(strManagerName) Then
+				MyMsg = "Manager settings does not contain key MgrName"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
+
+			Dim SqlStr As String = "SELECT ParameterName, ParameterValue FROM V_MgrParams WHERE ManagerName = '" & strManagerName & "'"
 
 			'Get a table containing data for job
 			Dim Dt As DataTable = Nothing
@@ -196,7 +227,7 @@ Namespace MgrSettings
 			'Get a datatable holding the parameters for one manager
 			While RetryCount > 0
 				Try
-					Using Cn As SqlConnection = New SqlConnection(MgrSettingsDict("MgrCnfgDbConnectStr"))
+					Using Cn As SqlConnection = New SqlConnection(strConnectionString)
 						Using Da As SqlDataAdapter = New SqlDataAdapter(SqlStr, Cn)
 							Using Ds As DataSet = New DataSet
 								Da.Fill(Ds)
@@ -215,11 +246,11 @@ Namespace MgrSettings
 			End While
 
 			'If loop exited due to errors, return false
-            If RetryCount < 1 OrElse Dt Is Nothing Then
-                MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Excessive failures attempting to retrieve manager settings from database"
-                clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
-                Return False
-            End If
+			If RetryCount < 1 OrElse Dt Is Nothing Then
+				MyMsg = "clsMgrSettings.LoadMgrSettingsFromDB; Excessive failures attempting to retrieve manager settings from database"
+				clsEmergencyLog.WriteToLog(m_EmerLogFile, MyMsg)
+				Return False
+			End If
 
 			'Verify at least one row returned
 			If Dt.Rows.Count < 1 Then
@@ -236,7 +267,7 @@ Namespace MgrSettings
 			Try
 				For Each CurRow In Dt.Rows
 					'Add the column heading and value to the dictionary
-					m_ParamDictionary.Add(DbCStr(CurRow(Dt.Columns("ParameterName"))), DbCStr(CurRow(Dt.Columns("ParameterValue"))))
+					UpdateManagerSetting(DbCStr(CurRow(Dt.Columns("ParameterName"))), DbCStr(CurRow(Dt.Columns("ParameterValue"))))
 				Next
 				Return True
 			Catch ex As Exception
@@ -270,12 +301,17 @@ Namespace MgrSettings
 
 			Dim strValue As String = String.Empty
 
-			If m_ParamDictionary.ContainsKey(ItemKey) Then
-				strValue = m_ParamDictionary.Item(ItemKey)
-				If String.IsNullOrEmpty(strValue) Then strValue = String.Empty
+			If m_ParamDictionary Is Nothing Then Return String.Empty
+
+			If Not m_ParamDictionary.TryGetValue(ItemKey, strValue) Then
+				Return String.Empty
 			End If
 
-			Return strValue
+			If String.IsNullOrEmpty(strValue) Then
+				Return String.Empty
+			Else
+				Return strValue
+			End If
 
 		End Function
 
@@ -287,7 +323,7 @@ Namespace MgrSettings
 		''' <remarks></remarks>
 		Public Sub SetParam(ByVal ItemKey As String, ByVal ItemValue As String) Implements IMgrParams.SetParam
 
-			m_ParamDictionary.Item(ItemKey) = ItemValue
+			UpdateManagerSetting(ItemKey, ItemValue)
 
 		End Sub
 
@@ -302,6 +338,13 @@ Namespace MgrSettings
 
 		End Function
 
+		Public Sub UpdateManagerSetting(ByVal Key As String, ByVal Value As String)
+			If m_ParamDictionary.ContainsKey(Key) Then
+				m_ParamDictionary(Key) = Value
+			Else
+				m_ParamDictionary.Add(Key, Value)
+			End If
+		End Sub
 		''' <summary>
 		''' Writes specfied value to an application config file.
 		''' </summary>

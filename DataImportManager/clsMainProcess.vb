@@ -32,12 +32,18 @@ Public Class clsMainProcess
 	Private m_xml_operator_Name As String = String.Empty
 	Private m_xml_operator_email As String = String.Empty
 	Private m_xml_dataset_path As String = String.Empty
+	Private m_xml_instrument_Name As String = String.Empty
+
+	' Keys in this dictionary are instrument names
+	' Values are the number of datasets skipped for the given instrument
+	Private m_InstrumentsToSkip As Generic.Dictionary(Of String, Integer)
 
 	Dim m_ImportStatusCount As Integer = 0
 	Private myDataXMLValidation As clsXMLTimeValidation
 #End Region
 
 	Public Sub New()
+
 	End Sub
 
 	Private Function InitMgr() As Boolean
@@ -113,6 +119,8 @@ Public Class clsMainProcess
 
 		'Get the debug level
 		m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
+
+		m_InstrumentsToSkip = New Generic.Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
 
 		'Everything worked
 		Return True
@@ -274,6 +282,7 @@ Public Class clsMainProcess
 						End If
 
 					End If
+
 				Next
 				m_XmlFilesToLoad.Clear()
 
@@ -281,6 +290,13 @@ Public Class clsMainProcess
 				m_Logger.PostEntry("No Data Files to import.", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 				Exit Sub
 			End If
+
+			For Each kvItem As Generic.KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
+				Dim strMessage As String = "Skipped " & kvItem.Value & " dataset"
+				If kvItem.Value <> 1 Then strMessage &= "s"
+				strMessage &= " for instrument " & kvItem.Key & " due to network errors"
+				m_Logger.PostEntry(strMessage, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+			Next
 
 			'Remove successful XML files older than x days
 			DeleteXmlFiles(successFolder, DelGoodXmlFilesDays)
@@ -558,6 +574,21 @@ Public Class clsMainProcess
 	End Sub
 
 	''' <summary>
+	''' Adds or updates strInstrumentName in m_InstrumentsToSkip
+	''' </summary>
+	''' <param name="strInstrumentName"></param>
+	''' <remarks></remarks>
+	Private Sub UpdateInstrumentsToSkip(ByVal strInstrumentName As String)
+
+		Dim intDatasetsSkipped As Integer = 0
+		If m_InstrumentsToSkip.TryGetValue(m_xml_instrument_Name, intDatasetsSkipped) Then
+			m_InstrumentsToSkip(m_xml_instrument_Name) = intDatasetsSkipped + 1
+		Else
+			m_InstrumentsToSkip.Add(m_xml_instrument_Name, 1)
+		End If
+
+	End Sub
+	''' <summary>
 	''' Process the specified XML file
 	''' </summary>
 	''' <param name="xmlFilePath">XML file to process</param>
@@ -574,13 +605,14 @@ Public Class clsMainProcess
 			Dim rslt As Boolean
 			myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)
 
-			myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger)
+			myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger, m_InstrumentsToSkip)
 
 			xmlRslt = myDataXMLValidation.ValidateXMLFile(xmlFilePath)
 
 			m_xml_operator_Name = myDataXMLValidation.OperatorName()
 			m_xml_operator_email = myDataXMLValidation.OperatorEMail()
 			m_xml_dataset_path = myDataXMLValidation.DatasetPath()
+			m_xml_instrument_Name = myDataXMLValidation.InstrumentName()
 
 			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
 				moveLocPath = MoveXmlFile(xmlFilePath, timeValFolder)
@@ -604,6 +636,15 @@ Public Class clsMainProcess
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE Then
 				' Logon failure; Do not move the XML file
+				Return False
+			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR Then
+				' Network error; Do not move the XML file
+				' Furthermore, do not process any more .XML files for this instrument
+				UpdateInstrumentsToSkip(m_xml_instrument_Name)
+				Return False
+
+			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT Then
+				UpdateInstrumentsToSkip(m_xml_instrument_Name)
 				Return False
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
@@ -634,6 +675,7 @@ Public Class clsMainProcess
 				' XML_VALIDATE_SUCCESS
 				' XML_VALIDATE_NO_CHECK
 				' XML_VALIDATE_CONTINUE
+				' XML_VALIDATE_SKIP_INSTRUMENT
 
 			End If
 		Catch ex As Exception
