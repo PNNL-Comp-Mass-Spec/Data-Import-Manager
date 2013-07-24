@@ -256,7 +256,8 @@ Public Class clsMainProcess
 							m_db_Err_Msg = String.Empty
 							blnSuccess = myDataImportTask.PostTask(XMLFilePath)
 
-							m_db_Err_Msg = myDataImportTask.mp_db_err_msg
+							m_db_Err_Msg = myDataImportTask.DBErrorMessage
+
 							If m_db_Err_Msg.Contains("Timeout expired.") Then
 								'post the error and leave the file for another attempt
 								m_Logger.PostEntry("Encountered database timeout error for dataset: " & XMLFilePath, ILogger.logMsgType.logError, LOG_DATABASE)
@@ -264,9 +265,8 @@ Public Class clsMainProcess
 								If blnSuccess Then
 									moveLocPath = MoveXmlFile(XMLFilePath, successFolder)
 								Else
-									'myDataImportTask.GetReturnValue()
 									moveLocPath = MoveXmlFile(XMLFilePath, failureFolder)
-									m_Logger.PostEntry("Error posting xml file to database. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
+									m_Logger.PostEntry("Error posting xml file to database: " & myDataImportTask.PostTaskErrorMessage & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 									mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
 									mail_msg &= ControlChars.NewLine & "Operator: " & m_xml_operator_Name
 

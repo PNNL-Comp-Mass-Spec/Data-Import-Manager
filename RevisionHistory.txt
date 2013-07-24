@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.4952; July 23, 2013
+	- Now including additional details in the error message when calling PostLogEntry
+
 Version 1.2.4790; February 11, 2013
 	- Now auto-retrying the processing of an XML file if error code 1219 or 1203 occurs
 

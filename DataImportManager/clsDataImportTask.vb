@@ -8,19 +8,45 @@ Imports DataImportManager.MgrSettings
 
 
 Public Class clsDataImportTask
-    Inherits clsDBTask
-    Public mp_db_err_msg As String
-    ' constructor
-    Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
-        MyBase.New(mgrParams, logger)
-    End Sub
+	Inherits clsDBTask
+
+	Protected mPostTaskErrorMessage As String = String.Empty
+	Protected mDBErrorMessage As String
+
+	Public ReadOnly Property PostTaskErrorMessage As String
+		Get
+			If String.IsNullOrEmpty(mPostTaskErrorMessage) Then
+				Return String.Empty
+			Else
+				Return mPostTaskErrorMessage
+			End If
+		End Get
+	End Property
+
+	Public ReadOnly Property DBErrorMessage As String
+		Get
+			If String.IsNullOrEmpty(mDBErrorMessage) Then
+				Return String.Empty
+			Else
+				Return mDBErrorMessage
+			End If
+		End Get
+	End Property
+
+	' Constructor
+	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
+		MyBase.New(mgrParams, logger)
+	End Sub
 
 #Region "parameters for calling stored procedure"
-    Private mp_stored_proc As String
-    Private mp_xmlContents As String
+	Private mp_stored_proc As String
+	Private mp_xmlContents As String
 #End Region
 
 	Public Function PostTask(ByVal xmlFilePath As String) As Boolean
+
+		mPostTaskErrorMessage = String.Empty
+		mDBErrorMessage = String.Empty
 
 		m_connection_str = m_mgrParams.GetParam("ConnectionString")
 		Dim m_fileImported As Boolean
@@ -46,7 +72,7 @@ Public Class clsDataImportTask
 		End Try
 
 		Try
-			CloseConnection()
+			CLoseConnection()
 		Catch Err As System.Exception
 			m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error closing connection, " & Err.Message, ILogger.logMsgType.logError, True)
 			Return False
@@ -56,110 +82,118 @@ Public Class clsDataImportTask
 
 	End Function
 
-    Public Sub CloseTask(ByVal closeOut As ITaskParams.CloseOutType, ByVal resultsFolderName As String, ByVal comment As String)
-        If (closeOut = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS) Or (closeOut = ITaskParams.CloseOutType.CLOSEOUT_NO_DATA) Then
-            FailCount = 0
-        Else
-            FailCount += 1
-        End If
-    End Sub
+	Public Sub CloseTask(ByVal closeOut As ITaskParams.CloseOutType, ByVal resultsFolderName As String, ByVal comment As String)
+		If (closeOut = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS) Or (closeOut = ITaskParams.CloseOutType.CLOSEOUT_NO_DATA) Then
+			FailCount = 0
+		Else
+			FailCount += 1
+		End If
+	End Sub
 
-    Private Function GetCompletionCode(ByVal closeOut As ITaskParams.CloseOutType) As Integer
-        Dim code As Integer = 1    '  0->success, 1->failure, anything else ->no intermediate files
-        Select Case closeOut
-            Case ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
-                code = 0
-            Case ITaskParams.CloseOutType.CLOSEOUT_FAILED
-                code = 1
-            Case ITaskParams.CloseOutType.CLOSEOUT_NO_DATA
-                code = 10
-        End Select
-        GetCompletionCode = code
-    End Function
+	Private Function GetCompletionCode(ByVal closeOut As ITaskParams.CloseOutType) As Integer
+		Dim code As Integer = 1	   '  0->success, 1->failure, anything else ->no intermediate files
+		Select Case closeOut
+			Case ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
+				code = 0
+			Case ITaskParams.CloseOutType.CLOSEOUT_FAILED
+				code = 1
+			Case ITaskParams.CloseOutType.CLOSEOUT_NO_DATA
+				code = 10
+		End Select
+		GetCompletionCode = code
+	End Function
 
-    '------[for DB access]-----------------------------------------------------------
+	'------[for DB access]-----------------------------------------------------------
 
-    Private Function ImportDataTask(ByVal mp_xmlContents As String) As Boolean
+	''' <summary>
+	''' Posts the given XML to DMS5 using AddNewDataset
+	''' </summary>
+	''' <param name="mp_xmlContents">XML to post</param>
+	''' <returns>True if success, false if an error</returns>
+	''' <remarks></remarks>
+	Private Function ImportDataTask(ByVal mp_xmlContents As String) As Boolean
 
-        Dim sc As SqlCommand
-        Dim Outcome As Boolean = False
+		Dim sc As SqlCommand
+		Dim Outcome As Boolean = False
 
-        Try
-            'initialize database error message
-            mp_db_err_msg = String.Empty
-            m_error_list.Clear()
-            ' create the command object
-            '
-            mp_stored_proc = m_mgrParams.GetParam("storedprocedure")
+		Try
 
-            sc = New SqlCommand(mp_stored_proc, m_DBCn)
-            sc.CommandType = CommandType.StoredProcedure
-            sc.CommandTimeout = 45
+			'initialize database error message
+			mDBErrorMessage = String.Empty
+			m_error_list.Clear()
 
-            ' define parameters for command object
-            '
-            Dim myParm As SqlParameter
-            '
-            ' define parameter for stored procedure's return value
-            '
-            myParm = sc.Parameters.Add("@Return", SqlDbType.Int)
-            myParm.Direction = ParameterDirection.ReturnValue
-            '
-            ' define parameters for the stored procedure's arguments
-            '
-            myParm = sc.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000)
-            myParm.Direction = ParameterDirection.Input
-            myParm.Value = mp_xmlContents
+			' create the command object
+			'
+			mp_stored_proc = m_mgrParams.GetParam("storedprocedure")
+
+			sc = New SqlCommand(mp_stored_proc, m_DBCn)
+			sc.CommandType = CommandType.StoredProcedure
+			sc.CommandTimeout = 45
+
+			' define parameters for command object
+			'
+			Dim myParm As SqlParameter
+			'
+			' define parameter for stored procedure's return value
+			'
+			myParm = sc.Parameters.Add("@Return", SqlDbType.Int)
+			myParm.Direction = ParameterDirection.ReturnValue
+			'
+			' define parameters for the stored procedure's arguments
+			'
+			myParm = sc.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000)
+			myParm.Direction = ParameterDirection.Input
+			myParm.Value = mp_xmlContents
 
 			myParm = sc.Parameters.Add("@mode", SqlDbType.VarChar, 24)
 			myParm.Direction = ParameterDirection.Input
 			myParm.Value = "add"
 
-            myParm = sc.Parameters.Add("@message", SqlDbType.VarChar, 512)
-            myParm.Direction = ParameterDirection.Output
+			myParm = sc.Parameters.Add("@message", SqlDbType.VarChar, 512)
+			myParm.Direction = ParameterDirection.Output
 
-            ' execute the stored procedure
-            '
-            sc.ExecuteNonQuery()
+			' execute the stored procedure
+			'
+			sc.ExecuteNonQuery()
 
-            ' get return value
-            '
-            '        Dim ret As Object
-            Dim ret As Integer
-            ret = CInt(sc.Parameters("@Return").Value)
+			' get return value
+			'
+			'        Dim ret As Object
+			Dim ret As Integer
+			ret = CInt(sc.Parameters("@Return").Value)
 
-            If ret = 0 Then
-                ' get values for output parameters
-                '
-                Outcome = True
-            Else
-                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " _
-                  & CStr(sc.Parameters("@message").Value), ILogger.logMsgType.logError, True)
-                Outcome = False
-            End If
+			If ret = 0 Then
+				' get values for output parameters
+				'
+				Outcome = True
+			Else
+				mPostTaskErrorMessage = CStr(sc.Parameters("@message").Value)
+				m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage, ILogger.logMsgType.logError, True)
+				Outcome = False
+			End If
 
-        Catch ex As System.Exception
-            m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
-            mp_db_err_msg = ControlChars.NewLine & "Database Error Message:" & ex.Message
-            Outcome = False
-        End Try
+		Catch ex As System.Exception
+			m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
+			mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & ex.Message
+			Outcome = False
+		End Try
 
 		LogErrorEvents()
 
-        'Set variable for email error
-        If m_error_list.Count > 0 Then
-            Dim s As String
-            Dim tmp_s As String
-            tmp_s = String.Empty
-            For Each s In m_error_list
-                tmp_s = ControlChars.NewLine & s & tmp_s
-            Next
-            mp_db_err_msg = ControlChars.NewLine & "Database Error Message:" & tmp_s
-        End If
+		'Set variable for email error
+		If m_error_list.Count > 0 Then
+			Dim s As String
+			Dim tmp_s As String
+			tmp_s = String.Empty
+			For Each s In m_error_list
+				tmp_s = ControlChars.NewLine & s & tmp_s
+			Next
+			mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & tmp_s
+		End If
 
-        Return Outcome
+		Return Outcome
 
-    End Function
+	End Function
 
     'Query to get the solution description from error text provided 
     Public Function GetDbErrorSolution(ByRef errorText As String) As Boolean
