@@ -1,13 +1,11 @@
 Imports System.Net.Mail
 Imports System.IO
-Imports DataImportManager
 Imports DataImportManager.clsGlobal
-Imports DataImportManager.MgrSettings
+Imports System.Collections.Generic
 Imports PRISM.Logging
-Imports PRISM.Files
-Imports PRISM.Files.clsFileTools
-Imports System.Collections.Specialized
 Imports System.Windows.Forms
+Imports System.Threading
+Imports System.Reflection
 
 Public Class clsMainProcess
 
@@ -26,7 +24,7 @@ Public Class clsMainProcess
 	Private WithEvents m_FileWatcher As New FileSystemWatcher
 	Private m_MgrActive As Boolean = True
 	Private m_DebugLevel As Integer = 0
-	Private m_XmlFilesToLoad As New System.Collections.Generic.List(Of String)
+	Private ReadOnly m_XmlFilesToLoad As New List(Of String)
 	Public m_db_Err_Msg As String
 
 	Private m_xml_operator_Name As String = String.Empty
@@ -36,9 +34,7 @@ Public Class clsMainProcess
 
 	' Keys in this dictionary are instrument names
 	' Values are the number of datasets skipped for the given instrument
-	Private m_InstrumentsToSkip As Generic.Dictionary(Of String, Integer)
-
-	Dim m_ImportStatusCount As Integer = 0
+	Private m_InstrumentsToSkip As Dictionary(Of String, Integer)
 	Private myDataXMLValidation As clsXMLTimeValidation
 #End Region
 
@@ -48,7 +44,7 @@ Public Class clsMainProcess
 
 	Private Function InitMgr() As Boolean
 		Dim LogFile As String
-		Dim fiLogFile As System.IO.FileInfo
+		Dim fiLogFile As FileInfo
 
 		Dim ConnectStr As String
 		Dim ModName As String
@@ -62,7 +58,6 @@ Public Class clsMainProcess
 		Catch ex As Exception
 			Throw New Exception("clsMainProcess.New(), " & ex.Message)
 			'Failures are logged by clsMgrSettings to local emergency log file
-			Return False
 		End Try
 
 		Dim FInfo As FileInfo = New FileInfo(GetExePath())
@@ -76,9 +71,9 @@ Public Class clsMainProcess
 
 			' Make sure the folder exists
 			Try
-				fiLogFile = New System.IO.FileInfo(LogFile)
-				If Not System.IO.Directory.Exists(fiLogFile.DirectoryName) Then
-					System.IO.Directory.CreateDirectory(fiLogFile.DirectoryName)
+				fiLogFile = New FileInfo(LogFile)
+				If Not Directory.Exists(fiLogFile.DirectoryName) Then
+					Directory.CreateDirectory(fiLogFile.DirectoryName)
 				End If
 			Catch ex2 As Exception
 				Console.WriteLine("Error checking for valid directory for Logfile: " & LogFile)
@@ -91,9 +86,8 @@ Public Class clsMainProcess
 			'Write the initial log and status entries
 			m_Logger.PostEntry("===== Started Data Import Manager V" & Application.ProductVersion & " =====", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 
-		Catch Err As System.Exception
+		Catch Err As Exception
 			Throw New Exception("clsMainProcess.New(), " & Err.Message)
-			Exit Function
 		End Try
 
 		'Setup the logger
@@ -103,7 +97,6 @@ Public Class clsMainProcess
 		DbLogger.ConnectionString = m_MgrSettings.GetParam("connectionstring")
 		DbLogger.ModuleName = m_MgrSettings.GetParam("modulename")
 		m_Logger = New clsQueLogger(DbLogger)
-		DbLogger = Nothing
 
 		'Set up the FileWatcher to detect setup file changes
 		m_FileWatcher = New FileSystemWatcher
@@ -120,7 +113,7 @@ Public Class clsMainProcess
 		'Get the debug level
 		m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
 
-		m_InstrumentsToSkip = New Generic.Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
+		m_InstrumentsToSkip = New Dictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
 
 		'Everything worked
 		Return True
@@ -132,13 +125,13 @@ Public Class clsMainProcess
 		Dim ErrMsg As String
 
 		Try
-			clsGlobal.AppFilePath = Application.ExecutablePath
+			AppFilePath = Application.ExecutablePath
 			If IsNothing(m_StartupClass) Then
 				m_StartupClass = New clsMainProcess
 				If Not m_StartupClass.InitMgr() Then Exit Sub
 			End If
 			m_StartupClass.DoImport()
-		Catch Err As System.Exception
+		Catch Err As Exception
 			'Report any exceptions not handled at a lower level to the system application log
 			ErrMsg = "Critical exception starting application: " & Err.Message
 			PostToEventLog(ErrMsg)
@@ -190,7 +183,7 @@ Public Class clsMainProcess
 			'Check to see if there are any data import files ready
 			DoDataImportTask()
 
-		Catch Err As System.Exception
+		Catch Err As Exception
 			m_Logger.PostEntry("Exception in clsMainProcess.DoImport(), " & Err.Message, ILogger.logMsgType.logError, True)
 			Exit Sub
 		End Try
@@ -201,14 +194,11 @@ Public Class clsMainProcess
 
 		Dim result As ITaskParams.CloseOutType
 		Dim blnSuccess As Boolean
-		Dim XferDir As String = m_MgrSettings.GetParam("xferdir")
-		Dim runStatus As ITaskParams.CloseOutType = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
 		Dim DelBadXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletebadxmlfiles"))
 		Dim DelGoodXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletegoodxmlfiles"))
 		Dim successFolder As String = m_MgrSettings.GetParam("successfolder")
 		Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
-		Dim moveLocPath As String = String.Empty
-		Dim mail_msg As String = String.Empty
+		Dim mail_msg As String
 
 		Try
 
@@ -230,10 +220,10 @@ Public Class clsMainProcess
 				If Environment.MachineName.ToLower().StartsWith("monroe") Then
 					importDelay = "1"
 				End If
-				System.Threading.Thread.Sleep(CInt(importDelay) * 1000)
+				Thread.Sleep(CInt(importDelay) * 1000)
 
 				' Randomize order of files in m_XmlFilesToLoad
-				Dim lstRandomizedFileList As System.Collections.Generic.List(Of String)
+				Dim lstRandomizedFileList As List(Of String)
 				lstRandomizedFileList = RandomizeList(m_XmlFilesToLoad)
 
 				For Each XMLFilePath As String In lstRandomizedFileList
@@ -245,12 +235,12 @@ Public Class clsMainProcess
 
 					If ValidateXMLFileMain(XMLFilePath) Then
 
-						If Not System.IO.File.Exists(XMLFilePath) Then
+						If Not File.Exists(XMLFilePath) Then
 							m_Logger.PostEntry("XML file no longer exists; cannot import: " & XMLFilePath, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 						Else
 
 							If m_DebugLevel >= 2 Then
-								m_Logger.PostEntry("Posting Dataset XML file to database: " & System.IO.Path.GetFileName(XMLFilePath), ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+								m_Logger.PostEntry("Posting Dataset XML file to database: " & Path.GetFileName(XMLFilePath), ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 							End If
 
 							m_db_Err_Msg = String.Empty
@@ -263,16 +253,16 @@ Public Class clsMainProcess
 								m_Logger.PostEntry("Encountered database timeout error for dataset: " & XMLFilePath, ILogger.logMsgType.logError, LOG_DATABASE)
 							Else
 								If blnSuccess Then
-									moveLocPath = MoveXmlFile(XMLFilePath, successFolder)
+									MoveXmlFile(XMLFilePath, successFolder)
 								Else
-									moveLocPath = MoveXmlFile(XMLFilePath, failureFolder)
+									Dim moveLocPath = MoveXmlFile(XMLFilePath, failureFolder)
 									m_Logger.PostEntry("Error posting xml file to database: " & myDataImportTask.PostTaskErrorMessage & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 									mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
 									mail_msg &= ControlChars.NewLine & "Operator: " & m_xml_operator_Name
 
 									' Send m_db_Err_Msg to see if there is a suggested solution in table T_DIM_Error_Solution for the error 
 									' If a solution is found, then m_db_Err_Msg will get auto-updated with the suggested course of action
-									blnSuccess = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
+									myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
 
 									' Send an e-mail
 									CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
@@ -291,7 +281,7 @@ Public Class clsMainProcess
 				Exit Sub
 			End If
 
-			For Each kvItem As Generic.KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
+			For Each kvItem As KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
 				Dim strMessage As String = "Skipped " & kvItem.Value & " dataset"
 				If kvItem.Value <> 1 Then strMessage &= "s"
 				strMessage &= " for instrument " & kvItem.Key & " due to network errors"
@@ -308,11 +298,9 @@ Public Class clsMainProcess
 			'
 			DeleteStatusFlagFile(m_Logger)
 			FailCount = 0
-			If runStatus = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS Then
-				m_Logger.PostEntry("Completed task ", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
-			End If
+			m_Logger.PostEntry("Completed task ", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 
-		Catch Err As System.Exception
+		Catch Err As Exception
 			FailCount += 1
 			m_Logger.PostEntry("clsMainProcess.DoDataImportTask(), " & Err.Message, ILogger.logMsgType.logError, True)
 			Exit Sub
@@ -341,7 +329,7 @@ Public Class clsMainProcess
 			For Each XmlFile As String In XmlFilesToImport
 				m_XmlFilesToLoad.Add(XmlFile)
 			Next
-		Catch err As System.Exception
+		Catch err As Exception
 			m_Logger.PostError("Error loading Xml Data files from " & ServerXferDir, err, LOG_DATABASE)
 			Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
 		End Try
@@ -354,12 +342,11 @@ Public Class clsMainProcess
 	Private Function MoveXmlFile(ByVal xmlFilePath As String, ByVal moveFolder As String) As String
 
 		Dim Fi As FileInfo
-		Dim xmlFileName As String = String.Empty
 		Dim xmlFileNewLoc As String = String.Empty
 		Try
 			If File.Exists(xmlFilePath) Then
 				Fi = New FileInfo(xmlFilePath)
-				xmlFileName = Fi.Name
+				Dim xmlFileName = Fi.Name
 				If Not Directory.Exists(moveFolder) Then
 					Directory.CreateDirectory(moveFolder)
 				End If
@@ -371,30 +358,13 @@ Public Class clsMainProcess
 				File.Move(xmlFilePath, xmlFileNewLoc)
 
 			End If
-		Catch Err As System.Exception
+		Catch Err As Exception
 			m_Logger.PostEntry("MoveXmlFile, " & Err.Message, ILogger.logMsgType.logError, True)
 		End Try
 		Return xmlFileNewLoc
 	End Function
 
-	Private Function GetDirectory(ByVal xmlFilePath As String) As String
-
-		Dim Fi As FileInfo
-		Dim xmlFileDirectoryPath As String = String.Empty
-		Try
-			If File.Exists(xmlFilePath) Then
-				Fi = New FileInfo(xmlFilePath)
-				xmlFileDirectoryPath = Fi.DirectoryName
-			End If
-		Catch Err As System.Exception
-			m_Logger.PostEntry("GetDirectory, " & Err.Message, ILogger.logMsgType.logError, True)
-		End Try
-
-		Return xmlFileDirectoryPath
-
-	End Function
-
-	Private Sub m_FileWatcher_Changed(ByVal sender As Object, ByVal e As System.IO.FileSystemEventArgs) Handles m_FileWatcher.Changed
+	Private Sub m_FileWatcher_Changed(ByVal sender As Object, ByVal e As FileSystemEventArgs) Handles m_FileWatcher.Changed
 		m_ConfigChanged = True
 		If m_DebugLevel > 3 Then
 			m_Logger.PostEntry("Config file changed", ILogger.logMsgType.logDebug, True)
@@ -413,7 +383,7 @@ Public Class clsMainProcess
 				addMsg = ControlChars.NewLine & ControlChars.NewLine & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
 
 				' Create the mail message
-				Dim mail As New System.Net.Mail.MailMessage()
+				Dim mail As New MailMessage()
 
 				' Set the addresses
 				mail.From = New MailAddress(m_MgrSettings.GetParam("from"))
@@ -450,7 +420,7 @@ Public Class clsMainProcess
 
 	End Function
 
-	Private Function DeleteXmlFiles(ByVal FileDirectory As String, ByVal NoDays As Integer) As ITaskParams.CloseOutType
+	Private Function DeleteXmlFiles(ByVal FileDirectory As String, ByVal NoDays As Integer) As Boolean
 
 		Dim filedate As DateTime
 		Dim daysDiff As Integer
@@ -461,7 +431,7 @@ Public Class clsMainProcess
 		If Not Directory.Exists(workDirectory) Then
 			'There's a serious problem if the success/failure directory can't be found!!!
 			m_Logger.PostEntry("Xml success/failure folder not found.", ILogger.logMsgType.logError, LOG_DATABASE)
-			Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
+			Return False
 		End If
 
 		'Load all the Xml File names and dates in the transfer directory into a string dictionary
@@ -469,18 +439,18 @@ Public Class clsMainProcess
 			Dim XmlFilesToDelete() As String = Directory.GetFiles(Path.Combine(workDirectory, workDirectory))
 			For Each XmlFile As String In XmlFilesToDelete
 				filedate = File.GetLastWriteTimeUtc(XmlFile)
-				daysDiff = System.DateTime.UtcNow.Subtract(filedate).Days
+				daysDiff = DateTime.UtcNow.Subtract(filedate).Days
 				If daysDiff > NoDays Then
 					File.Delete(XmlFile)
 				End If
 			Next
-		Catch err As System.Exception
+		Catch err As Exception
 			m_Logger.PostError("Error deleting old Xml Data files at " & FileDirectory, err, LOG_DATABASE)
-			Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
+			Return False
 		End Try
 
 		'Everything must be OK if we got to here
-		Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
+		Return True
 
 	End Function
 
@@ -495,7 +465,7 @@ Public Class clsMainProcess
 	Private Function GetExePath() As String
 		' Could use Application.ExecutablePath
 		' Instead, use reflection
-		Return System.Reflection.Assembly.GetExecutingAssembly().Location
+		Return Assembly.GetExecutingAssembly().Location
 	End Function
 
 	''' <summary>
@@ -520,22 +490,19 @@ Public Class clsMainProcess
 		strLogFilePath = "\\" & Environment.MachineName & "\DMS_Programs\" & strLogFilePath
 
 		' Append the date stamp to the log
-		strLogFilePath &= "_" & System.DateTime.Now.ToString("MM-dd-yyyy") & ".txt"
+		strLogFilePath &= "_" & DateTime.Now.ToString("MM-dd-yyyy") & ".txt"
 
 		Return strLogFilePath
 
 	End Function
 
-	Private Function RandomizeList(ByVal lstItemsToRandomize As System.Collections.Generic.List(Of String)) As System.Collections.Generic.List(Of String)
+	Private Function RandomizeList(ByVal lstItemsToRandomize As IEnumerable(Of String)) As List(Of String)
 
-		Dim lstCandidates As New System.Collections.Generic.List(Of String)
-		Dim lstRandomized As New System.Collections.Generic.List(Of String)
+		Dim lstRandomized As New List(Of String)
 		Dim intIndex As Integer
 		Dim objRand As New Random()
 
-		For Each strItem As String In lstItemsToRandomize
-			lstCandidates.Add(strItem)
-		Next
+		Dim lstCandidates As List(Of String) = lstItemsToRandomize.ToList()
 
 		Do While lstCandidates.Count > 0
 			intIndex = objRand.Next(0, lstCandidates.Count - 1)
@@ -569,7 +536,7 @@ Public Class clsMainProcess
 			Console.WriteLine("Exception logging to the event log: " & ex.Message)
 		End Try
 
-		System.Threading.Thread.Sleep(500)
+		Thread.Sleep(500)
 
 	End Sub
 
@@ -581,10 +548,10 @@ Public Class clsMainProcess
 	Private Sub UpdateInstrumentsToSkip(ByVal strInstrumentName As String)
 
 		Dim intDatasetsSkipped As Integer = 0
-		If m_InstrumentsToSkip.TryGetValue(m_xml_instrument_Name, intDatasetsSkipped) Then
-			m_InstrumentsToSkip(m_xml_instrument_Name) = intDatasetsSkipped + 1
+		If m_InstrumentsToSkip.TryGetValue(strInstrumentName, intDatasetsSkipped) Then
+			m_InstrumentsToSkip(strInstrumentName) = intDatasetsSkipped + 1
 		Else
-			m_InstrumentsToSkip.Add(m_xml_instrument_Name, 1)
+			m_InstrumentsToSkip.Add(strInstrumentName, 1)
 		End If
 
 	End Sub
@@ -599,8 +566,8 @@ Public Class clsMainProcess
 		Try
 			Dim xmlRslt As IXMLValidateStatus.XmlValidateStatus
 			Dim timeValFolder As String = m_MgrSettings.GetParam("timevalidationfolder")
-			Dim moveLocPath As String = String.Empty
-			Dim mail_msg As String = String.Empty
+			Dim moveLocPath As String
+			Dim mail_msg As String
 			Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
 			Dim rslt As Boolean
 			myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)

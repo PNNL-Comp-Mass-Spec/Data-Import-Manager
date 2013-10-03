@@ -1,7 +1,7 @@
 'Contains functions/variables common to all parts of the Analysis Manager
 Imports System.IO
-Imports PRISM.Files.clsFileTools
 Imports PRISM.Logging
+Imports System.Text
 
 Public Class clsGlobal
 
@@ -20,13 +20,9 @@ Public Class clsGlobal
 		Dim TestFileFi As New FileInfo(Path.Combine(ExeFi.DirectoryName, "FlagFile.txt"))
 		Dim Sw As StreamWriter = TestFileFi.AppendText()
 
-		Sw.WriteLine(System.DateTime.Now().ToString)
+		Sw.WriteLine(DateTime.Now().ToString)
 		Sw.Flush()
 		Sw.Close()
-
-		Sw = Nothing
-		TestFileFi = Nothing
-		ExeFi = Nothing
 
 	End Sub
 
@@ -40,7 +36,7 @@ Public Class clsGlobal
 			If File.Exists(TestFile) Then
 				File.Delete(TestFile)
 			End If
-		Catch Err As System.Exception
+		Catch Err As Exception
 			MyLogger.PostEntry("DeleteStatusFlagFile, " & Err.Message, ILogger.logMsgType.logError, True)
 		End Try
 
@@ -57,28 +53,22 @@ Public Class clsGlobal
 	End Function
 
 	Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFilePath As String, ByVal MyLogger As ILogger) As String
-		Dim xmlFileContents As String
 		Try
-			xmlFileContents = String.Empty
 			'Read the contents of the xml file into a string which will be passed into a stored procedure.
 			If Not File.Exists(xmlFilePath) Then
 				MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & xmlFilePath & " does not exist.", ILogger.logMsgType.logError, True)
 				Return String.Empty
 			End If
-			Dim sr As StreamReader = File.OpenText(xmlFilePath)
-			Dim input As String
-			input = sr.ReadLine()
-			xmlFileContents = input
-			While Not input Is Nothing
-				input = sr.ReadLine()
-				If Not input Is Nothing Then
-					input = input.Replace("&", "&#38;")
-				End If
-				xmlFileContents = xmlFileContents + Chr(13) + Chr(10) + input
-			End While
-			sr.Close()
-			Return xmlFileContents
-		Catch Err As System.Exception
+			Dim xmlFileContents = New StringBuilder
+			Using sr As StreamReader = New StreamReader(New FileStream(xmlFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+				Do While sr.Peek > -1
+					Dim input = sr.ReadLine()
+					If xmlFileContents.Length > 0 Then xmlFileContents.Append(Environment.NewLine)
+					xmlFileContents.Append(input.Replace("&", "&#38;"))
+				Loop
+			End Using
+			Return xmlFileContents.ToString()
+		Catch Err As Exception
 			MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & Err.Message, ILogger.logMsgType.logError, True)
 			Return String.Empty
 		End Try

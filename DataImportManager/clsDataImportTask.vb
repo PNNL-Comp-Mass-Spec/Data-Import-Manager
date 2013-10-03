@@ -1,10 +1,6 @@
 Imports PRISM.Logging
-Imports System.Collections.Specialized
 Imports System.Data.SqlClient
 Imports DataImportManager.clsGlobal
-Imports System.Xml
-Imports System.IO
-Imports DataImportManager.MgrSettings
 
 
 Public Class clsDataImportTask
@@ -50,11 +46,10 @@ Public Class clsDataImportTask
 
 		m_connection_str = m_mgrParams.GetParam("ConnectionString")
 		Dim m_fileImported As Boolean
-		m_fileImported = False
 
 		Try
 			OpenConnection()
-		Catch Err As System.Exception
+		Catch Err As Exception
 			m_logger.PostEntry("clsDatasetImportTask.PostTask(), error opening connection, " & Err.Message, ILogger.logMsgType.logError, True)
 			Return False
 		End Try
@@ -65,15 +60,15 @@ Public Class clsDataImportTask
 			If String.IsNullOrEmpty(mp_xmlContents) Then
 				Return False
 			End If
-			m_fileImported = ImportDataTask(mp_xmlContents)
-		Catch Err As System.Exception
+			m_fileImported = ImportDataTask()
+		Catch Err As Exception
 			m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & Err.Message, ILogger.logMsgType.logError, True)
 			Return False
 		End Try
 
 		Try
 			CLoseConnection()
-		Catch Err As System.Exception
+		Catch Err As Exception
 			m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error closing connection, " & Err.Message, ILogger.logMsgType.logError, True)
 			Return False
 		End Try
@@ -90,31 +85,17 @@ Public Class clsDataImportTask
 		End If
 	End Sub
 
-	Private Function GetCompletionCode(ByVal closeOut As ITaskParams.CloseOutType) As Integer
-		Dim code As Integer = 1	   '  0->success, 1->failure, anything else ->no intermediate files
-		Select Case closeOut
-			Case ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
-				code = 0
-			Case ITaskParams.CloseOutType.CLOSEOUT_FAILED
-				code = 1
-			Case ITaskParams.CloseOutType.CLOSEOUT_NO_DATA
-				code = 10
-		End Select
-		GetCompletionCode = code
-	End Function
-
 	'------[for DB access]-----------------------------------------------------------
 
 	''' <summary>
 	''' Posts the given XML to DMS5 using AddNewDataset
 	''' </summary>
-	''' <param name="mp_xmlContents">XML to post</param>
 	''' <returns>True if success, false if an error</returns>
 	''' <remarks></remarks>
-	Private Function ImportDataTask(ByVal mp_xmlContents As String) As Boolean
+	Private Function ImportDataTask() As Boolean
 
 		Dim sc As SqlCommand
-		Dim Outcome As Boolean = False
+		Dim Outcome As Boolean
 
 		Try
 
@@ -172,7 +153,7 @@ Public Class clsDataImportTask
 				Outcome = False
 			End If
 
-		Catch ex As System.Exception
+		Catch ex As Exception
 			m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
 			mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & ex.Message
 			Outcome = False
@@ -195,47 +176,47 @@ Public Class clsDataImportTask
 
 	End Function
 
-    'Query to get the solution description from error text provided 
-    Public Function GetDbErrorSolution(ByRef errorText As String) As Boolean
+	'Query to get the solution description from error text provided 
+	Public Function GetDbErrorSolution(ByRef errorText As String) As Boolean
 
-        Try
-            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
-            Dim SQL As String
-            SQL = "SELECT Solution, Error_Text "
-            SQL = SQL + "  FROM T_DIM_Error_Solution "
-            SQL = SQL + "  ORDER BY Error_Text "
+		Try
+			'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+			Dim SQL As String
+			SQL = "SELECT Solution, Error_Text "
+			SQL = SQL + "  FROM T_DIM_Error_Solution "
+			SQL = SQL + "  ORDER BY Error_Text "
 
-            'Get a list of all records in database (hopefully just one) matching the instrument name
-            Dim Cn As New SqlConnection(m_connection_str)
-            Dim Da As New SqlDataAdapter(SQL, Cn)
-            Dim Ds As DataSet = New DataSet
+			'Get a list of all records in database (hopefully just one) matching the instrument name
+			Dim Cn As New SqlConnection(m_connection_str)
+			Dim Da As New SqlDataAdapter(SQL, Cn)
+			Dim Ds As DataSet = New DataSet
 
-            Try
-                Da.Fill(Ds)
-            Catch ex As Exception
-                m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Filling data adapter, " & ex.Message, _
-                 ILogger.logMsgType.logError, True)
-                Return False
-            End Try
+			Try
+				Da.Fill(Ds)
+			Catch ex As Exception
+				m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Filling data adapter, " & ex.Message, _
+				 ILogger.logMsgType.logError, True)
+				Return False
+			End Try
 
-            Dim table As DataTable
-            For Each table In Ds.Tables
-                Dim row As DataRow
-                For Each row In table.Rows
-                    If errorText.Contains(row("Error_Text").ToString()) Then
-                        errorText = row("Solution").ToString
-                    End If
-                Next row
-            Next table
+			Dim table As DataTable
+			For Each table In Ds.Tables
+				Dim row As DataRow
+				For Each row In table.Rows
+					If errorText.Contains(row("Error_Text").ToString()) Then
+						errorText = row("Solution").ToString
+					End If
+				Next row
+			Next table
 
-            Return True
+			Return True
 
-        Catch Err As System.Exception
-            m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Error retrieving solution text, " & Err.Message, ILogger.logMsgType.logError, True)
-            Return False
-        End Try
+		Catch Err As Exception
+			m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Error retrieving solution text, " & Err.Message, ILogger.logMsgType.logError, True)
+			Return False
+		End Try
 
-    End Function
+	End Function
 
 
 End Class

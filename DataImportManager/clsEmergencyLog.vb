@@ -23,7 +23,7 @@ Public Class clsEmergencyLog
 	''' <remarks></remarks>
 	Public Shared Sub WriteToLog(ByVal LogFileNamePath As String, ByVal LogMsg As String)
 
-		Dim CurDate As String = System.DateTime.Now().ToString("MM/dd/yyyy HH:mm:ss")
+		Dim CurDate As String = DateTime.Now().ToString("MM/dd/yyyy HH:mm:ss")
 		My.Computer.FileSystem.WriteAllText(LogFileNamePath, CurDate & ControlChars.Tab & LogMsg & ControlChars.CrLf, True)
 
 	End Sub
