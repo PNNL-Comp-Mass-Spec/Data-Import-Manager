@@ -295,13 +295,15 @@ Public Class clsXMLTimeValidation
 			If String.IsNullOrEmpty(m_capture_Type) OrElse String.IsNullOrEmpty(m_source_path) Then
 				Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
 			End If
-			'It is a bionet location so establish a connection
-			If m_capture_Type = "secfso" Then
+
+			If m_capture_Type = "secfso" AndAlso Not Environment.MachineName.ToLower().StartsWith("monroe") Then
+				' Source folder is on bionet; establish a connection
+
 				Dim m_UserName = m_mgrParams.GetParam("bionetuser")
 				Dim m_Pwd = m_mgrParams.GetParam("bionetpwd")
 
 				Dim currentTaskBase = "Connecting to " & m_source_path & " using secfso, user " & m_UserName &
-					   ", and encoded password " & m_Pwd
+				 ", and encoded password " & m_Pwd
 
 				currentTask = currentTaskBase & "; Decoding password"
 				Pwd = DecodePassword(m_Pwd)
@@ -322,10 +324,10 @@ Public Class clsXMLTimeValidation
 
 					If m_ShareConnector.ErrorMessage = "1326" Then
 						m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query: ",
-							   ILogger.logMsgType.logError, True)
+						 ILogger.logMsgType.logError, True)
 					ElseIf m_ShareConnector.ErrorMessage = "53" Then
 						m_logger.PostEntry("The password may need to be reset; diagnose things further using the following query: ",
-							   ILogger.logMsgType.logError, True)
+						 ILogger.logMsgType.logError, True)
 					ElseIf m_ShareConnector.ErrorMessage = "1219" OrElse m_ShareConnector.ErrorMessage = "1203" Then
 						' Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
 						' Need to completely exit the manager
@@ -339,13 +341,13 @@ Public Class clsXMLTimeValidation
 					 m_ins_Name & "'", ILogger.logMsgType.logError, True)
 
 					Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
-				End If
+				End If			
 			End If
 
 			' Make sure m_SleepInterval isn't too large
 			If m_SleepInterval > 900 Then
 				m_logger.PostEntry("Sleep interval of " & m_SleepInterval & " seconds is too large; decreasing to 900 seconds",
-					   ILogger.logMsgType.logWarning, True)
+				 ILogger.logMsgType.logWarning, True)
 				m_SleepInterval = 900
 			End If
 
@@ -354,104 +356,115 @@ Public Class clsXMLTimeValidation
 			resType = GetRawDSType(m_source_path, m_dataset_Name, RawFName)
 
 			currentTask = "Validating operator name " & m_operator_PRN & "for " & m_dataset_Name & " at " & m_source_path
-			SetOperatorName()
+			If Not SetOperatorName() Then
+				If m_Connected Then
+					currentTask = "Operator not found; disconnecting from " & m_source_path
+					DisconnectShare(m_ShareConnector, m_Connected)
+				End If
+				Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR
+			End If
 
-			Select Case resType
+			If Environment.MachineName.ToLower().StartsWith("monroe") Then
+				Console.WriteLine("Skipping bionet validation")
+			Else
+				Select Case resType
 
-				Case RawDSTypes.None 'No raw dataset file or folder found
-					currentTask = "Dataset not found at " & m_source_path
+					Case RawDSTypes.None 'No raw dataset file or folder found
+						currentTask = "Dataset not found at " & m_source_path
 
-					m_dataset_Path = Path.Combine(m_source_path, m_dataset_Name)
+						m_dataset_Path = Path.Combine(m_source_path, m_dataset_Name)
 
-					'Disconnect from BioNet if necessary
-					If m_Connected Then
-						currentTask = "Dataset not found; disconnecting from " & m_source_path
-						DisconnectShare(m_ShareConnector, m_Connected)
-					End If
-
-					Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
-
-				Case RawDSTypes.File 'Dataset file found
-					'Check the file size
-					currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
-					m_dataset_Path = Path.Combine(m_source_path, RawFName)
-
-					Dim blnLogonFailure As Boolean = False
-
-					If Not VerifyConstantFileSize(m_dataset_Path, m_SleepInterval, blnLogonFailure) Then
-
-						If Not blnLogonFailure Then
-							m_logger.PostEntry(
-							 "Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)",
-							 ILogger.logMsgType.logWarning, True)
-						End If
-
+						'Disconnect from BioNet if necessary
 						If m_Connected Then
-							currentTask = "Dataset size changed; disconnecting from " & m_source_path
+							currentTask = "Dataset not found; disconnecting from " & m_source_path
 							DisconnectShare(m_ShareConnector, m_Connected)
 						End If
 
-						If blnLogonFailure Then
-							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
-						Else
+						Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
+
+					Case RawDSTypes.File 'Dataset file found
+						'Check the file size
+						currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
+						m_dataset_Path = Path.Combine(m_source_path, RawFName)
+
+						Dim blnLogonFailure As Boolean = False
+
+						If Not VerifyConstantFileSize(m_dataset_Path, m_SleepInterval, blnLogonFailure) Then
+
+							If Not blnLogonFailure Then
+								m_logger.PostEntry(
+								 "Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)",
+								 ILogger.logMsgType.logWarning, True)
+							End If
+
+							If m_Connected Then
+								currentTask = "Dataset size changed; disconnecting from " & m_source_path
+								DisconnectShare(m_ShareConnector, m_Connected)
+							End If
+
+							If blnLogonFailure Then
+								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
+							Else
+								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
+							End If
+
+						End If
+
+						currentTask = "Dataset found at " & m_source_path & " and is unchanged"
+						If m_run_Finish_Utc <> New DateTime(1960, 1, 1) Then
+							currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) &
+							   ")"
+
+							dtFileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
+
+							strValue = m_mgrParams.GetParam("timevalidationtolerance")
+							If Not Integer.TryParse(strValue, intTimeValToleranceMinutes) Then
+								intTimeValToleranceMinutes = 800
+							End If
+							dtRunFinishWithTolerance = m_run_Finish_Utc.AddMinutes(intTimeValToleranceMinutes)
+
+							If dtFileModDate <= dtRunFinishWithTolerance Then
+								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
+							Else
+								m_logger.PostEntry(
+								 "Time validation error for " & m_dataset_Name & ": file modification date (UTC): " & CStr(dtFileModDate) &
+								 " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValToleranceMinutes &
+								 " minute tolerance)", ILogger.logMsgType.logError, False)
+								Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
+							End If
+						End If
+
+					Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt 'Dataset found in a folder with an extension
+						'Verify the folder size is constant
+						currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant"
+						m_dataset_Path = Path.Combine(m_source_path, RawFName)
+						currentTask &= " for " & m_dataset_Path
+
+						If Not VerifyConstantFolderSize(m_dataset_Path, m_SleepInterval) Then
+							m_logger.PostEntry(
+							 "Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)",
+							 ILogger.logMsgType.logWarning, True)
+
+							If m_Connected Then
+								currentTask = "Dataset folder size changed; disconnecting from " & m_source_path
+								DisconnectShare(m_ShareConnector, m_Connected)
+							End If
+
 							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
 						End If
 
-					End If
-
-					currentTask = "Dataset found at " & m_source_path & " and is unchanged"
-					If m_run_Finish_Utc <> New DateTime(1960, 1, 1) Then
-						currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) &
-							  ")"
-
-						dtFileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
-
-						strValue = m_mgrParams.GetParam("timevalidationtolerance")
-						If Not Integer.TryParse(strValue, intTimeValToleranceMinutes) Then
-							intTimeValToleranceMinutes = 800
-						End If
-						dtRunFinishWithTolerance = m_run_Finish_Utc.AddMinutes(intTimeValToleranceMinutes)
-
-						If dtFileModDate <= dtRunFinishWithTolerance Then
-							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
-						Else
-							m_logger.PostEntry(
-							 "Time validation error for " & m_dataset_Name & ": file modification date (UTC): " & CStr(dtFileModDate) &
-							 " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValToleranceMinutes &
-							 " minute tolerance)", ILogger.logMsgType.logError, False)
-							Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
-						End If
-					End If
-
-				Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt 'Dataset found in a folder with an extension
-					'Verify the folder size is constant
-					currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant"
-					m_dataset_Path = Path.Combine(m_source_path, RawFName)
-					currentTask &= " for " & m_dataset_Path
-
-					If Not VerifyConstantFolderSize(m_dataset_Path, m_SleepInterval) Then
-						m_logger.PostEntry(
-						 "Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)",
-						 ILogger.logMsgType.logWarning, True)
-
+					Case Else
+						m_logger.PostEntry("Invalid dataset type for " & m_dataset_Name & ": " & resType.ToString,
+						 ILogger.logMsgType.logError, False)
 						If m_Connected Then
-							currentTask = "Dataset folder size changed; disconnecting from " & m_source_path
+							currentTask = "Invalid dataset type; disconnecting from " & m_source_path
 							DisconnectShare(m_ShareConnector, m_Connected)
 						End If
 
-						Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
-					End If
+						Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
+				End Select
 
-				Case Else
-					m_logger.PostEntry("Invalid dataset type for " & m_dataset_Name & ": " & resType.ToString,
-						   ILogger.logMsgType.logError, False)
-					If m_Connected Then
-						currentTask = "Invalid dataset type; disconnecting from " & m_source_path
-						DisconnectShare(m_ShareConnector, m_Connected)
-					End If
-
-					Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
-			End Select
+			End If
 
 			Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 
@@ -655,13 +668,20 @@ Public Class clsXMLTimeValidation
 		Dim strLogMsg As String
 
 		Try
+			If String.IsNullOrWhiteSpace(m_operator_PRN) Then
+				strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)"
+				m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, True)
+
+				m_operator_Name = strLogMsg
+				Return False
+			End If
+
 			'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
 			Dim SQL As String
 			SQL = "  SELECT U_email, U_Name, U_PRN "
 			SQL += " FROM dbo.T_Users "
 			SQL += " WHERE U_PRN = '" + m_operator_PRN + "'"
 			SQL += " ORDER BY ID desc"
-
 			blnSuccess = LookupOperatorName(SQL, strOperatorName, strOperatorEmail, strPRN, intUserCountMatched)
 
 			If blnSuccess AndAlso Not String.IsNullOrEmpty(strOperatorName) Then
@@ -706,6 +726,7 @@ Public Class clsXMLTimeValidation
 					Return False
 				End If
 			End If
+
 
 			strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator not found in T_Users.U_PRN: " & m_operator_PRN
 			m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, True)

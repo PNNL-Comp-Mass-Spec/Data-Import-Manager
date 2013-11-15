@@ -581,7 +581,21 @@ Public Class clsMainProcess
 			m_xml_dataset_path = myDataXMLValidation.DatasetPath()
 			m_xml_instrument_Name = myDataXMLValidation.InstrumentName()
 
-			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
+			If xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR Then
+
+				moveLocPath = MoveXmlFile(xmlFilePath, failureFolder)
+				m_Logger.PostEntry("Operator not defined in " & moveLocPath, ILogger.logMsgType.logWarning, LOG_DATABASE)
+				mail_msg = m_xml_operator_Name & ControlChars.NewLine
+				mail_msg &= "The dataset was not added to DMS: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
+				m_db_Err_Msg = "Operator payroll number/HID was blank"
+				rslt = myDataImportTask.GetDbErrorSolution(m_db_Err_Msg)
+				If Not rslt Then
+					m_db_Err_Msg = String.Empty
+				End If
+				CreateMail(mail_msg, m_xml_operator_email, " - Operator not defined.")
+				Return False
+
+			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
 				moveLocPath = MoveXmlFile(xmlFilePath, timeValFolder)
 				m_Logger.PostEntry("XML Time validation error, file " & moveLocPath, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 				m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
