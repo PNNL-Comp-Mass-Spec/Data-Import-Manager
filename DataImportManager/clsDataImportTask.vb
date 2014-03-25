@@ -103,7 +103,7 @@ Public Class clsDataImportTask
 			mDBErrorMessage = String.Empty
 			m_error_list.Clear()
 
-			' create the command object
+			' Prepare to call the stored procedure (likely AddNewDataset in DMS5)
 			'
 			mp_stored_proc = m_mgrParams.GetParam("storedprocedure")
 
