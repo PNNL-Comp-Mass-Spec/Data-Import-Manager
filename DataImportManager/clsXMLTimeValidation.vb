@@ -302,6 +302,11 @@ Public Class clsXMLTimeValidation
 				Dim m_UserName = m_mgrParams.GetParam("bionetuser")
 				Dim m_Pwd = m_mgrParams.GetParam("bionetpwd")
 
+                If Not m_UserName.Contains("\"c) Then
+                    ' Prepend this computer's name to the username
+                    m_UserName = System.Environment.MachineName & "\" & m_UserName
+                End If
+
 				Dim currentTaskBase = "Connecting to " & m_source_path & " using secfso, user " & m_UserName &
 				 ", and encoded password " & m_Pwd
 
@@ -313,35 +318,36 @@ Public Class clsXMLTimeValidation
 				m_ShareConnector.Share = m_source_path
 
 				currentTask = currentTaskBase & "; Connecting using ShareConnector"
-				If m_ShareConnector.Connect Then
-					m_Connected = True
-				Else
-					currentTask = currentTaskBase & "; Error connecting"
+                If m_ShareConnector.Connect() Then
+                    m_Connected = True
+                Else
+                    currentTask = currentTaskBase & "; Error connecting"
 
-					m_logger.PostEntry(
-					 "Error " & m_ShareConnector.ErrorMessage & " connecting to " & m_source_path & " as user " & m_UserName &
-					 " using 'secfso'", ILogger.logMsgType.logError, True)
+                    Dim errorMessage = "Error " & m_ShareConnector.ErrorMessage & " connecting to " & m_source_path & " as user " & m_UserName
+                    errorMessage &= " using 'secfso'" + "; error code " + m_ShareConnector.ErrorMessage
 
-					If m_ShareConnector.ErrorMessage = "1326" Then
-						m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query: ",
-						 ILogger.logMsgType.logError, True)
-					ElseIf m_ShareConnector.ErrorMessage = "53" Then
-						m_logger.PostEntry("The password may need to be reset; diagnose things further using the following query: ",
-						 ILogger.logMsgType.logError, True)
-					ElseIf m_ShareConnector.ErrorMessage = "1219" OrElse m_ShareConnector.ErrorMessage = "1203" Then
-						' Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
-						' Need to completely exit the manager
-						Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
-					Else
-						m_logger.PostEntry("You can diagnose the problem using this query: ", ILogger.logMsgType.logError, True)
-					End If
+                    m_logger.PostEntry(errorMessage, ILogger.logMsgType.logError, True)
 
-					m_logger.PostEntry(
-					 "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID WHERE IN_Name = '" &
-					 m_ins_Name & "'", ILogger.logMsgType.logError, True)
+                    If m_ShareConnector.ErrorMessage = "1326" Then
+                        m_logger.PostEntry("You likely need to change the Capture_Method from secfso to fso; use the following query: ",
+                         ILogger.logMsgType.logError, True)
+                    ElseIf m_ShareConnector.ErrorMessage = "53" Then
+                        m_logger.PostEntry("The password may need to be reset; diagnose things further using the following query: ",
+                         ILogger.logMsgType.logError, True)
+                    ElseIf m_ShareConnector.ErrorMessage = "1219" OrElse m_ShareConnector.ErrorMessage = "1203" Then
+                        ' Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
+                        ' Need to completely exit the manager
+                        Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
+                    Else
+                        m_logger.PostEntry("You can diagnose the problem using this query: ", ILogger.logMsgType.logError, True)
+                    End If
 
-					Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
-				End If			
+                    m_logger.PostEntry(
+                     "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID WHERE IN_Name = '" &
+                     m_ins_Name & "'", ILogger.logMsgType.logError, True)
+
+                    Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+                End If
 			End If
 
 			' Make sure m_SleepInterval isn't too large

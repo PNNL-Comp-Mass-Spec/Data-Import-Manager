@@ -1,5 +1,9 @@
 Data Import Manager History
 
+Version 1.2.5387; October 1, 2014
+	- Now prepending the bionet user's username with MachineName
+		- For example, resultant string is proto-3\ftms
+
 Version 1.2.4952; July 23, 2013
 	- Now including additional details in the error message when calling PostLogEntry
 
