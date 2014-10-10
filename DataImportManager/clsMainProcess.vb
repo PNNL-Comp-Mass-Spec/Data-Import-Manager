@@ -373,50 +373,55 @@ Public Class clsMainProcess
 	End Sub
 
 	Function CreateMail(ByVal mailMsg As String, ByVal addtnlRecipient As String, ByVal subjectAppend As String) As Boolean
-		Dim addMsg As String
-		Dim enableEmail As Boolean
-		Dim mailRecipients As String
 
-		enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
-		If enableEmail Then
-			Try
-				addMsg = ControlChars.NewLine & ControlChars.NewLine & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
+        Dim enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
+        If Not enableEmail Then
+            Return False
+        End If
 
-				' Create the mail message
-				Dim mail As New MailMessage()
+        Try
+            Const addMsg As String = ControlChars.NewLine & ControlChars.NewLine & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
 
-				' Set the addresses
-				mail.From = New MailAddress(m_MgrSettings.GetParam("from"))
+            ' Create the mail message
+            Dim mail As New MailMessage()
 
-				mailRecipients = m_MgrSettings.GetParam("to")
-				For Each emailAddress As String In mailRecipients.Split(";"c)
-					mail.To.Add(emailAddress)
-				Next
+            ' Set the addresses
+            mail.From = New MailAddress(m_MgrSettings.GetParam("from"))
 
-				' Possibly update the e-mail address for addtnlRecipient
-				If Not String.IsNullOrEmpty(addtnlRecipient) Then
-					mail.To.Add(addtnlRecipient)
-					mailRecipients &= ";" & addtnlRecipient
-				End If
+            Dim mailRecipientsText = m_MgrSettings.GetParam("to")
+            Dim mailRecipientsList = mailRecipientsText.Split(";"c).Distinct().ToList()
 
-				' Set the Subject and Body
-				If String.IsNullOrEmpty(subjectAppend) Then
-					mail.Subject = m_MgrSettings.GetParam("subject")
-				Else
-					mail.Subject = m_MgrSettings.GetParam("subject") + subjectAppend
-				End If
-				mail.Body = mailMsg & ControlChars.NewLine & ControlChars.NewLine & m_db_Err_Msg & addMsg
+            For Each emailAddress As String In mailRecipientsList
+                mail.To.Add(emailAddress)
+            Next
 
-				m_Logger.PostEntry("E-mailing " & mailRecipients & " regarding " & m_xml_dataset_path, ILogger.logMsgType.logDebug, True)
+            ' Possibly update the e-mail address for addtnlRecipient
+            If Not String.IsNullOrEmpty(addtnlRecipient) AndAlso Not mailRecipientsList.Contains(addtnlRecipient) Then
+                mail.To.Add(addtnlRecipient)
+                mailRecipientsText &= ";" & addtnlRecipient
+            End If
 
-				' Send the message
-				Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
-				smtp.Send(mail)
+            ' Set the Subject and Body
+            If String.IsNullOrEmpty(subjectAppend) Then
+                mail.Subject = m_MgrSettings.GetParam("subject")
+            Else
+                mail.Subject = m_MgrSettings.GetParam("subject") + subjectAppend
+            End If
+            mail.Body = mailMsg & ControlChars.NewLine & ControlChars.NewLine & m_db_Err_Msg & addMsg
 
-			Catch Ex As Exception
-				m_Logger.PostEntry("Error sending email message: " & Ex.Message, ILogger.logMsgType.logError, True)
-			End Try
-		End If
+            m_Logger.PostEntry("E-mailing " & mailRecipientsText & " regarding " & m_xml_dataset_path, ILogger.logMsgType.logDebug, True)
+
+            ' Send the message
+            Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
+            smtp.Send(mail)
+
+            Return True
+
+        Catch Ex As Exception
+            m_Logger.PostEntry("Error sending email message: " & Ex.Message, ILogger.logMsgType.logError, True)
+            Return False
+        End Try
+
 
 	End Function
 
@@ -624,9 +629,10 @@ Public Class clsMainProcess
 				UpdateInstrumentsToSkip(m_xml_instrument_Name)
 				Return False
 
-			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT Then
-				UpdateInstrumentsToSkip(m_xml_instrument_Name)
-				Return False
+            ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT Then
+                m_Logger.PostEntry(" ... skipped since m_InstrumentsToSkip contains " & m_xml_instrument_Name, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+                UpdateInstrumentsToSkip(m_xml_instrument_Name)
+                Return False
 
 			ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES Then
 				Return False

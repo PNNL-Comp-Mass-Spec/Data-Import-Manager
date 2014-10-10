@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.5396; October 10, 2014
+	- Now watching for network errors while confirming that a folder does not change in size
+
 Version 1.2.5387; October 1, 2014
 	- Now prepending the bionet user's username with MachineName
 		- For example, resultant string is proto-3\ftms

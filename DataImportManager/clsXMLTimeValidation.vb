@@ -390,7 +390,7 @@ Public Class clsXMLTimeValidation
 
 					Case RawDSTypes.File 'Dataset file found
 						'Check the file size
-						currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
+                        currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
 						m_dataset_Path = Path.Combine(m_source_path, RawFName)
 
 						Dim blnLogonFailure As Boolean = False
@@ -442,9 +442,9 @@ Public Class clsXMLTimeValidation
 
 					Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt 'Dataset found in a folder with an extension
 						'Verify the folder size is constant
-						currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant"
+                        currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant for "
 						m_dataset_Path = Path.Combine(m_source_path, RawFName)
-						currentTask &= " for " & m_dataset_Path
+                        currentTask &= m_dataset_Path
 
 						If Not VerifyConstantFolderSize(m_dataset_Path, m_SleepInterval) Then
 							m_logger.PostEntry(
@@ -483,10 +483,14 @@ Public Class clsXMLTimeValidation
 
 			ElseIf Err.Message.Contains("Access to the path") AndAlso Err.Message.Contains("is denied") Then
 				' Example message: Access to the path '\\exact01.bionet\ProteomicsData\Alz_Cap_Test_14_31Mar12_Roc_12-03-16.raw' is denied.
-				Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
 
-			Else
-				Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+            ElseIf Err.Message.Contains("network path was not found") Then
+                ' Example message: The network path was not found.
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
+
+            Else
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
 			End If
 
 		End Try
