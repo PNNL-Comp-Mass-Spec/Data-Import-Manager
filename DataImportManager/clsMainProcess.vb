@@ -276,9 +276,11 @@ Public Class clsMainProcess
 				Next
 				m_XmlFilesToLoad.Clear()
 
-			Else
-				m_Logger.PostEntry("No Data Files to import.", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
-				Exit Sub
+            Else
+                If m_DebugLevel > 4 Then
+                    m_Logger.PostEntry("No Data Files to import.", ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
+                End If
+                Exit Sub
 			End If
 
 			For Each kvItem As KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
