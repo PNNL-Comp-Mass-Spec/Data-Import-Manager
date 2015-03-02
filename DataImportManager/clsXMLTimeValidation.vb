@@ -215,7 +215,7 @@ Public Class clsXMLTimeValidation
 			fileModDateDelay = fileModDate.AddMinutes(delayValue)
 			dateNow = DateTime.UtcNow
 			If dateNow < fileModDateDelay Then
-				m_logger.PostEntry("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + xmlFilename, ILogger.logMsgType.logError, True)
+                m_logger.PostEntry("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + xmlFilename, ILogger.logMsgType.logWarning, True)
 				Return IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES
 			End If
 
