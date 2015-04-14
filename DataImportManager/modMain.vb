@@ -5,10 +5,11 @@ Imports System.Collections.Generic
 Imports System.IO
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "April 13, 2015"
+    Public Const PROGRAM_DATE As String = "April 14, 2015"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
+    Private mPreviewMode As Boolean
 
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
@@ -18,13 +19,11 @@ Module modMain
 
         mMailDisabled = False
         mTraceMode = False
+        mPreviewMode = False
 
         Try
 
-            ' Look for /T or /Test on the command line
-            ' If present, this means "code test mode" is enabled
-            ' 
-            ' Other valid switches are /I, /T, /Test, /Trace, /EL, /Q, and /?
+            ' Parse the command line options
             '
             If objParseCommandLine.ParseCommandLine Then
                 SetOptionsUsingCommandLineParameters(objParseCommandLine)
@@ -41,6 +40,7 @@ Module modMain
 
                 Dim oMainProcess = New clsMainProcess(mTraceMode)
                 oMainProcess.MailDisabled = mMailDisabled
+                oMainProcess.PreviewMode = mPreviewMode
 
                 Try
                     If Not oMainProcess.InitMgr() Then
@@ -85,7 +85,7 @@ Module modMain
     Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
-        Dim lstValidParameters As List(Of String) = New List(Of String) From {"NoMail", "Trace"}
+        Dim lstValidParameters As List(Of String) = New List(Of String) From {"NoMail", "Trace", "Preview"}
 
         Try
             ' Make sure no invalid parameters are present
@@ -97,10 +97,14 @@ Module modMain
 
                 ' Query objParseCommandLine to see if various parameters are present
 
-                If objParseCommandLine.IsParameterPresent("noMail") Then mMailDisabled = True
+                If objParseCommandLine.IsParameterPresent("NoMail") Then mMailDisabled = True
                 If objParseCommandLine.IsParameterPresent("Trace") Then mTraceMode = True
+                If objParseCommandLine.IsParameterPresent("Preview") Then mPreviewMode = True
 
-
+                If mPreviewMode Then
+                    mMailDisabled = True
+                    mTraceMode = True
+                End If
 
                 Return True
             End If
@@ -150,13 +154,18 @@ Module modMain
 
             Console.WriteLine("This program parses the instrument trigger files used for adding datasets to DMS. Normal operation is to run the program without any command line switches.")
             Console.WriteLine()
-            Console.WriteLine("Program syntax:" & ControlChars.NewLine & Path.GetFileName(GetAppPath()) & " [/NoMail] [/Trace]")
+            Console.WriteLine("Program syntax:" & ControlChars.NewLine & Path.GetFileName(GetAppPath()) & " [/NoMail] [/Trace] [/Preview]")
             Console.WriteLine()
 
             Console.WriteLine("Use /NoMail to disable sending e-mail when errors are encountered")
             Console.WriteLine()
 
             Console.WriteLine("Use /Trace to enable trace mode, where debug messages are written to the command prompt")
+            Console.WriteLine()
+
+            Console.WriteLine("Use /Preview to enable preview mode, where we report any trigger files found, but do not " +
+                              "post them to DMS and do not move them to the failure folder if there is an error. " +
+                              "Using /Preview forces /NoMail and /Trace to both be enabled")
             Console.WriteLine()
 
             Console.WriteLine("Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)")

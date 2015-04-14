@@ -36,21 +36,21 @@ Public Class clsGlobal
 			If File.Exists(TestFile) Then
 				File.Delete(TestFile)
 			End If
-		Catch Err As Exception
-			MyLogger.PostEntry("DeleteStatusFlagFile, " & Err.Message, ILogger.logMsgType.logError, True)
-		End Try
+        Catch ex As Exception
+            MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, ILogger.logMsgType.logError, True)
+        End Try
 
-	End Sub
+    End Sub
 
-	Public Shared Function DetectStatusFlagFile() As Boolean
+    Public Shared Function DetectStatusFlagFile() As Boolean
 
-		'Returns True if task request control flag file exists
+        'Returns True if task request control flag file exists
         Dim ExeFi As New FileInfo(GetExePath())
-		Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
+        Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
 
-		Return File.Exists(TestFile)
+        Return File.Exists(TestFile)
 
-	End Function
+    End Function
 
     Public Shared Function GetExePath() As String
         ' Could use Application.ExecutablePath
@@ -59,27 +59,27 @@ Public Class clsGlobal
     End Function
 
 
-	Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFilePath As String, ByVal MyLogger As ILogger) As String
-		Try
-			'Read the contents of the xml file into a string which will be passed into a stored procedure.
-			If Not File.Exists(xmlFilePath) Then
-				MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & xmlFilePath & " does not exist.", ILogger.logMsgType.logError, True)
-				Return String.Empty
-			End If
-			Dim xmlFileContents = New StringBuilder
-			Using sr As StreamReader = New StreamReader(New FileStream(xmlFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-				Do While sr.Peek > -1
-					Dim input = sr.ReadLine()
-					If xmlFileContents.Length > 0 Then xmlFileContents.Append(Environment.NewLine)
-					xmlFileContents.Append(input.Replace("&", "&#38;"))
-				Loop
-			End Using
-			Return xmlFileContents.ToString()
-		Catch Err As Exception
-			MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & Err.Message, ILogger.logMsgType.logError, True)
-			Return String.Empty
-		End Try
+    Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFilePath As String, ByVal MyLogger As ILogger) As String
+        Try
+            'Read the contents of the xml file into a string which will be passed into a stored procedure.
+            If Not File.Exists(xmlFilePath) Then
+                MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & xmlFilePath & " does not exist.", ILogger.logMsgType.logError, True)
+                Return String.Empty
+            End If
+            Dim xmlFileContents = New StringBuilder
+            Using sr As StreamReader = New StreamReader(New FileStream(xmlFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                Do While sr.Peek > -1
+                    Dim input = sr.ReadLine()
+                    If xmlFileContents.Length > 0 Then xmlFileContents.Append(Environment.NewLine)
+                    xmlFileContents.Append(input.Replace("&", "&#38;"))
+                Loop
+            End Using
+            Return xmlFileContents.ToString()
+        Catch ex As Exception
+            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, ILogger.logMsgType.logError, True)
+            Return String.Empty
+        End Try
 
-	End Function
+    End Function
 
 End Class

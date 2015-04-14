@@ -39,6 +39,7 @@ Public Class clsMainProcess
 #Region "Auto Properties"
     Public Property MailDisabled As Boolean
     Public Property TraceMode As Boolean
+    Public Property PreviewMode As Boolean
 #End Region
 
     ''' <summary>
@@ -131,11 +132,11 @@ Public Class clsMainProcess
 
     End Function
 
-	Public Sub DoImport()
+    Public Sub DoImport()
 
-		Try
+        Try
 
-			'Verify an error hasn't left the the system in an odd state
+            'Verify an error hasn't left the the system in an odd state
             If DetectStatusFlagFile() Then
                 Const statusMsg As String = "Flag file exists - auto-deleting it, then closing program"
                 If TraceMode Then ShowTraceMessage(statusMsg)
@@ -144,7 +145,7 @@ Public Class clsMainProcess
                 Exit Sub
             End If
 
-			'Check to see if machine settings have changed
+            'Check to see if machine settings have changed
             If m_ConfigChanged Then
                 If TraceMode Then ShowTraceMessage("Loading manager settings from the database")
                 m_ConfigChanged = False
@@ -165,83 +166,100 @@ Public Class clsMainProcess
                 m_FileWatcher.EnableRaisingEvents = True
             End If
 
-			'Check to see if excessive consecutive failures have occurred
-			If FailCount > MAX_ERROR_COUNT Then
+            'Check to see if excessive consecutive failures have occurred
+            If FailCount > MAX_ERROR_COUNT Then
                 'More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
                 Const errMsg As String = "Excessive task failures, disabling manager"
                 If TraceMode Then ShowTraceMessage(errMsg)
                 m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-				DisableManagerLocally()
-			End If
+                DisableManagerLocally()
+            End If
 
-			'Check to see if the manager is still active
+            'Check to see if the manager is still active
             If Not m_MgrActive Then
                 If TraceMode Then ShowTraceMessage("Manager is inactive")
                 m_Logger.PostEntry("Manager inactive", ILogger.logMsgType.logNormal, True)
                 Exit Sub
             End If
 
-			'Check to see if there are any data import files ready
-			DoDataImportTask()
+            'Check to see if there are any data import files ready
+            DoDataImportTask()
 
         Catch ex As Exception
             Dim errMsg As String = "Exception in clsMainProcess.DoImport(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
             m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
             Exit Sub
-		End Try
+        End Try
 
-	End Sub
+    End Sub
 
-	Private Sub DoDataImportTask()
+    Private Sub DoDataImportTask()
 
-		Dim result As ITaskParams.CloseOutType
-		Dim blnSuccess As Boolean
-		Dim DelBadXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletebadxmlfiles"))
-		Dim DelGoodXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletegoodxmlfiles"))
-		Dim successFolder As String = m_MgrSettings.GetParam("successfolder")
-		Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
-		Dim mail_msg As String
+        Dim result As ITaskParams.CloseOutType
+        Dim blnSuccess As Boolean
+        Dim DelBadXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletebadxmlfiles"))
+        Dim DelGoodXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletegoodxmlfiles"))
+        Dim successFolder As String = m_MgrSettings.GetParam("successfolder")
+        Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
+        Dim mail_msg As String
         Dim statusMsg As String
 
-		Try
+        Try
 
-			result = ScanXferDirectory()
+            result = ScanXferDirectory()
 
-			If result = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS And m_XmlFilesToLoad.Count > 0 Then
+            If result = ITaskParams.CloseOutType.CLOSEOUT_SUCCESS And m_XmlFilesToLoad.Count > 0 Then
 
-				CreateStatusFlagFile()	  'Set status file for control of future runs
+                CreateStatusFlagFile()    'Set status file for control of future runs
 
-				' create the object that will import the Data record
-				'
-				myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)
+                ' create the object that will import the Data record
+                '
+                myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)
                 myDataImportTask.TraceMode = TraceMode
+                myDataImportTask.PreviewMode = PreviewMode
 
-				Application.DoEvents()
+                Application.DoEvents()
 
-				' Add a delay
-				Dim importDelay As String = m_MgrSettings.GetParam("importdelay")
-				If Environment.MachineName.ToLower().StartsWith("monroe") Then
-					importDelay = "1"
-                End If
-
-                If TraceMode Then ShowTraceMessage("ImportDelay, sleep for " + importDelay + " seconds")
-				Thread.Sleep(CInt(importDelay) * 1000)
-
-				' Randomize order of files in m_XmlFilesToLoad
-				Dim lstRandomizedFileList As List(Of String)
-				lstRandomizedFileList = RandomizeList(m_XmlFilesToLoad)
-
-				For Each XMLFilePath As String In lstRandomizedFileList
-					' Validate the xml file
-
-					m_db_Err_Msg = String.Empty
-
-                    statusMsg = "Starting data import task for dataset: " & XMLFilePath
+                ' Add a delay
+                Dim importDelayText As String = m_MgrSettings.GetParam("importdelay")
+                Dim importDelay As Integer
+                If Not Integer.TryParse(importDelayText, importDelay) Then
+                    statusMsg = "Manager parameter ImportDelay was not numeric: " & importDelayText
                     If TraceMode Then ShowTraceMessage(statusMsg)
                     m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+                    importDelay = 2
+                End If
 
-					If ValidateXMLFileMain(XMLFilePath) Then
+                If Environment.MachineName.ToLower().StartsWith("monroe") Then
+                    Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
+                    importDelay = 1
+                ElseIf PreviewMode Then
+                    Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
+                    importDelay = 1
+                End If
+                
+                If TraceMode Then ShowTraceMessage("ImportDelay, sleep for " & importDelay & " seconds")
+                Thread.Sleep(importDelay * 1000)
+
+                ' Randomize order of files in m_XmlFilesToLoad
+                Dim lstRandomizedFileList As List(Of String)
+                lstRandomizedFileList = RandomizeList(m_XmlFilesToLoad)
+
+                For Each XMLFilePath As String In lstRandomizedFileList
+                    ' Validate the xml file
+
+                    m_db_Err_Msg = String.Empty
+
+                    statusMsg = "Starting data import task for dataset: " & XMLFilePath
+                    If TraceMode Then
+                        Console.WriteLine()
+                        Console.WriteLine("-------------------------------------------")
+                        ShowTraceMessage(statusMsg)
+                    End If
+                    m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+
+                    If ValidateXMLFileMain(XMLFilePath) Then
 
                         If Not File.Exists(XMLFilePath) Then
                             statusMsg = "XML file no longer exists; cannot import: " & XMLFilePath
@@ -290,10 +308,10 @@ Public Class clsMainProcess
                             End If
                         End If
 
-					End If
+                    End If
 
-				Next
-				m_XmlFilesToLoad.Clear()
+                Next
+                m_XmlFilesToLoad.Clear()
 
             Else
                 If m_DebugLevel > 4 Or TraceMode Then
@@ -302,24 +320,24 @@ Public Class clsMainProcess
                     m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
                 End If
                 Exit Sub
-			End If
+            End If
 
-			For Each kvItem As KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
-				Dim strMessage As String = "Skipped " & kvItem.Value & " dataset"
-				If kvItem.Value <> 1 Then strMessage &= "s"
-				strMessage &= " for instrument " & kvItem.Key & " due to network errors"
-				m_Logger.PostEntry(strMessage, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
-			Next
+            For Each kvItem As KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
+                Dim strMessage As String = "Skipped " & kvItem.Value & " dataset"
+                If kvItem.Value <> 1 Then strMessage &= "s"
+                strMessage &= " for instrument " & kvItem.Key & " due to network errors"
+                m_Logger.PostEntry(strMessage, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+            Next
 
-			'Remove successful XML files older than x days
-			DeleteXmlFiles(successFolder, DelGoodXmlFilesDays)
+            'Remove successful XML files older than x days
+            DeleteXmlFiles(successFolder, DelGoodXmlFilesDays)
 
-			'Remove failed XML files older than x days
-			DeleteXmlFiles(failureFolder, DelBadXmlFilesDays)
+            'Remove failed XML files older than x days
+            DeleteXmlFiles(failureFolder, DelBadXmlFilesDays)
 
-			' If we got to here, then closeout the task as a success
-			'
-			DeleteStatusFlagFile(m_Logger)
+            ' If we got to here, then closeout the task as a success
+            '
+            DeleteStatusFlagFile(m_Logger)
             FailCount = 0
 
             statusMsg = "Completed task"
@@ -334,26 +352,26 @@ Public Class clsMainProcess
             m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
         End Try
 
-	End Sub
+    End Sub
 
-	Public Function ScanXferDirectory() As ITaskParams.CloseOutType
+    Public Function ScanXferDirectory() As ITaskParams.CloseOutType
 
-		'Copies the results to the transfer directory
-		Dim ServerXferDir As String = m_MgrSettings.GetParam("xferdir")
+        'Copies the results to the transfer directory
+        Dim ServerXferDir As String = m_MgrSettings.GetParam("xferdir")
 
-		'Verify transfer directory exists
-		If Not Directory.Exists(ServerXferDir) Then
+        'Verify transfer directory exists
+        If Not Directory.Exists(ServerXferDir) Then
             'There's a serious problem is the xfer directory can't be found!!!
             Dim statusMsg As String = "Xml transfer folder not found: " & ServerXferDir
             If TraceMode Then ShowTraceMessage(statusMsg)
             m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
-			Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
-		End If
+            Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
+        End If
 
-		'Clear the string dictionary
-		m_XmlFilesToLoad.Clear()
+        'Clear the string dictionary
+        m_XmlFilesToLoad.Clear()
 
-		'Load all the Xml File names and dates in the transfer directory into a string dictionary
+        'Load all the Xml File names and dates in the transfer directory into a string dictionary
         Try
             If TraceMode Then ShowTraceMessage("Finding XML files at " & ServerXferDir)
 
@@ -368,37 +386,56 @@ Public Class clsMainProcess
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End Try
 
-		'Everything must be OK if we got to here
-		Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
+        'Everything must be OK if we got to here
+        Return ITaskParams.CloseOutType.CLOSEOUT_SUCCESS
 
-	End Function
+    End Function
 
-	Private Function MoveXmlFile(ByVal xmlFilePath As String, ByVal moveFolder As String) As String
+    Private Function MoveXmlFile(ByVal xmlFilePath As String, ByVal moveFolder As String) As String
 
-		Dim Fi As FileInfo
-		Dim xmlFileNewLoc As String = String.Empty
-		Try
-			If File.Exists(xmlFilePath) Then
-				Fi = New FileInfo(xmlFilePath)
-				Dim xmlFileName = Fi.Name
-				If Not Directory.Exists(moveFolder) Then
-					Directory.CreateDirectory(moveFolder)
-				End If
+        Try
+            If Not File.Exists(xmlFilePath) Then
+                Return String.Empty
+            End If
 
-				xmlFileNewLoc = Path.Combine(moveFolder, xmlFileName)
-				If File.Exists(xmlFileNewLoc) Then
-					File.Delete(xmlFileNewLoc)
-				End If
-				File.Move(xmlFilePath, xmlFileNewLoc)
+            Dim fiSourceFile = New FileInfo(xmlFilePath)
 
-			End If
+            If Not Directory.Exists(moveFolder) Then
+                If TraceMode Then ShowTraceMessage("Creating target folder: " + moveFolder)
+                Directory.CreateDirectory(moveFolder)
+            End If
+
+            Dim targetFilePath = Path.Combine(moveFolder, fiSourceFile.Name)
+            If TraceMode Then ShowTraceMessage("Instantiating file info object for " + targetFilePath)
+            Dim xmlFileNewLoc = New FileInfo(targetFilePath)
+
+            If xmlFileNewLoc.Exists Then
+                If PreviewMode Then
+                    ShowTraceMessage("Preview: delete target file: " + xmlFileNewLoc.FullName)
+                Else
+                    If TraceMode Then ShowTraceMessage("Deleting target file: " + xmlFileNewLoc.FullName)
+                    xmlFileNewLoc.Delete()
+                End If
+
+            End If
+
+            If PreviewMode Then
+                ShowTraceMessage("Preview: move XML file from " + xmlFilePath + " to " + xmlFileNewLoc.DirectoryName)
+            Else
+                If TraceMode Then ShowTraceMessage("Moving XML file from " + xmlFilePath + " to " + xmlFileNewLoc.DirectoryName)
+                File.Move(xmlFilePath, xmlFileNewLoc.FullName)
+            End If
+
+            Return xmlFileNewLoc.FullName
+
         Catch ex As Exception
             Dim statusMsg As String = "Exception in MoveXmlFile, " & ex.Message
             If TraceMode Then ShowTraceMessage(statusMsg)
             m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, True)
-		End Try
-		Return xmlFileNewLoc
-	End Function
+            Return String.Empty
+        End Try
+
+    End Function
 
 	Private Sub m_FileWatcher_Changed(ByVal sender As Object, ByVal e As FileSystemEventArgs) Handles m_FileWatcher.Changed
 		m_ConfigChanged = True
@@ -606,6 +643,7 @@ Public Class clsMainProcess
 
             myDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger)
             myDataImportTask.TraceMode = TraceMode
+            myDataImportTask.PreviewMode = PreviewMode
 
 			myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger, m_InstrumentsToSkip)
             myDataXMLValidation.TraceMode = TraceMode

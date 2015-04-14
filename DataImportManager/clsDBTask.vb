@@ -23,6 +23,10 @@ Public MustInherit Class clsDBTask
 
 #End Region
 
+#Region "Auto-properties"
+    Public Property TraceMode As Boolean
+#End Region
+
 	' constructor
 	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
 		m_mgrParams = mgrParams
@@ -36,26 +40,23 @@ Public MustInherit Class clsDBTask
 		End Get
 	End Property
 
-	'Public MustOverride Function RequestTask() As Boolean
-
-	'Public MustOverride Sub CloseTask(Optional ByVal success As Boolean = True)
-
-	'------[for DB access]-----------------------------------------------------------
+    '------[for DB access]-----------------------------------------------------------
 
 	Protected Sub OpenConnection()
 		Dim retryCount As Integer = 3
 		While retryCount > 0
-			Try
-				m_DBCn = New SqlConnection(m_connection_str)
-				AddHandler m_DBCn.InfoMessage, New SqlInfoMessageEventHandler(AddressOf OnInfoMessage)
-				m_DBCn.Open()
-				retryCount = 0
-			Catch e As SqlException
-				retryCount -= 1
-				m_DBCn.Close()
-				m_logger.PostError("Connection problem: ", e, True)
-				Thread.Sleep(300)
-			End Try
+            Try
+                If TraceMode Then clsMainProcess.ShowTraceMessage("Opening database connection using " & m_connection_str)
+                m_DBCn = New SqlConnection(m_connection_str)
+                AddHandler m_DBCn.InfoMessage, New SqlInfoMessageEventHandler(AddressOf OnInfoMessage)
+                m_DBCn.Open()
+                retryCount = 0
+            Catch e As SqlException
+                retryCount -= 1
+                m_DBCn.Close()
+                m_logger.PostError("Connection problem: ", e, True)
+                Thread.Sleep(300)
+            End Try
 		End While
 	End Sub
 
@@ -90,7 +91,8 @@ Public MustInherit Class clsDBTask
 				", LineNumber: " & err.LineNumber & _
 				", Procedure:" & err.Procedure & _
 				", Server: " & err.Server
-			m_error_list.Add(s)
+            m_error_list.Add(s)
+            If TraceMode Then clsMainProcess.ShowTraceMessage("Database info message: " & s)
 		Next
 	End Sub
 
