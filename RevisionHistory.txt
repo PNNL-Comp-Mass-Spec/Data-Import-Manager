@@ -1,5 +1,9 @@
 Data Import Manager History
 
+Version 1.2.5581; April 13, 2015
+	- Add command line switches /Trace and /Nomail
+	- Split out code from clsMainProcess to modMain
+
 Version 1.2.5396; October 10, 2014
 	- Now watching for network errors while confirming that a folder does not change in size
 

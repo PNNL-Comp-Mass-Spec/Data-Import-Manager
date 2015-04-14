@@ -2,6 +2,7 @@
 Imports System.IO
 Imports PRISM.Logging
 Imports System.Text
+Imports System.Reflection
 
 Public Class clsGlobal
 
@@ -9,14 +10,13 @@ Public Class clsGlobal
 	Public Const LOG_LOCAL_ONLY As Boolean = True
 	Public Const LOG_DATABASE As Boolean = False
 	Public Shared FailCount As Integer = 0
-	Public Shared AppFilePath As String = String.Empty
 
 	Public Shared Sub CreateStatusFlagFile()
 
 		'Creates a dummy file in the application directory to be used for controlling task request
 		'	bypass
 
-		Dim ExeFi As New FileInfo(AppFilePath)
+        Dim ExeFi As New FileInfo(GetExePath())
 		Dim TestFileFi As New FileInfo(Path.Combine(ExeFi.DirectoryName, "FlagFile.txt"))
 		Dim Sw As StreamWriter = TestFileFi.AppendText()
 
@@ -24,12 +24,12 @@ Public Class clsGlobal
 		Sw.Flush()
 		Sw.Close()
 
-	End Sub
-
+    End Sub
+    
 	Public Shared Sub DeleteStatusFlagFile(ByVal MyLogger As ILogger)
 
 		'Deletes the task request control flag file
-		Dim ExeFi As New FileInfo(AppFilePath)
+        Dim ExeFi As New FileInfo(GetExePath())
 		Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
 
 		Try
@@ -45,12 +45,19 @@ Public Class clsGlobal
 	Public Shared Function DetectStatusFlagFile() As Boolean
 
 		'Returns True if task request control flag file exists
-		Dim ExeFi As New FileInfo(AppFilePath)
+        Dim ExeFi As New FileInfo(GetExePath())
 		Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
 
 		Return File.Exists(TestFile)
 
 	End Function
+
+    Public Shared Function GetExePath() As String
+        ' Could use Application.ExecutablePath
+        ' Instead, use reflection
+        Return Assembly.GetExecutingAssembly().Location
+    End Function
+
 
 	Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFilePath As String, ByVal MyLogger As ILogger) As String
 		Try

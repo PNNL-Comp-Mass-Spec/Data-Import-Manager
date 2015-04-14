@@ -29,6 +29,8 @@ Public Class clsDataImportTask
 		End Get
 	End Property
 
+    Public Property TraceMode As Boolean
+
 	' Constructor
 	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger)
 		MyBase.New(mgrParams, logger)
@@ -179,42 +181,47 @@ Public Class clsDataImportTask
 	'Query to get the solution description from error text provided 
 	Public Function GetDbErrorSolution(ByRef errorText As String) As Boolean
 
-		Try
-			'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
-			Dim SQL As String
-			SQL = "SELECT Solution, Error_Text "
-			SQL = SQL + "  FROM T_DIM_Error_Solution "
-			SQL = SQL + "  ORDER BY Error_Text "
+        Try
+            If Tracemode Then
+                clsMainProcess.ShowTraceMessage("Querying T_DIM_Error_Solution for solution to error message:")
+                clsMainProcess.ShowTraceMessage("  " & errorText)
+            End If
 
-			'Get a list of all records in database (hopefully just one) matching the instrument name
-			Dim Cn As New SqlConnection(m_connection_str)
-			Dim Da As New SqlDataAdapter(SQL, Cn)
-			Dim Ds As DataSet = New DataSet
+            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+            Dim SQL As String
+            SQL = "SELECT Solution, Error_Text "
+            SQL = SQL + "  FROM T_DIM_Error_Solution "
+            SQL = SQL + "  ORDER BY Error_Text "
 
-			Try
-				Da.Fill(Ds)
-			Catch ex As Exception
-				m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Filling data adapter, " & ex.Message, _
-				 ILogger.logMsgType.logError, True)
-				Return False
-			End Try
+            'Get a list of all records in database (hopefully just one) matching the instrument name
+            Dim Cn As New SqlConnection(m_connection_str)
+            Dim Da As New SqlDataAdapter(SQL, Cn)
+            Dim Ds As DataSet = New DataSet
 
-			Dim table As DataTable
-			For Each table In Ds.Tables
-				Dim row As DataRow
-				For Each row In table.Rows
-					If errorText.Contains(row("Error_Text").ToString()) Then
-						errorText = row("Solution").ToString
-					End If
-				Next row
-			Next table
+            Try
+                Da.Fill(Ds)
+            Catch ex As Exception
+                m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Filling data adapter, " & ex.Message, _
+                 ILogger.logMsgType.logError, True)
+                Return False
+            End Try
 
-			Return True
+            Dim table As DataTable
+            For Each table In Ds.Tables
+                Dim row As DataRow
+                For Each row In table.Rows
+                    If errorText.Contains(row("Error_Text").ToString()) Then
+                        errorText = row("Solution").ToString
+                    End If
+                Next row
+            Next table
 
-		Catch Err As Exception
-			m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Error retrieving solution text, " & Err.Message, ILogger.logMsgType.logError, True)
-			Return False
-		End Try
+            Return True
+
+        Catch Err As Exception
+            m_logger.PostEntry("clsDataImportTask.GetDbErrorSolution(), Error retrieving solution text, " & Err.Message, ILogger.logMsgType.logError, True)
+            Return False
+        End Try
 
 	End Function
 

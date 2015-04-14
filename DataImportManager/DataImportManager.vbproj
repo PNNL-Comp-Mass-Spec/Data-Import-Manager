@@ -19,7 +19,7 @@
     <DefaultHTMLPageLayout>Grid</DefaultHTMLPageLayout>
     <DefaultTargetSchema>IE50</DefaultTargetSchema>
     <DelaySign>false</DelaySign>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <OptionCompare>Binary</OptionCompare>
     <OptionExplicit>On</OptionExplicit>
     <OptionStrict>On</OptionStrict>
@@ -27,7 +27,7 @@
     <StartupObject>Sub Main</StartupObject>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
-    <MyType>WindowsFormsWithCustomSubMain</MyType>
+    <MyType>Console</MyType>
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <OldToolsVersion>3.5</OldToolsVersion>
@@ -93,6 +93,7 @@
     <Reference Include="System.Data">
       <Name>System.Data</Name>
     </Reference>
+    <Reference Include="System.Deployment" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml">
       <Name>System.XML</Name>
@@ -124,11 +125,13 @@
     <Compile Include="clsGlobal.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsParseCommandLine.vb" />
     <Compile Include="clsXMLTimeValidation.vb" />
     <Compile Include="ITaskParams.vb">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="IXMLValidateStatus.vb" />
+    <Compile Include="modMain.vb" />
     <Compile Include="My Project\Settings.Designer.vb">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
