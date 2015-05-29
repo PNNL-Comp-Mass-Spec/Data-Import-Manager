@@ -60,11 +60,11 @@ Public MustInherit Class clsDBTask
 		End While
 	End Sub
 
-	Protected Sub CLoseConnection()
-		If Not m_DBCn Is Nothing Then
-			m_DBCn.Close()
-		End If
-	End Sub
+    Protected Sub CloseConnection()
+        If Not m_DBCn Is Nothing Then
+            m_DBCn.Close()
+        End If
+    End Sub
 
 	Protected Sub LogErrorEvents()
 		If m_error_list.Count > 0 Then

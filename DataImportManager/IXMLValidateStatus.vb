@@ -1,5 +1,5 @@
 Public Interface IXMLValidateStatus
-    'Used for XML Validation status
+    ' Used for XML Validation status
     Enum XmlValidateStatus
         XML_VALIDATE_SUCCESS = 0
         XML_VALIDATE_FAILED = 1

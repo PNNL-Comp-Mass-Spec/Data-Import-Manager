@@ -1,5 +1,5 @@
 Public Interface ITaskParams
-	'Used for job closeout
+	' Used for job closeout
 	Enum CloseOutType
 		CLOSEOUT_SUCCESS = 0
 		CLOSEOUT_FAILED = 1

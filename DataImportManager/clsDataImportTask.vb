@@ -105,7 +105,7 @@ Public Class clsDataImportTask
 
         Try
 
-            'initialize database error message
+            ' Initialize database error message
             mDBErrorMessage = String.Empty
             m_error_list.Clear()
 
@@ -173,7 +173,7 @@ Public Class clsDataImportTask
 
         LogErrorEvents()
 
-        'Set variable for email error
+        ' Set variable for email error
         If m_error_list.Count > 0 Then
             Dim errorMsgList = String.Empty
             For Each errMsg In m_error_list
@@ -186,7 +186,7 @@ Public Class clsDataImportTask
 
     End Function
 
-    'Query to get the solution description from error text provided 
+    ' Query to get the solution description from error text provided 
     Public Function GetDbErrorSolution(ByRef errorText As String) As Boolean
 
         Try
@@ -195,16 +195,16 @@ Public Class clsDataImportTask
                 clsMainProcess.ShowTraceMessage("  " & errorText)
             End If
 
-            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+            ' Requests additional task parameters from database and adds them to the m_taskParams string dictionary
             Dim SQL As String
             SQL = "SELECT Solution, Error_Text "
             SQL = SQL + "  FROM T_DIM_Error_Solution "
             SQL = SQL + "  ORDER BY Error_Text "
 
-            'Get a list of all records in database (hopefully just one) matching the instrument name
+            ' Get a list of all records in database (hopefully just one) matching the instrument name
             Dim Cn As New SqlConnection(m_connection_str)
             Dim Da As New SqlDataAdapter(SQL, Cn)
-            Dim Ds As DataSet = New DataSet
+            Dim Ds = New DataSet
 
             Try
                 Da.Fill(Ds)

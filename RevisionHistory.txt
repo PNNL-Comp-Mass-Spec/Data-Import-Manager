@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.5627; May 29, 2015
+	- Added support for trigger file parameter "Capture Subfolder"
+
 Version 1.2.5581; April 13, 2015
 	- Add command line switches /Trace and /Nomail
 	- Split out code from clsMainProcess to modMain

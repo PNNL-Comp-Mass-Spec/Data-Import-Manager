@@ -44,7 +44,7 @@ Public Class clsGlobal
 
     Public Shared Function DetectStatusFlagFile() As Boolean
 
-        'Returns True if task request control flag file exists
+        ' Returns True if task request control flag file exists
         Dim ExeFi As New FileInfo(GetExePath())
         Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
 
@@ -61,7 +61,7 @@ Public Class clsGlobal
 
     Public Shared Function LoadXmlFileContentsIntoString(ByVal xmlFilePath As String, ByVal MyLogger As ILogger) As String
         Try
-            'Read the contents of the xml file into a string which will be passed into a stored procedure.
+            ' Read the contents of the xml file into a string which will be passed into a stored procedure.
             If Not File.Exists(xmlFilePath) Then
                 MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & xmlFilePath & " does not exist.", ILogger.logMsgType.logError, True)
                 Return String.Empty

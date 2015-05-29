@@ -6,68 +6,97 @@ Imports System.IO
 Imports DataImportManager.clsGlobal
 Imports System.Windows.Forms
 Imports System.Threading
-Imports System.Reflection
+Imports System.Runtime.InteropServices
 
 
 Public Class clsXMLTimeValidation
-	Inherits clsDBTask
+    Inherits clsDBTask
 
-	Private m_ins_Name As String = String.Empty
-	Private m_dataset_Name As String = String.Empty
-	Private m_run_Finish_Utc As DateTime = New DateTime(1960, 1, 1)
-	Private m_capture_Type As String = String.Empty
-	Private m_source_path As String = String.Empty
-	Private m_operator_PRN As String = String.Empty
-	Private m_operator_Email As String = String.Empty
-	Private m_operator_Name As String = String.Empty
-	Private m_dataset_Path As String = String.Empty
-	Protected m_ShareConnector As ShareConnector
-	Protected m_SleepInterval As Integer = 30
+    Private mInstrumentName As String = String.Empty
+    Private mCaptureSubfolder As String = String.Empty
+    Private mDatasetName As String = String.Empty
+    Private mRunFinishUTC As DateTime = New DateTime(1960, 1, 1)
+    Private mCaptureType As String = String.Empty
+    Private mSourcePath As String = String.Empty
+    Private mOperatorPRN As String = String.Empty
+    Private mOperatorEmail As String = String.Empty
+    Private mOperatorName As String = String.Empty
+    Private mDatasetPath As String = String.Empty
 
-	Protected m_InstrumentsToSkip As Dictionary(Of String, Integer)
-	Protected WithEvents m_FileTools As clsFileTools
+    Private mErrorMessage As String = String.Empty
 
-	Public ReadOnly Property DatasetName() As String
-		Get
-			Return FixNull(m_dataset_Name)
-		End Get
-	End Property
+    Protected mShareConnector As ShareConnector
+    Protected mSleepInterval As Integer = 30
 
-	Public ReadOnly Property DatasetPath() As String
-		Get
-			Return FixNull(m_dataset_Path)
-		End Get
-	End Property
+    Protected m_InstrumentsToSkip As Dictionary(Of String, Integer)
+    Protected WithEvents m_FileTools As clsFileTools
 
-	Public ReadOnly Property InstrumentName() As String
-		Get
-			Return m_ins_Name
-		End Get
-	End Property
+    Public ReadOnly Property CaptureSubfolder As String
+        Get
+            Return mCaptureSubfolder
+        End Get
+    End Property
 
-	Public ReadOnly Property OperatorEMail() As String
-		Get
-			Return FixNull(m_operator_Email)
-		End Get
-	End Property
+    Public ReadOnly Property DatasetName() As String
+        Get
+            Return FixNull(mDatasetName)
+        End Get
+    End Property
 
-	Public ReadOnly Property OperatorName() As String
-		Get
-			Return FixNull(m_operator_Name)
-		End Get
-	End Property
+    ''' <summary>
+    ''' Source path to the dataset on the instrument
+    ''' </summary>
+    ''' <value></value>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    Public ReadOnly Property DatasetPath() As String
+        Get
+            Return FixNull(mDatasetPath)
+        End Get
+    End Property
 
-	Public ReadOnly Property OperatorPRN() As String
-		Get
-			Return FixNull(m_operator_PRN)
-		End Get
-	End Property
+    Public ReadOnly Property InstrumentName() As String
+        Get
+            Return mInstrumentName
+        End Get
+    End Property
 
-	Public ReadOnly Property SourcePath() As String
-		Get
-			Return FixNull(m_source_path)
-		End Get
-	End Property
+    Public ReadOnly Property ErrorMessage As String
+        Get
+            Return mErrorMessage
+        End Get
+    End Property
+
+
+    Public ReadOnly Property OperatorEMail() As String
+        Get
+            Return FixNull(mOperatorEmail)
+        End Get
+    End Property
+
+    Public ReadOnly Property OperatorName() As String
+        Get
+            Return FixNull(mOperatorName)
+        End Get
+    End Property
+
+    Public ReadOnly Property OperatorPRN() As String
+        Get
+            Return FixNull(mOperatorPRN)
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' Source path on the instrument, e.g. \\TSQ_1\ProteomicsData
+    ''' </summary>
+    ''' <value></value>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    Public ReadOnly Property SourcePath() As String
+        Get
+            Return FixNull(mSourcePath)
+        End Get
+    End Property
 
 #Region "Enums"
     Protected Enum RawDSTypes
@@ -78,36 +107,38 @@ Public Class clsXMLTimeValidation
     End Enum
 #End Region
 
-	''' <summary>
-	''' Constructor
-	''' </summary>
-	''' <param name="mgrParams"></param>
-	''' <param name="logger"></param>
-	''' <remarks></remarks>
-	Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger, dctInstrumentsToSkip As Dictionary(Of String, Integer))
-		MyBase.New(mgrParams, logger)
-		m_FileTools = New clsFileTools
-		m_InstrumentsToSkip = dctInstrumentsToSkip
-	End Sub
+    ''' <summary>
+    ''' Constructor
+    ''' </summary>
+    ''' <param name="mgrParams"></param>
+    ''' <param name="logger"></param>
+    ''' <remarks></remarks>
+    Public Sub New(mgrParams As IMgrParams, logger As ILogger, dctInstrumentsToSkip As Dictionary(Of String, Integer))
+        MyBase.New(mgrParams, logger)
+        m_FileTools = New clsFileTools
+        m_InstrumentsToSkip = dctInstrumentsToSkip
+    End Sub
 
-	Private Function FixNull(ByVal strText As String) As String
-		If String.IsNullOrEmpty(strText) Then
-			Return String.Empty
-		Else
-			Return strText
-		End If
-	End Function
+    Private Function FixNull(strText As String) As String
+        If String.IsNullOrEmpty(strText) Then
+            Return String.Empty
+        Else
+            Return strText
+        End If
+    End Function
 
-	Public Function ValidateXMLFile(ByVal xmlFilePath As String) As IXMLValidateStatus.XmlValidateStatus
-		Dim rslt As IXMLValidateStatus.XmlValidateStatus
+    Public Function ValidateXMLFile(xmlFilePath As String) As IXMLValidateStatus.XmlValidateStatus
+        Dim rslt As IXMLValidateStatus.XmlValidateStatus
 
-		m_connection_str = m_mgrParams.GetParam("ConnectionString")
+        m_connection_str = m_mgrParams.GetParam("ConnectionString")
+        mErrorMessage = String.Empty
 
         Try
             If TraceMode Then clsMainProcess.ShowTraceMessage("Reading " & xmlFilePath)
             rslt = GetXMLParameters(xmlFilePath)
         Catch ex As Exception
-            Dim errMsg = "clsXMLTimeValidation.ValidateXMLFile(), Error reading the XML file " & Path.GetFileName(xmlFilePath) & ": " & ex.Message
+            mErrorMessage = "Error reading the XML file " & Path.GetFileName(xmlFilePath)
+            Dim errMsg = "clsXMLTimeValidation.ValidateXMLFile(), " & mErrorMessage & ": " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
             m_logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
@@ -115,20 +146,21 @@ Public Class clsXMLTimeValidation
 
         If rslt <> IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
             Return rslt
-        ElseIf m_InstrumentsToSkip.ContainsKey(m_ins_Name) Then
+        ElseIf m_InstrumentsToSkip.ContainsKey(mInstrumentName) Then
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT
         End If
 
         Try
             OpenConnection()
         Catch ex As Exception
+            mErrorMessage = "Exception opening connection"
             m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), error opening connection, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
         End Try
 
         Try
 
-            rslt = SetDbInstrumentParameters(m_ins_Name)
+            rslt = SetDbInstrumentParameters(mInstrumentName)
             If rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
                 rslt = PerformValidation()
             Else
@@ -136,6 +168,7 @@ Public Class clsXMLTimeValidation
             End If
 
         Catch ex As Exception
+            mErrorMessage = "Exception calling PerformValidation"
             m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
@@ -143,6 +176,7 @@ Public Class clsXMLTimeValidation
         Try
             CLoseConnection()
         Catch ex As Exception
+            mErrorMessage = "Exception closing connection"
             m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error closing connection, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
@@ -151,18 +185,18 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    'Take the xml file and load into a dataset
-    'iterate through the dataset to retrieve the instrument name
-    Private Function GetXMLParameters(ByVal xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
+    ' Take the xml file and load into a dataset
+    ' iterate through the dataset to retrieve the instrument name
+    Private Function GetXMLParameters(xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
         Dim parameterName As String
         Dim rslt As IXMLValidateStatus.XmlValidateStatus
         Dim xmlFileContents As String
 
-        'initialize return value
+        ' initialize return value
         rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
         xmlFileContents = LoadXmlFileContentsIntoString(xmlFilename, m_logger)
 
-        'Load into a string reader after '&' was fixed
+        ' Load into a string reader after '&' was fixed
         Dim xmlStringReader As TextReader
         xmlStringReader = New StringReader(xmlFileContents)
         Try
@@ -175,23 +209,25 @@ Public Class clsXMLTimeValidation
                     parameterName = row("Name").ToString()
                     Select Case parameterName
                         Case "Instrument Name"
-                            m_ins_Name = row("Value").ToString()
+                            mInstrumentName = row("Value").ToString()
+                        Case "Capture Subfolder"
+                            mCaptureSubfolder = row("Value").ToString()
                         Case "Dataset Name"
-                            m_dataset_Name = row("Value").ToString()
+                            mDatasetName = row("Value").ToString()
                         Case "Run Finish UTC"
-                            m_run_Finish_Utc = CDate(row("Value").ToString())
+                            mRunFinishUTC = CDate(row("Value").ToString())
                         Case "Operator (PRN)"
-                            m_operator_PRN = row("Value").ToString()
+                            mOperatorPRN = row("Value").ToString()
                     End Select
                 Next row
             Next table
 
-            If String.IsNullOrEmpty(m_ins_Name) Then
+            If String.IsNullOrEmpty(mInstrumentName) Then
                 m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), The instrument name was blank.", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
             End If
 
-            If m_ins_Name.StartsWith("9T") Or m_ins_Name.StartsWith("11T") Or m_ins_Name.StartsWith("12T") Then
+            If mInstrumentName.StartsWith("9T") Or mInstrumentName.StartsWith("11T") Or mInstrumentName.StartsWith("12T") Then
                 rslt = InstrumentWaitDelay(xmlFilename)
             End If
 
@@ -208,7 +244,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Private Function InstrumentWaitDelay(ByVal xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
+    Private Function InstrumentWaitDelay(xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
 
         Try
             Dim fileModDate As DateTime
@@ -243,17 +279,17 @@ Public Class clsXMLTimeValidation
     ''' <param name="insName"></param>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Private Function SetDbInstrumentParameters(ByVal insName As String) As IXMLValidateStatus.XmlValidateStatus
+    Private Function SetDbInstrumentParameters(insName As String) As IXMLValidateStatus.XmlValidateStatus
 
         Try
-            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+            ' Requests additional task parameters from database and adds them to the m_taskParams string dictionary
             Dim sqlQuery As String
             sqlQuery = "SELECT Name, Class, RawDataType, Capture, SourcePath " &
                " FROM dbo.V_Instrument_List_Export " &
                " WHERE Name = '" + insName + "'" &
                " ORDER BY Name "
 
-            'Get a list of all records in database (hopefully just one) matching the instrument name
+            ' Get a list of all records in database (hopefully just one) matching the instrument name
             Dim Cn As New SqlConnection(m_connection_str)
             Dim Da As New SqlDataAdapter(sqlQuery, Cn)
             Dim Ds As DataSet = New DataSet
@@ -270,13 +306,13 @@ Public Class clsXMLTimeValidation
             For Each table In Ds.Tables
                 Dim row As DataRow
                 For Each row In table.Rows
-                    m_capture_Type = row("Capture").ToString()
-                    m_source_path = row("SourcePath").ToString
+                    mCaptureType = row("Capture").ToString()
+                    mSourcePath = row("SourcePath").ToString
                     Exit For
                 Next row
             Next table
 
-            If String.IsNullOrEmpty(m_capture_Type) OrElse String.IsNullOrEmpty(m_source_path) Then
+            If String.IsNullOrEmpty(mCaptureType) OrElse String.IsNullOrEmpty(mSourcePath) Then
                 m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Error retrieving source path and capture type for instrument '" & insName & "': no rows returned from V_Instrument_List_Export", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
@@ -305,19 +341,19 @@ Public Class clsXMLTimeValidation
         Dim statusMsg As String = String.Empty
 
         Try
-           
-            If String.IsNullOrEmpty(m_capture_Type) OrElse String.IsNullOrEmpty(m_source_path) Then
+
+            If String.IsNullOrEmpty(mCaptureType) OrElse String.IsNullOrEmpty(mSourcePath) Then
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
 
-            If m_capture_Type = "secfso" Then
-                ' Make sure m_source_path is not of the form \\proto-2 because if that is the case, then m_capture_type should be "fso"
+            If mCaptureType = "secfso" Then
+                ' Make sure mSourcePath is not of the form \\proto-2 because if that is the case, then mCaptureType should be "fso"
                 Dim reProtoServer = New System.Text.RegularExpressions.Regex("\\\\proto-\d+\\", Text.RegularExpressions.RegexOptions.Compiled Or Text.RegularExpressions.RegexOptions.IgnoreCase)
 
-                If reProtoServer.IsMatch(m_source_path) Then
-                    ' Auto-change m_capture_Type to "fso", and log an error in the database
-                    m_capture_Type = "fso"
-                    Dim errMsg = "Instrument " & m_ins_Name & " is configured to use 'secfso' yet its source folder is " & m_source_path &
+                If reProtoServer.IsMatch(mSourcePath) Then
+                    ' Auto-change mCaptureType to "fso", and log an error in the database
+                    mCaptureType = "fso"
+                    Dim errMsg = "Instrument " & mInstrumentName & " is configured to use 'secfso' yet its source folder is " & mSourcePath &
                         ", which appears to be a domain path; auto-changing the capture_method to 'fso' for now, " &
                         "but the configuration in the database should be updated (see table T_Instrument_Name)"
                     If TraceMode Then
@@ -329,7 +365,7 @@ Public Class clsXMLTimeValidation
                 End If
             End If
 
-            If m_capture_Type = "secfso" AndAlso Not Environment.MachineName.ToLower().StartsWith("monroe") Then
+            If mCaptureType = "secfso" AndAlso Not Environment.MachineName.ToLower().StartsWith("monroe") Then
                 ' Source folder is on bionet; establish a connection
 
                 Dim m_UserName = m_mgrParams.GetParam("bionetuser")
@@ -340,7 +376,7 @@ Public Class clsXMLTimeValidation
                     m_UserName = System.Environment.MachineName & "\" & m_UserName
                 End If
 
-                Dim currentTaskBase = "Connecting to " & m_source_path & " using secfso, user " & m_UserName &
+                Dim currentTaskBase = "Connecting to " & mSourcePath & " using secfso, user " & m_UserName &
                  ", and encoded password " & m_Pwd
 
                 currentTask = currentTaskBase & "; Decoding password"
@@ -349,35 +385,35 @@ Public Class clsXMLTimeValidation
 
                 currentTask = currentTaskBase & "; Instantiating ShareConnector"
                 If TraceMode Then ShowTraceMessage(currentTask)
-                m_ShareConnector = New ShareConnector(m_UserName, Pwd)
-                m_ShareConnector.Share = m_source_path
+                mShareConnector = New ShareConnector(m_UserName, Pwd)
+                mShareConnector.Share = mSourcePath
 
                 currentTask = currentTaskBase & "; Connecting using ShareConnector"
                 If TraceMode Then ShowTraceMessage(currentTask)
 
-                If m_ShareConnector.Connect() Then
+                If mShareConnector.Connect() Then
                     m_Connected = True
                 Else
                     currentTask = currentTaskBase & "; Error connecting"
 
-                    Dim errorMessage = "Error " & m_ShareConnector.ErrorMessage & " connecting to " & m_source_path & " as user " & m_UserName
+                    Dim errorMessage = "Error " & mShareConnector.ErrorMessage & " connecting to " & mSourcePath & " as user " & m_UserName
                     If TraceMode Then ShowTraceMessage(errorMessage)
-                    errorMessage &= " using 'secfso'" + "; error code " + m_ShareConnector.ErrorMessage
+                    errorMessage &= " using 'secfso'" + "; error code " + mShareConnector.ErrorMessage
 
                     m_logger.PostEntry(errorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
 
-                    If m_ShareConnector.ErrorMessage = "1326" Then
+                    If mShareConnector.ErrorMessage = "1326" Then
                         statusMsg = "You likely need to change the Capture_Method from secfso to fso; use the following query: "
                         If TraceMode Then ShowTraceMessage(statusMsg)
                         m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
 
-                    ElseIf m_ShareConnector.ErrorMessage = "53" Then
+                    ElseIf mShareConnector.ErrorMessage = "53" Then
                         statusMsg = "The password may need to be reset; diagnose things further using the following query: "
                         If TraceMode Then ShowTraceMessage(statusMsg)
                         m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
 
-                    ElseIf m_ShareConnector.ErrorMessage = "1219" OrElse m_ShareConnector.ErrorMessage = "1203" Then
-                        statusMsg = "Likely had error 'An unexpected network error occurred' while validating the Dataset specified by the XML file (ErrorMessage=" & m_ShareConnector.ErrorMessage & ")"
+                    ElseIf mShareConnector.ErrorMessage = "1219" OrElse mShareConnector.ErrorMessage = "1203" Then
+                        statusMsg = "Likely had error 'An unexpected network error occurred' while validating the Dataset specified by the XML file (ErrorMessage=" & mShareConnector.ErrorMessage & ")"
                         If TraceMode Then ShowTraceMessage(statusMsg)
                         ' Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
                         ' Need to completely exit the manager
@@ -391,7 +427,7 @@ Public Class clsXMLTimeValidation
 
                     statusMsg = "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method " &
                                 "FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID " &
-                                "WHERE IN_Name = '" & m_ins_Name & "'"
+                                "WHERE IN_Name = '" & mInstrumentName & "'"
 
                     If TraceMode Then ShowTraceMessage(statusMsg)
                     m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
@@ -400,137 +436,148 @@ Public Class clsXMLTimeValidation
                 End If
             End If
 
-            ' Make sure m_SleepInterval isn't too large
-            If m_SleepInterval > 900 Then
-                m_logger.PostEntry("Sleep interval of " & m_SleepInterval & " seconds is too large; decreasing to 900 seconds",
+            ' Make sure mSleepInterval isn't too large
+            If mSleepInterval > 900 Then
+                m_logger.PostEntry("Sleep interval of " & mSleepInterval & " seconds is too large; decreasing to 900 seconds",
                  ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
-                m_SleepInterval = 900
+                mSleepInterval = 900
             End If
 
-            'Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
-            currentTask = "Determining dataset type for " & m_dataset_Name & " at " & m_source_path
-            If TraceMode Then ShowTraceMessage(currentTask)
-            resType = GetRawDSType(m_source_path, m_dataset_Name, RawFName)
+            Dim sourcePath As String
+            If String.IsNullOrWhiteSpace(mCaptureSubfolder) Then
+                sourcePath = String.Copy(mSourcePath)
+            Else
+                sourcePath = Path.Combine(mSourcePath, mCaptureSubfolder)
+            End If
 
-            currentTask = "Validating operator name " & m_operator_PRN & " for " & m_dataset_Name & " at " & m_source_path
+            ' Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
+            currentTask = "Determining dataset type for " & mDatasetName & " at " & sourcePath
+            If TraceMode Then ShowTraceMessage(currentTask)
+            resType = GetRawDSType(mSourcePath, mCaptureSubfolder, mDatasetName, RawFName)
+
+            currentTask = "Validating operator name " & mOperatorPRN & " for " & mDatasetName & " at " & sourcePath
             If TraceMode Then ShowTraceMessage(currentTask)
             If Not SetOperatorName() Then
                 If m_Connected Then
-                    currentTask = "Operator not found; disconnecting from " & m_source_path
+                    currentTask = "Operator not found; disconnecting from " & mSourcePath
                     If TraceMode Then ShowTraceMessage(currentTask)
-                    DisconnectShare(m_ShareConnector, m_Connected)
+                    DisconnectShare(mShareConnector, m_Connected)
                 End If
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR
             End If
 
-            If Environment.MachineName.ToLower().StartsWith("monroe") Then
-                Console.WriteLine("Skipping bionet validation because host name starts with Monroe")
-            Else
-                Select Case resType
 
-                    Case RawDSTypes.None 'No raw dataset file or folder found
-                        currentTask = "Dataset not found at " & m_source_path
+            Select Case resType
+
+                Case RawDSTypes.None
+                    ' No raw dataset file or folder found
+                    currentTask = "Dataset not found at " & sourcePath
+                    If TraceMode Then ShowTraceMessage(currentTask)
+                    mDatasetPath = Path.Combine(sourcePath, mDatasetName)
+
+                    ' Disconnect from BioNet if necessary
+                    If m_Connected Then
+                        currentTask = "Dataset not found; disconnecting from " & mSourcePath
                         If TraceMode Then ShowTraceMessage(currentTask)
-                        m_dataset_Path = Path.Combine(m_source_path, m_dataset_Name)
+                        DisconnectShare(mShareConnector, m_Connected)
+                    End If
 
-                        'Disconnect from BioNet if necessary
+                    Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
+
+                Case RawDSTypes.File
+                    ' Dataset file found
+                    ' Check the file size
+                    currentTask = "Dataset found at " & sourcePath & "; verifying file size is constant"
+                    If TraceMode Then ShowTraceMessage(currentTask)
+                    mDatasetPath = Path.Combine(sourcePath, RawFName)
+
+                    Dim blnLogonFailure = False
+
+                    If Not VerifyConstantFileSize(mDatasetPath, mSleepInterval, blnLogonFailure) Then
+
+                        If Not blnLogonFailure Then
+                            statusMsg = "Dataset '" & mDatasetName & "' not ready (file size changed over " & mSleepInterval & " seconds)"
+                            If TraceMode Then ShowTraceMessage(statusMsg)
+                            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                        End If
+
                         If m_Connected Then
-                            currentTask = "Dataset not found; disconnecting from " & m_source_path
-                            If TraceMode Then ShowTraceMessage(currentTask)
-                            DisconnectShare(m_ShareConnector, m_Connected)
+                            currentTask = "Dataset size changed; disconnecting from " & mSourcePath
+                            If TraceMode Then ShowTraceMessage(statusMsg)
+                            DisconnectShare(mShareConnector, m_Connected)
                         End If
 
-                        Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
-
-                    Case RawDSTypes.File 'Dataset file found
-                        'Check the file size
-                        currentTask = "Dataset found at " & m_source_path & "; verifying file size is constant"
-                        If TraceMode Then ShowTraceMessage(currentTask)
-                        m_dataset_Path = Path.Combine(m_source_path, RawFName)
-
-                        Dim blnLogonFailure As Boolean = False
-
-                        If Not VerifyConstantFileSize(m_dataset_Path, m_SleepInterval, blnLogonFailure) Then
-
-                            If Not blnLogonFailure Then
-                                statusMsg = "Dataset '" & m_dataset_Name & "' not ready (file size changed over " & m_SleepInterval & " seconds)"
-                                If TraceMode Then ShowTraceMessage(statusMsg)
-                                m_logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
-                            End If
-
-                            If m_Connected Then
-                                currentTask = "Dataset size changed; disconnecting from " & m_source_path
-                                If TraceMode Then ShowTraceMessage(statusMsg)
-                                DisconnectShare(m_ShareConnector, m_Connected)
-                            End If
-
-                            If blnLogonFailure Then
-                                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
-                            Else
-                                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
-                            End If
-
-                        End If
-
-                        currentTask = "Dataset found at " & m_source_path & " and is unchanged"
-                        If TraceMode Then ShowTraceMessage(statusMsg)
-                        If m_run_Finish_Utc <> New DateTime(1960, 1, 1) Then
-                            currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(m_run_Finish_Utc) & ")"
-                            If TraceMode Then ShowTraceMessage(currentTask)
-
-                            dtFileModDate = File.GetLastWriteTimeUtc(m_dataset_Path)
-
-                            strValue = m_mgrParams.GetParam("timevalidationtolerance")
-                            If Not Integer.TryParse(strValue, intTimeValToleranceMinutes) Then
-                                intTimeValToleranceMinutes = 800
-                            End If
-                            dtRunFinishWithTolerance = m_run_Finish_Utc.AddMinutes(intTimeValToleranceMinutes)
-
-                            If dtFileModDate <= dtRunFinishWithTolerance Then
-                                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
-                            Else
-                                statusMsg = "Time validation error for " & m_dataset_Name & ": file modification date (UTC): " & CStr(dtFileModDate) &
-                                 " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValToleranceMinutes &
-                                 " minute tolerance)"
-                                If TraceMode Then ShowTraceMessage(statusMsg)
-                                m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
-                                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
-                            End If
-                        End If
-
-                    Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt 'Dataset found in a folder with an extension
-                        'Verify the folder size is constant
-                        currentTask = "Dataset folder found at " & m_source_path & "; verifying folder size is constant for "
-                        m_dataset_Path = Path.Combine(m_source_path, RawFName)
-                        currentTask &= m_dataset_Path
-
-                        If TraceMode Then ShowTraceMessage(currentTask)
-
-                        If Not VerifyConstantFolderSize(m_dataset_Path, m_SleepInterval) Then
-                            m_logger.PostEntry(
-                             "Dataset '" & m_dataset_Name & "' not ready (folder size changed over " & m_SleepInterval & " seconds)",
-                             ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
-
-                            If m_Connected Then
-                                currentTask = "Dataset folder size changed; disconnecting from " & m_source_path
-                                DisconnectShare(m_ShareConnector, m_Connected)
-                            End If
-
+                        If blnLogonFailure Then
+                            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
+                        Else
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
                         End If
 
-                    Case Else
-                        m_logger.PostEntry("Invalid dataset type for " & m_dataset_Name & ": " & resType.ToString,
-                         ILogger.logMsgType.logError, LOG_DATABASE)
+                    End If
+
+                    currentTask = "Dataset found at " & sourcePath & " and is unchanged"
+                    If TraceMode Then ShowTraceMessage(statusMsg)
+
+                    If Environment.MachineName.ToLower().StartsWith("monroe") Then
+                        Console.WriteLine("Skipping date validation because host name starts with Monroe")
+
+                    ElseIf mRunFinishUTC <> New DateTime(1960, 1, 1) Then
+                        currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(mRunFinishUTC) & ")"
+                        If TraceMode Then ShowTraceMessage(currentTask)
+
+                        dtFileModDate = File.GetLastWriteTimeUtc(mDatasetPath)
+
+                        strValue = m_mgrParams.GetParam("timevalidationtolerance")
+                        If Not Integer.TryParse(strValue, intTimeValToleranceMinutes) Then
+                            intTimeValToleranceMinutes = 800
+                        End If
+                        dtRunFinishWithTolerance = mRunFinishUTC.AddMinutes(intTimeValToleranceMinutes)
+
+                        If dtFileModDate <= dtRunFinishWithTolerance Then
+                            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
+                        Else
+                            statusMsg = "Time validation error for " & mDatasetName & ": file modification date (UTC): " & CStr(dtFileModDate) &
+                             " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValToleranceMinutes &
+                             " minute tolerance)"
+                            If TraceMode Then ShowTraceMessage(statusMsg)
+                            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
+                            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
+                        End If
+                    End If
+
+                Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt
+                    ' Dataset found in a folder with an extension
+                    ' Verify the folder size is constant
+                    currentTask = "Dataset folder found at " & sourcePath & "; verifying folder size is constant for "
+                    mDatasetPath = Path.Combine(sourcePath, RawFName)
+                    currentTask &= mDatasetPath
+
+                    If TraceMode Then ShowTraceMessage(currentTask)
+
+                    If Not VerifyConstantFolderSize(mDatasetPath, mSleepInterval) Then
+                        m_logger.PostEntry(
+                         "Dataset '" & mDatasetName & "' not ready (folder size changed over " & mSleepInterval & " seconds)",
+                         ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+
                         If m_Connected Then
-                            currentTask = "Invalid dataset type; disconnecting from " & m_source_path
-                            DisconnectShare(m_ShareConnector, m_Connected)
+                            currentTask = "Dataset folder size changed; disconnecting from " & mSourcePath
+                            DisconnectShare(mShareConnector, m_Connected)
                         End If
 
-                        Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
-                End Select
+                        Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
+                    End If
 
-            End If
+                Case Else
+                    m_logger.PostEntry("Invalid dataset type for " & mDatasetName & ": " & resType.ToString,
+                     ILogger.logMsgType.logError, LOG_DATABASE)
+                    If m_Connected Then
+                        currentTask = "Invalid dataset type; disconnecting from " & mSourcePath
+                        DisconnectShare(mShareConnector, m_Connected)
+                    End If
+
+                    Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
+            End Select
+
 
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 
@@ -557,9 +604,9 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Protected Function DecodePassword(ByVal EnPwd As String) As String
+    Protected Function DecodePassword(EnPwd As String) As String
 
-        'Decrypts password received from ini file
+        ' Decrypts password received from ini file
         ' Password was created by alternately subtracting or adding 1 to the ASCII value of each character
 
         Dim CharCode As Byte
@@ -585,64 +632,80 @@ Public Class clsXMLTimeValidation
 
     End Function
 
+    Protected Function GetRawDSType(
+      instrumentSourcePath As String,
+      captureSubFolderName As String,
+      currentDataset As String,
+      <Out()> ByRef instrumentFileOrFolderName As String) As RawDSTypes
 
-    Protected Function GetRawDSType(ByVal InstFolder As String, ByVal DSName As String, ByRef MyName As String) As RawDSTypes
+        ' Determines if raw dataset exists as a single file, folder with same name as dataset, or 
+        '	folder with dataset name + extension. Returns enum specifying what was found and instrumentFileOrFolderName
+        ' containing full name of the file or folder
 
-        'Determines if raw dataset exists as a single file, folder with same name as dataset, or 
-        '	folder with dataset name + extension. Returns enum specifying what was found and MyName
-        ' containing full name of file or folder
-
-        Dim MyInfo() As String
-
-        'Verify instrument transfer folder exists
-        Dim diSourceFolder = New DirectoryInfo(InstFolder)
-        If TraceMode Then ShowTraceMessage("Instantiated diSourceFolder with " & "[" & InstFolder & "]")
+        ' Verify instrument transfer folder exists
+        Dim diSourceFolder = New DirectoryInfo(instrumentSourcePath)
+        If TraceMode Then ShowTraceMessage("Instantiated diSourceFolder with " & "[" & instrumentSourcePath & "]")
 
         If Not diSourceFolder.Exists Then
-            Dim statusMsg = "Source folder not found for dataset " & DSName & ": [" & diSourceFolder.FullName & "]"
-            If TraceMode Then clsMainProcess.ShowTraceMessage(statusMsg)
-            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-            MyName = String.Empty
+            mErrorMessage = "Source folder not found for dataset " & currentDataset & ": [" & diSourceFolder.FullName & "]"
+            If TraceMode Then clsMainProcess.ShowTraceMessage(mErrorMessage)
+            m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            instrumentFileOrFolderName = String.Empty
             Return RawDSTypes.None
         End If
 
-        'Check for a file with specified name
-        MyInfo = Directory.GetFiles(InstFolder)
-        For Each TestFile As String In MyInfo
-            If Path.GetFileNameWithoutExtension(TestFile).ToLower = DSName.ToLower Then
-                MyName = Path.GetFileName(TestFile)
+        If Not String.IsNullOrWhiteSpace(captureSubFolderName) Then
+            If captureSubFolderName.Length > 255 Then
+                mErrorMessage = "Subfolder path for dataset " & currentDataset & " is too long (over 255 characters): [" & captureSubFolderName & "]"
+                If TraceMode Then clsMainProcess.ShowTraceMessage(mErrorMessage)
+                m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                instrumentFileOrFolderName = String.Empty
+                Return RawDSTypes.None
+            End If
+
+            Dim diSubfolder = New DirectoryInfo(Path.Combine(diSourceFolder.FullName, captureSubFolderName))
+            If Not diSubfolder.Exists Then
+                mErrorMessage = "Source folder not found for dataset " & currentDataset & " in the given subfolder: [" & diSubfolder.FullName & "]"
+                If TraceMode Then clsMainProcess.ShowTraceMessage(mErrorMessage)
+                m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                instrumentFileOrFolderName = String.Empty
+                Return RawDSTypes.None
+            End If
+
+            diSourceFolder = diSubfolder
+        End If
+
+        ' Check for a file with specified name
+        For Each fiFile In diSourceFolder.GetFiles()
+            If Path.GetFileNameWithoutExtension(fiFile.Name).ToLower() = currentDataset.ToLower() Then
+                instrumentFileOrFolderName = fiFile.Name
                 Return RawDSTypes.File
             End If
         Next
 
-        'Check for a folder with specified name
-        MyInfo = Directory.GetDirectories(InstFolder)
-        For Each TestFolder As String In MyInfo
-            'Using Path.GetFileNameWithoutExtension on folders is cheezy, but it works. I did this
-            '	because the Path class methods that deal with directories ignore the possibilty there
-            '	might be an extension. Apparently when sending in a string, Path can't tell a file from
-            '	a directory
-            If Path.GetFileNameWithoutExtension(TestFolder).ToLower = DSName.ToLower Then
-                If Path.GetExtension(TestFolder).Length = 0 Then
-                    'Found a directory that has no extension
-                    MyName = Path.GetFileName(TestFolder)
+        ' Check for a folder with specified name
+        For Each diFolder In diSourceFolder.GetDirectories()
+            If Path.GetFileNameWithoutExtension(diFolder.Name).ToLower() = currentDataset.ToLower() Then
+                If diFolder.Extension.Length = 0 Then
+                    ' Found a directory that has no extension
+                    instrumentFileOrFolderName = diFolder.Name
                     Return RawDSTypes.FolderNoExt
                 Else
-                    'Directory name has an extension
-                    MyName = Path.GetFileName(TestFolder)
+                    ' Directory name has an extension
+                    instrumentFileOrFolderName = diFolder.Name
                     Return RawDSTypes.FolderExt
                 End If
             End If
         Next
 
-        'If we got to here, then the raw dataset wasn't found, so there was a problem
-        MyName = String.Empty
+        ' If we got to here, then the raw dataset wasn't found, so there was a problem
+        instrumentFileOrFolderName = String.Empty
         Return RawDSTypes.None
 
     End Function
 
-    Protected Function ValidateFolderPath(ByVal InpPath As String) As Boolean
-        'Verifies that the folder given by input path exists
+    Protected Function ValidateFolderPath(InpPath As String) As Boolean
+        ' Verifies that the folder given by input path exists
 
         If Directory.Exists(InpPath) Then
             ValidateFolderPath = True
@@ -656,7 +719,7 @@ Public Class clsXMLTimeValidation
 
         If TraceMode Then ShowTraceMessage("Disconnecting from Bionet share")
 
-        'Disconnects a shared drive
+        ' Disconnects a shared drive
         MyConn.Disconnect()
         ConnState = False
 
@@ -667,14 +730,20 @@ Public Class clsXMLTimeValidation
     ''' </summary>
     ''' <param name="folderPath"></param>
     ''' <param name="sleepIntervalSeconds"></param>
-    ''' <returns></returns>
+    ''' <returns>True if constant, false if changed</returns>
     ''' <remarks></remarks>
-    Protected Function VerifyConstantFolderSize(ByVal folderPath As String, ByVal sleepIntervalSeconds As Integer) As Boolean
+    Protected Function VerifyConstantFolderSize(folderPath As String, sleepIntervalSeconds As Integer) As Boolean
+
+        If Environment.MachineName.ToLower().StartsWith("monroe") Then
+            Console.WriteLine("Skipping date validation because host name starts with Monroe")
+            Return True
+        End If
+
         ' Sleep interval should be no more than 15 minutes (900 seconds)
         If sleepIntervalSeconds > 900 Then sleepIntervalSeconds = 900
         If sleepIntervalSeconds < 1 Then sleepIntervalSeconds = 1
 
-        'Get the initial size of the folder
+        ' Get the initial size of the folder
         Dim initialFolderSize = m_FileTools.GetDirectorySize(folderPath)
 
         Dim sleepIntervalMsec = sleepIntervalSeconds * 1000
@@ -687,10 +756,10 @@ Public Class clsXMLTimeValidation
             End If
         End If
 
-        'Wait for specified sleep interval
+        ' Wait for specified sleep interval
         Thread.Sleep(sleepIntervalMsec)
 
-        'Get the final size of the folder and compare
+        ' Get the final size of the folder and compare
         Dim finalFolderSize = m_FileTools.GetDirectorySize(folderPath)
         If finalFolderSize = initialFolderSize Then
             Return True
@@ -706,9 +775,14 @@ Public Class clsXMLTimeValidation
     ''' <param name="filePath"></param>
     ''' <param name="sleepIntervalSeconds"></param>
     ''' <param name="blnLogonFailure"></param>
-    ''' <returns></returns>
+    ''' <returns>True if constant, false if changed</returns>
     ''' <remarks></remarks>
-    Protected Function VerifyConstantFileSize(ByVal filePath As String, ByVal sleepIntervalSeconds As Integer, ByRef blnLogonFailure As Boolean) As Boolean
+    Protected Function VerifyConstantFileSize(filePath As String, sleepIntervalSeconds As Integer, ByRef blnLogonFailure As Boolean) As Boolean
+
+        If Environment.MachineName.ToLower().StartsWith("monroe") Then
+            Console.WriteLine("Skipping file size validation because host name starts with Monroe")
+            Return True
+        End If
 
         blnLogonFailure = False
 
@@ -717,7 +791,7 @@ Public Class clsXMLTimeValidation
         If sleepIntervalSeconds < 1 Then sleepIntervalSeconds = 1
 
         Try
-            'Get the initial size of the folder
+            ' Get the initial size of the file
             Dim fiDatasetFile = New FileInfo(filePath)
             Dim initialFileSize = fiDatasetFile.Length
 
@@ -731,10 +805,10 @@ Public Class clsXMLTimeValidation
                 End If
             End If
 
-            'Wait for specified sleep interval
+            ' Wait for specified sleep interval
             Thread.Sleep(sleepIntervalMsec)
 
-            'Get the final size of the file and compare
+            ' Get the final size of the file and compare
             fiDatasetFile.Refresh()
             Dim finalFileSize = fiDatasetFile.Length
             If finalFileSize = initialFileSize Then
@@ -774,32 +848,32 @@ Public Class clsXMLTimeValidation
         Dim strLogMsg As String
 
         Try
-            If String.IsNullOrWhiteSpace(m_operator_PRN) Then
+            If String.IsNullOrWhiteSpace(mOperatorPRN) Then
                 strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)"
                 If TraceMode Then ShowTraceMessage(strLogMsg)
                 m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 
-                m_operator_Name = strLogMsg
+                mOperatorName = strLogMsg
                 Return False
             End If
 
-            'Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+            ' Requests additional task parameters from database and adds them to the m_taskParams string dictionary
             Dim sqlQuery As String = "  SELECT U_email, U_Name, U_PRN " &
                                     " FROM dbo.T_Users " &
-                                    " WHERE U_PRN = '" + m_operator_PRN + "'" &
+                                    " WHERE U_PRN = '" + mOperatorPRN + "'" &
                                     " ORDER BY ID desc"
             blnSuccess = LookupOperatorName(sqlQuery, strOperatorName, strOperatorEmail, strPRN, intUserCountMatched)
 
             If blnSuccess AndAlso Not String.IsNullOrEmpty(strOperatorName) Then
-                m_operator_Name = strOperatorName
-                m_operator_Email = strOperatorEmail
+                mOperatorName = strOperatorName
+                mOperatorEmail = strOperatorEmail
                 Return True
             End If
 
-            ' m_operator_PRN may contain the person's name instead of their PRN; check for this
-            ' In other words, m_operator_PRN may be "Baker, Erin M" instead of "D3P347"
+            ' mOperatorPRN may contain the person's name instead of their PRN; check for this
+            ' In other words, mOperatorPRN may be "Baker, Erin M" instead of "D3P347"
 
-            Dim strQueryName As String = String.Copy(m_operator_PRN)
+            Dim strQueryName As String = String.Copy(mOperatorPRN)
             If strQueryName.IndexOf("("c) > 0 Then
                 ' Name likely is something like: Baker, Erin M (D3P347)
                 ' Truncate any text after the parenthesis
@@ -817,27 +891,27 @@ Public Class clsXMLTimeValidation
                 If intUserCountMatched = 1 Then
                     ' We matched a single user using strQueryName
                     ' Update the operator name, e-mail, and PRN
-                    m_operator_Name = strOperatorName
-                    m_operator_Email = strOperatorEmail
-                    m_operator_PRN = strPRN
+                    mOperatorName = strOperatorName
+                    mOperatorEmail = strOperatorEmail
+                    mOperatorPRN = strPRN
                     Return True
                 ElseIf intUserCountMatched > 1 Then
                     strLogMsg = "clsXMLTimeValidation.SetOperatorName: Ambiguous match found for '" & strOperatorName & "' in T_Users.U_PRN; will e-mail '" & strOperatorEmail & "'"
                     m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 
-                    m_operator_Name = "Ambiguous match found for operator (" + strOperatorName + "); use network login instead, e.g. D3E154"
+                    mOperatorName = "Ambiguous match found for operator (" + strOperatorName + "); use network login instead, e.g. D3E154"
 
                     ' Update operator e-mail anwyway; that way at least somebody will get the e-mail
-                    m_operator_Email = strOperatorEmail
+                    mOperatorEmail = strOperatorEmail
                     Return False
                 End If
             End If
 
 
-            strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator not found in T_Users.U_PRN: " & m_operator_PRN
+            strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator not found in T_Users.U_PRN: " & mOperatorPRN
             m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
 
-            m_operator_Name = "Operator " + m_operator_PRN + " not found in T_Users; should be network login name, e.g. D3E154"
+            mOperatorName = "Operator " + mOperatorPRN + " not found in T_Users; should be network login name, e.g. D3E154"
             Return False
 
         Catch ex As Exception
@@ -848,9 +922,9 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Private Function LookupOperatorName(ByVal sqlQuery As String, ByRef strOperatorName As String, ByRef strOperatorEmail As String, ByRef strPRN As String, ByRef intUserCountMatched As Integer) As Boolean
+    Private Function LookupOperatorName(sqlQuery As String, ByRef strOperatorName As String, ByRef strOperatorEmail As String, ByRef strPRN As String, ByRef intUserCountMatched As Integer) As Boolean
 
-        'Get a list of all records in database (hopefully just one) matching the user PRN
+        ' Get a list of all records in database (hopefully just one) matching the user PRN
         Dim Cn As New SqlConnection(m_connection_str)
         Dim Da As New SqlDataAdapter(sqlQuery, Cn)
         Dim Ds As DataSet = New DataSet

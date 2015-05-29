@@ -5,7 +5,7 @@ Imports System.Collections.Generic
 Imports System.IO
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "April 14, 2015"
+    Public Const PROGRAM_DATE As String = "May 30, 2015"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
@@ -78,11 +78,11 @@ Module modMain
     ''' <param name="strProgramDate"></param>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Private Function GetAppVersion(ByVal strProgramDate As String) As String
+    Private Function GetAppVersion(strProgramDate As String) As String
         Return Assembly.GetExecutingAssembly().GetName().Version.ToString() & " (" & strProgramDate & ")"
     End Function
 
-    Private Function SetOptionsUsingCommandLineParameters(ByVal objParseCommandLine As clsParseCommandLine) As Boolean
+    Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
         Dim lstValidParameters As List(Of String) = New List(Of String) From {"NoMail", "Trace", "Preview"}
@@ -117,7 +117,7 @@ Module modMain
 
     End Function
 
-    Private Sub ShowErrorMessage(ByVal strMessage As String)
+    Private Sub ShowErrorMessage(strMessage As String)
         Const strSeparator As String = "------------------------------------------------------------------------------"
 
         Console.WriteLine()
@@ -129,7 +129,7 @@ Module modMain
         WriteToErrorStream(strMessage)
     End Sub
 
-    Private Sub ShowErrorMessage(ByVal strTitle As String, ByVal items As IEnumerable(Of String))
+    Private Sub ShowErrorMessage(strTitle As String, items As IEnumerable(Of String))
         Const strSeparator As String = "------------------------------------------------------------------------------"
         Dim strMessage As String
 
@@ -175,21 +175,12 @@ Module modMain
             Console.WriteLine()
 
             Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or matt@alchemistmatt.com")
-            Console.WriteLine("Website: http://panomics.pnnl.gov/ or http://omics.pnl.gov")
+            Console.WriteLine("Website: http://omics.pnl.gov/ or http://panomics.pnnl.gov/")
             Console.WriteLine()
 
             Console.WriteLine("Licensed under the Apache License, Version 2.0; you may not use this file except in compliance with the License.  " & _
                   "You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0")
             Console.WriteLine()
-
-            Console.WriteLine("Notice: This computer software was prepared by Battelle Memorial Institute, " & _
-                  "hereinafter the Contractor, under Contract No. DE-AC05-76RL0 1830 with the " & _
-                  "Department of Energy (DOE).  All rights in the computer software are reserved " & _
-                  "by DOE on behalf of the United States Government and the Contractor as " & _
-                  "provided in the Contract.  NEITHER THE GOVERNMENT NOR THE CONTRACTOR MAKES ANY " & _
-                  "WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF THIS " & _
-                  "SOFTWARE.  This notice including this sentence must appear on any copies of " & _
-                  "this computer software.")
 
             ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
             System.Threading.Thread.Sleep(750)
@@ -210,7 +201,7 @@ Module modMain
         End Try
     End Sub
 
-    Public Sub ShowTraceMessage(ByVal strMessage As String)
+    Public Sub ShowTraceMessage(strMessage As String)
         clsMainProcess.ShowTraceMessage(strMessage)
     End Sub
 
