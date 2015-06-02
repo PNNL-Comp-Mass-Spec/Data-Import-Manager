@@ -1,3 +1,4 @@
+Imports System.Collections.Concurrent
 Imports System.Collections.Generic
 Imports PRISM.Logging
 Imports PRISM.Files
@@ -7,7 +8,6 @@ Imports DataImportManager.clsGlobal
 Imports System.Windows.Forms
 Imports System.Threading
 Imports System.Runtime.InteropServices
-
 
 Public Class clsXMLTimeValidation
     Inherits clsDBTask
@@ -28,7 +28,7 @@ Public Class clsXMLTimeValidation
     Protected mShareConnector As ShareConnector
     Protected mSleepInterval As Integer = 30
 
-    Protected m_InstrumentsToSkip As Dictionary(Of String, Integer)
+    Protected m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
     Protected WithEvents m_FileTools As clsFileTools
 
     Public ReadOnly Property CaptureSubfolder As String
@@ -113,7 +113,7 @@ Public Class clsXMLTimeValidation
     ''' <param name="mgrParams"></param>
     ''' <param name="logger"></param>
     ''' <remarks></remarks>
-    Public Sub New(mgrParams As IMgrParams, logger As ILogger, dctInstrumentsToSkip As Dictionary(Of String, Integer))
+    Public Sub New(mgrParams As IMgrParams, logger As ILogger, dctInstrumentsToSkip As ConcurrentDictionary(Of String, Integer))
         MyBase.New(mgrParams, logger)
         m_FileTools = New clsFileTools
         m_InstrumentsToSkip = dctInstrumentsToSkip
@@ -127,17 +127,17 @@ Public Class clsXMLTimeValidation
         End If
     End Function
 
-    Public Function ValidateXMLFile(xmlFilePath As String) As IXMLValidateStatus.XmlValidateStatus
+    Public Function ValidateXMLFile(triggerFile As FileInfo) As IXMLValidateStatus.XmlValidateStatus
         Dim rslt As IXMLValidateStatus.XmlValidateStatus
 
         m_connection_str = m_mgrParams.GetParam("ConnectionString")
         mErrorMessage = String.Empty
 
         Try
-            If TraceMode Then clsMainProcess.ShowTraceMessage("Reading " & xmlFilePath)
-            rslt = GetXMLParameters(xmlFilePath)
+            If TraceMode Then clsMainProcess.ShowTraceMessage("Reading " & triggerFile.FullName)
+            rslt = GetXMLParameters(triggerFile)
         Catch ex As Exception
-            mErrorMessage = "Error reading the XML file " & Path.GetFileName(xmlFilePath)
+            mErrorMessage = "Error reading the XML file " & triggerFile.Name
             Dim errMsg = "clsXMLTimeValidation.ValidateXMLFile(), " & mErrorMessage & ": " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
             m_logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
@@ -174,7 +174,7 @@ Public Class clsXMLTimeValidation
         End Try
 
         Try
-            CLoseConnection()
+            CloseConnection()
         Catch ex As Exception
             mErrorMessage = "Exception closing connection"
             m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error closing connection, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
@@ -187,14 +187,15 @@ Public Class clsXMLTimeValidation
 
     ' Take the xml file and load into a dataset
     ' iterate through the dataset to retrieve the instrument name
-    Private Function GetXMLParameters(xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
+    Private Function GetXMLParameters(triggerFile As FileInfo) As IXMLValidateStatus.XmlValidateStatus
         Dim parameterName As String
         Dim rslt As IXMLValidateStatus.XmlValidateStatus
         Dim xmlFileContents As String
 
         ' initialize return value
         rslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
-        xmlFileContents = LoadXmlFileContentsIntoString(xmlFilename, m_logger)
+        xmlFileContents = LoadXmlFileContentsIntoString(triggerFile, m_logger)
+        If String.IsNullOrEmpty(xmlFileContents) Then Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING
 
         ' Load into a string reader after '&' was fixed
         Dim xmlStringReader As TextReader
@@ -228,7 +229,7 @@ Public Class clsXMLTimeValidation
             End If
 
             If mInstrumentName.StartsWith("9T") Or mInstrumentName.StartsWith("11T") Or mInstrumentName.StartsWith("12T") Then
-                rslt = InstrumentWaitDelay(xmlFilename)
+                rslt = InstrumentWaitDelay(triggerFile)
             End If
 
             If rslt <> IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE Then
@@ -244,7 +245,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Private Function InstrumentWaitDelay(xmlFilename As String) As IXMLValidateStatus.XmlValidateStatus
+    Private Function InstrumentWaitDelay(triggerFile As FileInfo) As IXMLValidateStatus.XmlValidateStatus
 
         Try
             Dim fileModDate As DateTime
@@ -252,11 +253,13 @@ Public Class clsXMLTimeValidation
             Dim dateNow As DateTime
             Dim delayValue As Integer
             delayValue = CInt(m_mgrParams.GetParam("xmlfiledelay"))
-            fileModDate = File.GetLastWriteTimeUtc(xmlFilename)
+
+            fileModDate = triggerFile.LastWriteTimeUtc
             fileModDateDelay = fileModDate.AddMinutes(delayValue)
             dateNow = DateTime.UtcNow
+
             If dateNow < fileModDateDelay Then
-                Dim statusMessage = "clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + xmlFilename
+                Dim statusMessage = "clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name
                 If TraceMode Then ShowTraceMessage(statusMessage)
                 m_logger.PostEntry(statusMessage, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES

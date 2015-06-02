@@ -128,11 +128,13 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsParseCommandLine.vb" />
+    <Compile Include="clsProcessXmlTriggerFile.vb" />
     <Compile Include="clsXMLTimeValidation.vb" />
     <Compile Include="ITaskParams.vb">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="IXMLValidateStatus.vb" />
+    <Compile Include="modExtensionMethods.vb" />
     <Compile Include="modMain.vb" />
     <Compile Include="My Project\Settings.Designer.vb">
       <AutoGen>True</AutoGen>

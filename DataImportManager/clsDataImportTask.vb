@@ -1,5 +1,6 @@
 Imports PRISM.Logging
 Imports System.Data.SqlClient
+Imports System.IO
 Imports DataImportManager.clsGlobal
 
 
@@ -45,7 +46,7 @@ Public Class clsDataImportTask
     Private mp_xmlContents As String
 #End Region
 
-    Public Function PostTask(ByVal xmlFilePath As String) As Boolean
+    Public Function PostTask(ByVal triggerFile As FileInfo) As Boolean
 
         mPostTaskErrorMessage = String.Empty
         mDBErrorMessage = String.Empty
@@ -62,7 +63,7 @@ Public Class clsDataImportTask
 
         Try
             ' Call request stored procedure
-            mp_xmlContents = LoadXmlFileContentsIntoString(xmlFilePath, m_logger)
+            mp_xmlContents = LoadXmlFileContentsIntoString(triggerFile, m_logger)
             If String.IsNullOrEmpty(mp_xmlContents) Then
                 Return False
             End If
@@ -73,7 +74,7 @@ Public Class clsDataImportTask
         End Try
 
         Try
-            CLoseConnection()
+            CloseConnection()
         Catch ex As Exception
             m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error closing connection, " & ex.Message, ILogger.logMsgType.logError, True)
             Return False
