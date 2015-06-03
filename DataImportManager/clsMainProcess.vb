@@ -11,23 +11,25 @@ Imports System.Threading.Tasks
 Public Class clsMainProcess
 
 #Region "Constants"
-	Private Const EMERG_LOG_FILE As String = "DataImportMan_log.txt"
-	Private Const MAX_ERROR_COUNT As Integer = 4
+    Private Const EMERG_LOG_FILE As String = "DataImportMan_log.txt"
+    Private Const MAX_ERROR_COUNT As Integer = 4
 #End Region
 
 #Region "Member Variables"
-	Private m_MgrSettings As clsMgrSettings
+    Private m_MgrSettings As clsMgrSettings
 
-	Private m_Logger As ILogger
-	Private m_ConfigChanged As Boolean = False
-	Private WithEvents m_FileWatcher As New FileSystemWatcher
-	Private m_MgrActive As Boolean = True
-	Private m_DebugLevel As Integer = 0
+    Private m_Logger As ILogger
+    Private m_ConfigChanged As Boolean = False
+    Private WithEvents m_FileWatcher As New FileSystemWatcher
+    Private m_MgrActive As Boolean = True
+    Private m_DebugLevel As Integer = 0
     Public m_db_Err_Msg As String
 
     ' Keys in this dictionary are instrument names
     ' Values are the number of datasets skipped for the given instrument
     Private m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
+
+    Private mFailureCount As Integer
 
 #End Region
 
@@ -47,11 +49,6 @@ Public Class clsMainProcess
     End Sub
 
     Public Function InitMgr() As Boolean
-        Dim LogFile As String
-        Dim fiLogFile As FileInfo
-
-        Dim ConnectStr As String
-        Dim ModName As String
 
         ' Get the manager settings
         Try
@@ -66,28 +63,29 @@ Public Class clsMainProcess
             ' Failures are logged by clsMgrSettings to local emergency log file
         End Try
 
-        Dim FInfo As FileInfo = New FileInfo(GetExePath())
+        Dim connectionstring = m_MgrSettings.GetParam("connectionstring")
+
+        Dim FInfo = New FileInfo(GetExePath())
         Try
             ' Load initial settings
             m_MgrActive = CBool(m_MgrSettings.GetParam("mgractive"))
             m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
 
             ' create the object that will manage the logging
-            LogFile = Path.Combine(FInfo.DirectoryName, m_MgrSettings.GetParam("logfilename"))
+            Dim logFilePath = Path.Combine(FInfo.DirectoryName, m_MgrSettings.GetParam("logfilename"))
 
-            ' Make sure the folder exists
+            ' Make sure the log folder exists
             Try
-                fiLogFile = New FileInfo(LogFile)
+                Dim fiLogFile = New FileInfo(logFilePath)
                 If Not Directory.Exists(fiLogFile.DirectoryName) Then
                     Directory.CreateDirectory(fiLogFile.DirectoryName)
                 End If
             Catch ex2 As Exception
-                Console.WriteLine("Error checking for valid directory for Logfile: " & LogFile)
+                Console.WriteLine("Error checking for valid directory for Logfile: " & logFilePath)
             End Try
 
-            ConnectStr = m_MgrSettings.GetParam("connectionstring")
-            ModName = m_MgrSettings.GetParam("modulename")
-            m_Logger = New clsQueLogger(New clsDBLogger(ModName, ConnectStr, LogFile))
+            Dim moduleName = m_MgrSettings.GetParam("modulename")
+            m_Logger = New clsQueLogger(New clsDBLogger(moduleName, connectionstring, logFilePath))
 
             ' Write the initial log and status entries
             m_Logger.PostEntry("===== Started Data Import Manager V" & Application.ProductVersion & " =====", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
@@ -127,7 +125,7 @@ Public Class clsMainProcess
 
     End Function
 
-    Public Sub DoImport()
+    Public Function DoImport() As Boolean
 
         Try
 
@@ -137,7 +135,11 @@ Public Class clsMainProcess
                 If TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
                 DeleteStatusFlagFile(m_Logger)
-                Exit Sub
+
+                If Not GetHostName().ToLower.StartsWith("monroe") Then
+                    Exit Function
+                End If
+
             End If
 
             ' Check to see if machine settings have changed
@@ -156,13 +158,13 @@ Public Class clsMainProcess
                         m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
                     End If
 
-                    Exit Sub
+                    Exit Function
                 End If
                 m_FileWatcher.EnableRaisingEvents = True
             End If
 
             ' Check to see if excessive consecutive failures have occurred
-            If FailCount > MAX_ERROR_COUNT Then
+            If mFailureCount > MAX_ERROR_COUNT Then
                 ' More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
                 Const errMsg As String = "Excessive task failures, disabling manager"
                 If TraceMode Then ShowTraceMessage(errMsg)
@@ -174,22 +176,40 @@ Public Class clsMainProcess
             If Not m_MgrActive Then
                 If TraceMode Then ShowTraceMessage("Manager is inactive")
                 m_Logger.PostEntry("Manager inactive", ILogger.logMsgType.logNormal, True)
-                Exit Sub
+                Exit Function
             End If
 
+            Dim connectionString = m_MgrSettings.GetParam("connectionstring")
+            Dim infoCache As DMSInfoCache
+
+            Try
+                infoCache = New DMSInfoCache(connectionString, m_Logger, TraceMode)
+            Catch ex As Exception
+                Dim errMsg = "Unable to connect to the database using " & connectionString
+                If TraceMode Then ShowTraceMessage(errMsg)
+                m_Logger.PostError(errMsg, ex, LOG_LOCAL_ONLY)
+                Return False
+            End Try
+
+            AddHandler infoCache.DBErrorEvent, New DMSInfoCache.DBErrorEventEventHandler(AddressOf OnDbErrorEvent)
+
             ' Check to see if there are any data import files ready
-            DoDataImportTask()
+            DoDataImportTask(infoCache)
+
+            infoCache.CloseDatabaseConnection()
+
+            Return True
 
         Catch ex As Exception
             Dim errMsg As String = "Exception in clsMainProcess.DoImport(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
             m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
-            Exit Sub
+            Return False
         End Try
 
-    End Sub
+    End Function
 
-    Private Sub DoDataImportTask()
+    Private Sub DoDataImportTask(infoCache As DMSInfoCache)
 
         Dim result As ITaskParams.CloseOutType
 
@@ -206,8 +226,6 @@ Public Class clsMainProcess
 
                 CreateStatusFlagFile()    'Set status file for control of future runs
 
-                Application.DoEvents()
-
                 ' Add a delay
                 Dim importDelayText As String = m_MgrSettings.GetParam("importdelay")
                 Dim importDelay As Integer
@@ -218,7 +236,7 @@ Public Class clsMainProcess
                     importDelay = 2
                 End If
 
-                If Environment.MachineName.ToLower().StartsWith("monroe") Then
+                If GetHostName().ToLower().StartsWith("monroe") Then
                     Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
                     importDelay = 1
                 ElseIf PreviewMode Then
@@ -228,6 +246,9 @@ Public Class clsMainProcess
 
                 If TraceMode Then ShowTraceMessage("ImportDelay, sleep for " & importDelay & " seconds")
                 Thread.Sleep(importDelay * 1000)
+
+                ' Load information from DMS
+                infoCache.LoadDMSInfo()
 
                 ' Randomize order of files in m_XmlFilesToLoad
                 xmlFilesToImport.Shuffle()
@@ -242,7 +263,7 @@ Public Class clsMainProcess
                     End If
 
                     Parallel.ForEach(currentChunk, Sub(currentFile)
-                                                       ProcessOneFile(currentFile, successFolder, failureFolder)
+                                                       ProcessOneFile(currentFile, successFolder, failureFolder, infoCache)
                                                    End Sub)
 
                 Loop While xmlFilesToImport.Count > 0
@@ -272,14 +293,14 @@ Public Class clsMainProcess
             ' If we got to here, then closeout the task as a success
             '
             DeleteStatusFlagFile(m_Logger)
-            FailCount = 0
+            mFailureCount = 0
 
             Dim completionMsg = "Completed task"
             If TraceMode Then ShowTraceMessage(completionMsg)
             m_Logger.PostEntry(completionMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 
         Catch ex As Exception
-            FailCount += 1
+            mFailureCount += 1
 
             Dim errMsg = "Exception in clsMainProcess.DoDataImportTask(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
@@ -287,7 +308,7 @@ Public Class clsMainProcess
         End Try
 
     End Sub
-
+    
     ''' <summary>
     ''' Retrieve the next chunk of items from a list
     ''' </summary>
@@ -317,7 +338,7 @@ Public Class clsMainProcess
 
     End Function
 
-    Private Sub ProcessOneFile(currentFile As FileInfo, successfolder As String, failureFolder As String)
+    Private Sub ProcessOneFile(currentFile As FileInfo, successfolder As String, failureFolder As String, infoCache As DMSInfoCache)
 
         Dim objRand As New Random()
 
@@ -341,7 +362,7 @@ Public Class clsMainProcess
             .SuccessFolder = successfolder
         End With
 
-        Dim triggerProcessor = New clsProcessXmlTriggerFile(m_MgrSettings, m_InstrumentsToSkip, m_Logger, udtSettings)
+        Dim triggerProcessor = New clsProcessXmlTriggerFile(m_MgrSettings, m_InstrumentsToSkip, infoCache, m_Logger, udtSettings)
         triggerProcessor.ProcessFile(currentFile)
 
     End Sub
@@ -352,7 +373,7 @@ Public Class clsMainProcess
         Dim serverXferDir As String = m_MgrSettings.GetParam("xferdir")
 
         If String.IsNullOrWhiteSpace(serverXferDir) Then
-            m_Logger.PostEntry("Manager parameter xferdir is empty (" + Net.Dns.GetHostName + ")", ILogger.logMsgType.logError, LOG_DATABASE)
+            m_Logger.PostEntry("Manager parameter xferdir is empty (" + GetHostName() + ")", ILogger.logMsgType.logError, LOG_DATABASE)
             xmlFilesToImport = New List(Of FileInfo)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End If
@@ -395,7 +416,12 @@ Public Class clsMainProcess
         End If
         m_FileWatcher.EnableRaisingEvents = False  'Turn off change detection until current change has been acted upon
     End Sub
-    
+
+    Private Sub OnDbErrorEvent(message As String)
+        If TraceMode Then ShowTraceMessage("Database error message: " & message)
+        m_Logger.PostEntry(message, ILogger.logMsgType.logError, True)
+    End Sub
+
     Private Function DeleteXmlFiles(FileDirectory As String, NoDays As Integer) As Boolean
 
         Dim filedate As DateTime
@@ -446,9 +472,9 @@ Public Class clsMainProcess
         End If
 
     End Sub
-    
+
     Public Shared Sub ShowTraceMessage(strMessage As String)
         Console.WriteLine(DateTime.Now.ToString("hh:mm:ss.fff tt") & ": " & strMessage)
     End Sub
-    
+
 End Class

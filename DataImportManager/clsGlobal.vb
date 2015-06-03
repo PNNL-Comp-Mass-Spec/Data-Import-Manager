@@ -9,33 +9,34 @@ Public Class clsGlobal
 	'Constants
 	Public Const LOG_LOCAL_ONLY As Boolean = True
 	Public Const LOG_DATABASE As Boolean = False
-	Public Shared FailCount As Integer = 0
+
+    Private Const FLAG_FILE_NAME As String = "FlagFile.txt"
 
 	Public Shared Sub CreateStatusFlagFile()
 
 		'Creates a dummy file in the application directory to be used for controlling task request
 		'	bypass
 
-        Dim ExeFi As New FileInfo(GetExePath())
-		Dim TestFileFi As New FileInfo(Path.Combine(ExeFi.DirectoryName, "FlagFile.txt"))
-		Dim Sw As StreamWriter = TestFileFi.AppendText()
-
-		Sw.WriteLine(DateTime.Now().ToString)
-		Sw.Flush()
-		Sw.Close()
+        Dim fiAppProgram As New FileInfo(GetExePath())
+        Dim fiFlagFile As New FileInfo(Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME))
+        Using swFlagFile As StreamWriter = fiFlagFile.AppendText()
+            swFlagFile.WriteLine(DateTime.Now().ToString)
+            swFlagFile.Flush()
+            swFlagFile.Close()
+        End Using
 
     End Sub
-    
-	Public Shared Sub DeleteStatusFlagFile(ByVal MyLogger As ILogger)
 
-		'Deletes the task request control flag file
-        Dim ExeFi As New FileInfo(GetExePath())
-		Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
+    Public Shared Sub DeleteStatusFlagFile(ByVal MyLogger As ILogger)
 
-		Try
-			If File.Exists(TestFile) Then
-				File.Delete(TestFile)
-			End If
+        'Deletes the task request control flag file
+        Dim fiAppProgram As New FileInfo(GetExePath())
+        Dim flagFilePath As String = Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME)
+
+        Try
+            If File.Exists(flagFilePath) Then
+                File.Delete(flagFilePath)
+            End If
         Catch ex As Exception
             MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, ILogger.logMsgType.logError, True)
         End Try
@@ -45,10 +46,10 @@ Public Class clsGlobal
     Public Shared Function DetectStatusFlagFile() As Boolean
 
         ' Returns True if task request control flag file exists
-        Dim ExeFi As New FileInfo(GetExePath())
-        Dim TestFile As String = Path.Combine(ExeFi.DirectoryName, "FlagFile.txt")
+        Dim fiAppProgram As New FileInfo(GetExePath())
+        Dim flagFilePath As String = Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME)
 
-        Return File.Exists(TestFile)
+        Return File.Exists(flagFilePath)
 
     End Function
 
@@ -58,7 +59,16 @@ Public Class clsGlobal
         Return Assembly.GetExecutingAssembly().Location
     End Function
 
+    Public Shared Function GetHostName() As String
 
+        Dim hostName = Net.Dns.GetHostName()
+        If String.IsNullOrWhiteSpace(hostName) Then
+            hostName = Environment.MachineName
+        End If
+
+        Return hostName
+
+    End Function
     Public Shared Function LoadXmlFileContentsIntoString(ByVal triggerFile As FileInfo, ByVal MyLogger As ILogger) As String
         Try
             ' Read the contents of the xml file into a string which will be passed into a stored procedure.

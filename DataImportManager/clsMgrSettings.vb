@@ -224,9 +224,9 @@ Public Class clsMgrSettings
         ' Get a datatable holding the parameters for one manager
         While RetryCount > 0
             Try
-                Using Cn As SqlConnection = New SqlConnection(strConnectionString)
-                    Using Da As SqlDataAdapter = New SqlDataAdapter(SqlStr, Cn)
-                        Using Ds As DataSet = New DataSet
+                Using Cn = New SqlConnection(strConnectionString)
+                    Using Da = New SqlDataAdapter(SqlStr, Cn)
+                        Using Ds = New DataSet
                             Da.Fill(Ds)
                             Dt = Ds.Tables(0)
                         End Using  'Ds

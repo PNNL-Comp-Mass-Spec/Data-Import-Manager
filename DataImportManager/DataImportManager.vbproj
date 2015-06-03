@@ -105,6 +105,7 @@
     <Import Include="Microsoft.VisualBasic" />
     <Import Include="System" />
     <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
     <Import Include="System.Data" />
     <Import Include="System.Diagnostics" />
     <Import Include="System.Linq" />
@@ -113,6 +114,7 @@
     <Compile Include="AssemblyInfo.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="clsDMSOperatorLookup.vb" />
     <Compile Include="clsMainProcess.vb" />
     <Compile Include="clsMgrSettings.vb">
       <SubType>Code</SubType>

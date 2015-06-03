@@ -1,6 +1,10 @@
 Data Import Manager History
 
-Version 1.2.5263; June 1, 2015
+Version 1.2.5630; June 3, 2015
+	- Added class DMSInfoCache for caching static DMS info to avoid re-querying static information over and over
+		- Also opens a connection to DMS just once, and leaves that connection open until all XML trigger files have been processed
+
+Version 1.2.5628; June 1, 2015
 	- Now verifying XML files in parallel using a Parallel.ForEach
 
 Version 1.2.5627; May 29, 2015
