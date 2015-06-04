@@ -1,4 +1,5 @@
 ﻿Imports System.Collections.Concurrent
+Imports System.Data.SqlClient
 Imports System.IO
 Imports System.Net.Mail
 Imports PRISM.Logging
@@ -175,14 +176,23 @@ Public Class clsProcessXmlTriggerFile
             m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
         End If
 
-        ' create the object that will import the Data record
-        '
-        mDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger, mDMSInfoCache)
-        mDataImportTask.TraceMode = ProcSettings.TraceMode
-        mDataImportTask.PreviewMode = ProcSettings.PreviewMode
+        ' Open a new database connection
+        ' Doing this now due to database timeouts that were seen when using mDMSInfoCache.DBConnection
 
-        mDatabaseErrorMsg = String.Empty
-        Dim success = mDataImportTask.PostTask(triggerFile)
+        Dim success = False
+
+        Using dbConnection = mDMSInfoCache.GetNewDbConnection()
+
+            ' Create the object that will import the Data record
+            '
+            mDataImportTask = New clsDataImportTask(m_MgrSettings, m_Logger, dbConnection)
+            mDataImportTask.TraceMode = ProcSettings.TraceMode
+            mDataImportTask.PreviewMode = ProcSettings.PreviewMode
+
+            mDatabaseErrorMsg = String.Empty
+            success = mDataImportTask.PostTask(triggerFile)
+
+        End Using
 
         mDatabaseErrorMsg = mDataImportTask.DBErrorMessage
 

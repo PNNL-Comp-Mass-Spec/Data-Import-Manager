@@ -16,9 +16,6 @@ Public MustInherit Class clsDBTask
     Protected m_DBCn As SqlConnection
     Protected m_error_list As New StringCollection()
 
-    ' job status
-    Protected m_TaskWasAssigned As Boolean = False
-
 #End Region
 
 #Region "Auto-properties"
@@ -37,12 +34,6 @@ Public MustInherit Class clsDBTask
         m_logger = logger
         m_DBCn = dbConnection
     End Sub
-
-    Public ReadOnly Property TaskWasAssigned() As Boolean
-        Get
-            Return m_TaskWasAssigned
-        End Get
-    End Property
 
     Protected Sub LogErrorEvents()
         If m_error_list.Count > 0 Then

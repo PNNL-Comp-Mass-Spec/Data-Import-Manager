@@ -24,11 +24,12 @@ Public Class DMSInfoCache
 
 #Region "Properties and Events"
 
-    Public ReadOnly Property DBConnection As SqlConnection
+    Public ReadOnly Property Connectionstring As String
         Get
-            Return mDBConnection
+            Return mConnectionString
         End Get
     End Property
+
 
     Public Event DBErrorEvent(message As String)
 
@@ -58,8 +59,6 @@ Public Class DMSInfoCache
     ''' <remarks></remarks>
     Private ReadOnly mOperators As Dictionary(Of String, udtOperatorInfoType)
 
-    Private ReadOnly mDBConnection As SqlConnection
-
 #End Region
 
     ''' <summary>
@@ -77,11 +76,9 @@ Public Class DMSInfoCache
 
         mOperators = New Dictionary(Of String, udtOperatorInfoType)(StringComparison.CurrentCultureIgnoreCase)
 
-        mDBConnection = OpenDbConnection()
-        
     End Sub
-    
-    Protected Function OpenDbConnection() As SqlConnection
+
+    Public Function GetNewDbConnection() As SqlConnection
         Dim retryCount = 3
         While retryCount > 0
             Try
@@ -104,24 +101,13 @@ Public Class DMSInfoCache
         Throw New Exception("Unable to connect to the database after 3 tries")
 
     End Function
-
-    ''' <summary>
-    ''' Close the database connection
-    ''' </summary>
-    ''' <remarks>Access to DMS will no longer work after this has been called</remarks>
-    Public Sub CloseDatabaseConnection()
-
-        If Not mDBConnection Is Nothing Then
-            If mDBConnection.State <> ConnectionState.Closed And mDBConnection.State <> ConnectionState.Broken Then
-                mDBConnection.Close()
-            End If
-        End If
-    End Sub
-
+    
     Public Function GetDbErrorSolution(errorText As String) As String
 
         If mErrorSolutions.Count = 0 Then
-            LoadErrorSolutionsFromDMS()
+            Using dbConnection = GetNewDbConnection()
+                LoadErrorSolutionsFromDMS(dbConnection)
+            End Using
         End If
 
         Dim query = (From item In mErrorSolutions Where errorText.Contains(item.Key) Select item.Value).ToList()
@@ -137,7 +123,9 @@ Public Class DMSInfoCache
     Public Function GetInstrumentInfo(instrumentName As String, <Out()> ByRef udtInstrumentInfo As udtInstrumentInfoType) As Boolean
 
         If mInstruments.Count = 0 Then
-            LoadInstrumentsFromDMS()
+            Using dbConnection = GetNewDbConnection()
+                LoadInstrumentsFromDMS(dbConnection)
+            End Using
         End If
 
         If mInstruments.TryGetValue(instrumentName, udtInstrumentInfo) Then
@@ -152,7 +140,9 @@ Public Class DMSInfoCache
     Public Function GetOperatorName(operatorPRN As String, <Out()> ByRef userCountMatched As Integer) As udtOperatorInfoType
 
         If mOperators.Count = 0 Then
-            LoadOperatorsFromDMS()
+            Using dbConnection = GetNewDbConnection()
+                LoadOperatorsFromDMS(dbConnection)
+            End Using
         End If
 
         userCountMatched = 0
@@ -201,12 +191,14 @@ Public Class DMSInfoCache
     ''' </summary>
     ''' <remarks></remarks>
     Public Sub LoadDMSInfo()
-        LoadErrorSolutionsFromDMS()
-        LoadInstrumentsFromDMS()
-        LoadOperatorsFromDMS()
+        Using dbConnection = GetNewDbConnection()
+            LoadErrorSolutionsFromDMS(dbConnection)
+            LoadInstrumentsFromDMS(dbConnection)
+            LoadOperatorsFromDMS(dbConnection)
+        End Using        
     End Sub
 
-    Private Sub LoadErrorSolutionsFromDMS()
+    Private Sub LoadErrorSolutionsFromDMS(dbConnection As SqlConnection)
 
         Dim retryCount = 3
         Dim timeoutSeconds = 5
@@ -223,7 +215,7 @@ Public Class DMSInfoCache
             Try
                 mErrorSolutions.Clear()
 
-                Using cmd = New SqlCommand(sqlQuery, DBConnection)
+                Using cmd = New SqlCommand(sqlQuery, dbConnection)
 
                     cmd.CommandTimeout = timeoutSeconds
 
@@ -260,7 +252,7 @@ Public Class DMSInfoCache
 
     End Sub
 
-    Private Sub LoadInstrumentsFromDMS()
+    Private Sub LoadInstrumentsFromDMS(dbConnection As SqlConnection)
 
         Dim retryCount = 3
         Dim timeoutSeconds = 5
@@ -277,7 +269,7 @@ Public Class DMSInfoCache
             Try
                 mInstruments.Clear()
 
-                Using cmd = New SqlCommand(sqlQuery, DBConnection)
+                Using cmd = New SqlCommand(sqlQuery, dbConnection)
 
                     cmd.CommandTimeout = timeoutSeconds
 
@@ -319,7 +311,7 @@ Public Class DMSInfoCache
 
     End Sub
 
-    Private Sub LoadOperatorsFromDMS()
+    Private Sub LoadOperatorsFromDMS(dbConnection As SqlConnection)
 
         Dim retryCount = 3
         Dim timeoutSeconds = 5
@@ -336,7 +328,7 @@ Public Class DMSInfoCache
             Try
                 mOperators.Clear()
 
-                Using cmd = New SqlCommand(sqlQuery, DBConnection)
+                Using cmd = New SqlCommand(sqlQuery, dbConnection)
 
                     cmd.CommandTimeout = timeoutSeconds
 
@@ -460,12 +452,8 @@ Public Class DMSInfoCache
                 ", LineNumber: " & err.LineNumber & _
                 ", Procedure:" & err.Procedure & _
                 ", Server: " & err.Server
-            RaiseEvent DBErrorEvent(s)            
+            RaiseEvent DBErrorEvent(s)
         Next
     End Sub
 
-    'Protected Overrides Sub Finalize()
-    '    MyBase.Finalize()
-    '    CloseDatabaseConnection()
-    'End Sub
 End Class

@@ -196,7 +196,7 @@ Public Class clsMainProcess
             ' Check to see if there are any data import files ready
             DoDataImportTask(infoCache)
 
-            infoCache.CloseDatabaseConnection()
+            Thread.Sleep(250)
 
             Return True
 

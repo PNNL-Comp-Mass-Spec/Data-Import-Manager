@@ -3,13 +3,16 @@ Imports System.Data.SqlClient
 Imports System.IO
 Imports DataImportManager.clsGlobal
 
-
 Public Class clsDataImportTask
 	Inherits clsDBTask
 
-	Protected mPostTaskErrorMessage As String = String.Empty
-	Protected mDBErrorMessage As String
-    Protected ReadOnly mDMSInfoCache As DMSInfoCache
+#Region "Member Variables"
+    Protected mPostTaskErrorMessage As String = String.Empty
+    Protected mDBErrorMessage As String
+
+    Protected mp_stored_proc As String
+    Protected mp_xmlContents As String
+#End Region
 
 #Region "Properties"
 
@@ -42,19 +45,13 @@ Public Class clsDataImportTask
     ''' </summary>
     ''' <param name="mgrParams"></param>
     ''' <param name="logger"></param>
-    ''' <param name="dmsCache"></param>
+    ''' <param name="dbConnection"></param>
     ''' <remarks></remarks>
-    Public Sub New(ByVal mgrParams As IMgrParams, ByVal logger As ILogger, dmsCache As DMSInfoCache)
-        MyBase.New(mgrParams, logger, dmsCache.DBConnection)
-        mDMSInfoCache = dmsCache
+    Public Sub New(mgrParams As IMgrParams, logger As ILogger, dbConnection As SqlConnection)
+        MyBase.New(mgrParams, logger, dbConnection)
     End Sub
 
-#Region "parameters for calling stored procedure"
-    Private mp_stored_proc As String
-    Private mp_xmlContents As String
-#End Region
-
-    Public Function PostTask(ByVal triggerFile As FileInfo) As Boolean
+    Public Function PostTask(triggerFile As FileInfo) As Boolean
 
         mPostTaskErrorMessage = String.Empty
         mDBErrorMessage = String.Empty

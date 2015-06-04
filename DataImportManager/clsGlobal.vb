@@ -21,8 +21,6 @@ Public Class clsGlobal
         Dim fiFlagFile As New FileInfo(Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME))
         Using swFlagFile As StreamWriter = fiFlagFile.AppendText()
             swFlagFile.WriteLine(DateTime.Now().ToString)
-            swFlagFile.Flush()
-            swFlagFile.Close()
         End Using
 
     End Sub

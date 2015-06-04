@@ -7,8 +7,8 @@ Imports System.Threading
 Imports System.Runtime.InteropServices
 
 Public Class clsXMLTimeValidation
-    Inherits clsDBTask
 
+#Region "Member variables"
     Private mInstrumentName As String = String.Empty
     Private mCaptureSubfolder As String = String.Empty
     Private mDatasetName As String = String.Empty
@@ -29,6 +29,16 @@ Public Class clsXMLTimeValidation
 
     Protected m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
     Protected WithEvents m_FileTools As clsFileTools
+
+    ' access to the logger
+    Protected m_logger As ILogger
+
+    ' access to mgr parameters
+    Protected m_mgrParams As IMgrParams
+
+#End Region
+
+#Region "Properties"
 
     Public ReadOnly Property CaptureSubfolder As String
         Get
@@ -65,8 +75,7 @@ Public Class clsXMLTimeValidation
             Return mErrorMessage
         End Get
     End Property
-
-
+    
     Public ReadOnly Property OperatorEMail() As String
         Get
             Return FixNull(mOperatorEmail)
@@ -97,6 +106,10 @@ Public Class clsXMLTimeValidation
         End Get
     End Property
 
+    Public Property TraceMode As Boolean
+
+#End Region
+
 #Region "Enums"
     Protected Enum RawDSTypes
         None
@@ -111,6 +124,8 @@ Public Class clsXMLTimeValidation
     ''' </summary>
     ''' <param name="mgrParams"></param>
     ''' <param name="logger"></param>
+    ''' <param name="dctInstrumentsToSkip"></param>
+    ''' <param name="dmsCache"></param>
     ''' <remarks></remarks>
     Public Sub New(
       mgrParams As IMgrParams,
@@ -118,7 +133,9 @@ Public Class clsXMLTimeValidation
       dctInstrumentsToSkip As ConcurrentDictionary(Of String, Integer),
       dmsCache As DMSInfoCache)
 
-        MyBase.New(mgrParams, logger, dmsCache.DBConnection)
+        m_mgrParams = mgrParams
+        m_logger = logger
+
         m_FileTools = New clsFileTools
         m_InstrumentsToSkip = dctInstrumentsToSkip
         mDMSInfoCache = dmsCache
