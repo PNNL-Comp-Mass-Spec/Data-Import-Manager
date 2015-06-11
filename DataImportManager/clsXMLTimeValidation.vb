@@ -217,6 +217,16 @@ Public Class clsXMLTimeValidation
                             mInstrumentName = row("Value").ToString()
                         Case "Capture Subfolder"
                             mCaptureSubfolder = row("Value").ToString()
+
+                            If mCaptureSubfolder = "D:\Metabolomics_Data" Then
+                                ' !!!!!!!!!!!!!!!!
+                                ' !!! HACK FIX !!!
+                                ' !!!!!!!!!!!!!!!!
+                                ' ToDo: Get Buzzard updated so that this doesn't appear in the XML trigger files
+                                mCaptureSubfolder = String.Empty
+                            End If
+
+
                         Case "Dataset Name"
                             mDatasetName = row("Value").ToString()
                         Case "Run Finish UTC"
