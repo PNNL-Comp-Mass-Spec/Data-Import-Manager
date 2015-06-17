@@ -389,7 +389,22 @@ Public Class DMSInfoCache
 
         If mOperators.TryGetValue(operatorPrnToFind, operatorInfo) Then
             ' Match found
-            If mTraceMode Then ShowTraceMessage("Matched " & operatorInfo.Name)
+            If mTraceMode Then ShowTraceMessage("Matched " & operatorInfo.Name & " using TryGetValue")
+            userCountMatched = 1
+            Return True
+        End If
+
+        Dim query1 = (From item In mOperators
+                     Order By item.Value.ID Descending
+                     Where item.Value.Username.ToLower().StartsWith(operatorPrnToFind.ToLower())
+                     Select item.Value()).ToList()
+
+        If query1.Count = 1 Then
+            operatorInfo = query1.First
+            Dim strLogMsg = "Matched " & operatorInfo.Username & " using LINQ (the lookup with .TryGetValue(" & operatorPrnToFind & ") failed)"
+            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            If mTraceMode Then ShowTraceMessage(strLogMsg)
+
             userCountMatched = 1
             Return True
         End If
@@ -405,20 +420,20 @@ Public Class DMSInfoCache
             strQueryName = strQueryName.Substring(0, strQueryName.IndexOf("("c)).Trim()
         End If
 
-        Dim query = (From item In mOperators
+        Dim query2 = (From item In mOperators
                      Order By item.Value.ID Descending
                      Where item.Value.Name.ToLower().StartsWith(strQueryName.ToLower())
                      Select item.Value()).ToList()
 
-        userCountMatched = query.Count
+        userCountMatched = query2.Count
 
         If userCountMatched = 1 Then
             ' We matched a single user
             ' Update the operator name, e-mail, and PRN
-            operatorInfo = query.FirstOrDefault()
+            operatorInfo = query2.FirstOrDefault()
             Return True
         ElseIf userCountMatched > 1 Then
-            operatorInfo = query.FirstOrDefault()
+            operatorInfo = query2.FirstOrDefault()
             Dim strLogMsg = "LookupOperatorName: Ambiguous match found for '" & strQueryName & "' in T_Users; will e-mail '" & operatorInfo.Email & "'"
             m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
 
