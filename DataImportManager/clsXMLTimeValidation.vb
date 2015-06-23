@@ -218,11 +218,13 @@ Public Class clsXMLTimeValidation
                         Case "Capture Subfolder"
                             mCaptureSubfolder = row("Value").ToString()
 
-                            If mCaptureSubfolder = "D:\Metabolomics_Data" Then
-                                ' !!!!!!!!!!!!!!!!
-                                ' !!! HACK FIX !!!
-                                ' !!!!!!!!!!!!!!!!
-                                ' ToDo: Get Buzzard updated so that this doesn't appear in the XML trigger files
+                            If Path.IsPathRooted(mCaptureSubfolder) Then
+                                ' Instrument folder has an older version of Buzzard that incorrectly determines the capture subfolder
+                                ' For safety, will blank this out, but will post a log entry to the database
+                                Dim msg = "clsXMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " &
+                                          "this indicates a bug with Buzzard; see: " & triggerFile.Name
+
+                                m_logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_DATABASE)
                                 mCaptureSubfolder = String.Empty
                             End If
 
