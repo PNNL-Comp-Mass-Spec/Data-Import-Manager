@@ -120,7 +120,7 @@ Public Class clsProcessXmlTriggerFile
     End Function
 
     ''' <summary>
-    ''' Returns a string with the path to the log file, assuming the file can be access with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
+    ''' Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
     ''' </summary>
     ''' <returns></returns>
     ''' <remarks></remarks>
@@ -212,8 +212,15 @@ Public Class clsProcessXmlTriggerFile
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
             m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 
-            Dim mail_msg = "There is a problem with the following XML file: " & moveLocPath & ".  Check the log for details."
-            mail_msg &= ControlChars.NewLine & "Operator: " & m_xml_operator_Name
+            Dim mail_msg = "There is a problem with the following XML file: " & moveLocPath & ControlChars.NewLine
+            mail_msg &= "Operator: " & m_xml_operator_Name & ControlChars.NewLine
+
+            If (String.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage)) Then
+                mail_msg &= "Error: Check the log for details; " + GetLogFileSharePath()
+            Else
+                mail_msg &= "Error: " & mDataImportTask.PostTaskErrorMessage
+            End If
+
 
             ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error             
             Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
