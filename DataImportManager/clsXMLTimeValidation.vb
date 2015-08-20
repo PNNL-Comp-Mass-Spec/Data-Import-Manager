@@ -332,7 +332,7 @@ Public Class clsXMLTimeValidation
     End Function
 
     Private Function PerformValidation() As IXMLValidateStatus.XmlValidateStatus
-        Dim m_Connected As Boolean = False
+        Dim m_Connected = False
         Dim Pwd As String
         Dim RawFName As String = String.Empty
         Dim resType As RawDSTypes
@@ -353,7 +353,7 @@ Public Class clsXMLTimeValidation
 
             If mCaptureType = "secfso" Then
                 ' Make sure mSourcePath is not of the form \\proto-2 because if that is the case, then mCaptureType should be "fso"
-                Dim reProtoServer = New System.Text.RegularExpressions.Regex("\\\\proto-\d+\\", Text.RegularExpressions.RegexOptions.Compiled Or Text.RegularExpressions.RegexOptions.IgnoreCase)
+                Dim reProtoServer = New Text.RegularExpressions.Regex("\\\\proto-\d+\\", Text.RegularExpressions.RegexOptions.Compiled Or Text.RegularExpressions.RegexOptions.IgnoreCase)
 
                 If reProtoServer.IsMatch(mSourcePath) Then
                     ' Auto-change mCaptureType to "fso", and log an error in the database
@@ -457,7 +457,7 @@ Public Class clsXMLTimeValidation
                 datasetSourcePath = Path.Combine(mSourcePath, mCaptureSubfolder)
             End If
 
-            ' Determine Raw Dataset type (only should be looking for "dot_raw_files" from earlier check)
+            ' Determine dataset type
             currentTask = "Determining dataset type for " & mDatasetName & " at " & datasetSourcePath
             If TraceMode Then ShowTraceMessage(currentTask)
             resType = GetRawDSType(mSourcePath, mCaptureSubfolder, mDatasetName, RawFName)
@@ -472,7 +472,6 @@ Public Class clsXMLTimeValidation
                 End If
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR
             End If
-
 
             Select Case resType
 
@@ -584,7 +583,6 @@ Public Class clsXMLTimeValidation
 
                     Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_NO_DATA
             End Select
-
 
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 
