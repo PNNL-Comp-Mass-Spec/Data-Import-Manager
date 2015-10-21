@@ -90,7 +90,7 @@ Public Class clsDataImportTask
             mDBErrorMessage = String.Empty
             m_error_list.Clear()
 
-            ' Prepare to call the stored procedure (typically AddNewDataset in DMS5)
+            ' Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
             '
             mp_stored_proc = m_mgrParams.GetParam("storedprocedure")
 
