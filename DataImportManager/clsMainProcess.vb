@@ -7,6 +7,7 @@ Imports PRISM.Logging
 Imports System.Windows.Forms
 Imports System.Threading
 Imports System.Threading.Tasks
+Imports PRISM
 
 Public Class clsMainProcess
 
@@ -125,21 +126,39 @@ Public Class clsMainProcess
 
     End Function
 
+    ''' <summary>
+    ''' Look for new XML files to process
+    ''' </summary>
+    ''' <returns>True if success, false if an error</returns>
+    ''' <remarks>Returns true even if no XML files are found</remarks>
     Public Function DoImport() As Boolean
 
         Try
 
             ' Verify an error hasn't left the the system in an odd state
             If DetectStatusFlagFile() Then
-                Const statusMsg As String = "Flag file exists - auto-deleting it, then closing program"
+                Const statusMsg = "Flag file exists - auto-deleting it, then closing program"
                 If TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
                 DeleteStatusFlagFile(m_Logger)
 
                 If Not GetHostName().ToLower.StartsWith("monroe") Then
-                    Exit Function
+                    Return True
                 End If
 
+            End If
+
+            Dim pendingWindowsUpdateMessage As String = String.Empty
+            If clsWindowsUpdateStatus.ServerUpdatesArePending(DateTime.Now, pendingWindowsUpdateMessage) Then
+                Dim warnMessage = "Monthly windows updates are pending; aborting check for new XML trigger files: " & pendingWindowsUpdateMessage
+
+                If TraceMode Then
+                    ShowTraceMessage(warnMessage)
+                Else
+                    Console.WriteLine(warnMessage)
+                End If
+
+                Return True
             End If
 
             ' Check to see if machine settings have changed
@@ -153,7 +172,7 @@ Public Class clsMainProcess
                         m_Logger.PostEntry(m_MgrSettings.ErrMsg, ILogger.logMsgType.logWarning, True)
                     Else
                         ' Unknown problem reading config file
-                        Const errMsg As String = "Unknown error re-reading config file"
+                        Const errMsg = "Unknown error re-reading config file"
                         If TraceMode Then ShowTraceMessage(errMsg)
                         m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
                     End If
@@ -166,7 +185,7 @@ Public Class clsMainProcess
             ' Check to see if excessive consecutive failures have occurred
             If mFailureCount > MAX_ERROR_COUNT Then
                 ' More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
-                Const errMsg As String = "Excessive task failures, disabling manager"
+                Const errMsg = "Excessive task failures, disabling manager"
                 If TraceMode Then ShowTraceMessage(errMsg)
                 m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
                 DisableManagerLocally()
@@ -213,8 +232,8 @@ Public Class clsMainProcess
 
         Dim result As ITaskParams.CloseOutType
 
-        Dim DelBadXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletebadxmlfiles"))
-        Dim DelGoodXmlFilesDays As Integer = CInt(m_MgrSettings.GetParam("deletegoodxmlfiles"))
+        Dim delBadXmlFilesDays = CInt(m_MgrSettings.GetParam("deletebadxmlfiles"))
+        Dim delGoodXmlFilesDays = CInt(m_MgrSettings.GetParam("deletegoodxmlfiles"))
         Dim successFolder As String = m_MgrSettings.GetParam("successfolder")
         Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
 
@@ -285,10 +304,10 @@ Public Class clsMainProcess
             Next
 
             ' Remove successful XML files older than x days
-            DeleteXmlFiles(successFolder, DelGoodXmlFilesDays)
+            DeleteXmlFiles(successFolder, delGoodXmlFilesDays)
 
             ' Remove failed XML files older than x days
-            DeleteXmlFiles(failureFolder, DelBadXmlFilesDays)
+            DeleteXmlFiles(failureFolder, delBadXmlFilesDays)
 
             ' If we got to here, then closeout the task as a success
             '
@@ -382,9 +401,10 @@ Public Class clsMainProcess
 
         ' Verify transfer directory exists
         If Not diXferDirectory.Exists Then
-            ' There's a serious problem is the xfer directory can't be found!!!
+            ' There's a serious problem if the xfer directory can't be found!!!
             Dim statusMsg As String = "Xml transfer folder not found: " & serverXferDir
             If TraceMode Then ShowTraceMessage(statusMsg)
+
             m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
             xmlFilesToImport = New List(Of FileInfo)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
