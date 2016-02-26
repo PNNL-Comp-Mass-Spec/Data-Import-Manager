@@ -197,7 +197,7 @@ Public Class clsProcessXmlTriggerFile
         mDatabaseErrorMsg = mDataImportTask.DBErrorMessage
 
         If mDatabaseErrorMsg.Contains("Timeout expired.") Then
-            ' post the error and leave the file for another attempt
+            ' Log the error and leave the file for another attempt
             statusMsg = "Encountered database timeout error for dataset: " & triggerFile.FullName
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
             m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
@@ -207,9 +207,16 @@ Public Class clsProcessXmlTriggerFile
         If success Then
             MoveXmlFile(triggerFile, ProcSettings.SuccessFolder)
         Else
+            If (mDataImportTask.PostTaskErrorMessage.Contains("deadlocked")) Then
+                ' Log the error and leave the file for another attempt
+                m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                Return False
+            End If
+
             Dim moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureFolder)
             statusMsg = "Error posting xml file to database: " & mDataImportTask.PostTaskErrorMessage
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
+
             m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
 
             Dim mail_msg = "There is a problem with the following XML file: " & moveLocPath & ControlChars.NewLine
@@ -230,6 +237,7 @@ Public Class clsProcessXmlTriggerFile
 
             ' Send an e-mail
             CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
+            Return False
         End If
 
         statusMsg = "Completed Data import task for dataset: " & triggerFile.FullName
