@@ -2,6 +2,7 @@
 Imports System.Data.SqlClient
 Imports System.IO
 Imports System.Net.Mail
+Imports System.Text
 Imports PRISM.Logging
 Imports DataImportManager.clsGlobal
 
@@ -86,8 +87,10 @@ Public Class clsProcessXmlTriggerFile
 
             ' Set the Subject and Body
             If String.IsNullOrEmpty(subjectAppend) Then
+                ' Data Import Manager
                 mail.Subject = m_MgrSettings.GetParam("subject")
             Else
+                ' Data Import Manager - Appended Info
                 mail.Subject = m_MgrSettings.GetParam("subject") + subjectAppend
             End If
             mail.Body = mailMsg & ControlChars.NewLine & ControlChars.NewLine & mDatabaseErrorMsg & addMsg
@@ -213,21 +216,34 @@ Public Class clsProcessXmlTriggerFile
                 Return False
             End If
 
+            Dim messageType = ILogger.logMsgType.logError
+
             Dim moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureFolder)
             statusMsg = "Error posting xml file to database: " & mDataImportTask.PostTaskErrorMessage
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
 
-            m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-
-            Dim mail_msg = "There is a problem with the following XML file: " & moveLocPath & ControlChars.NewLine
-            mail_msg &= "Operator: " & m_xml_operator_Name & ControlChars.NewLine
-
-            If (String.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage)) Then
-                mail_msg &= "Error: Check the log for details; " + GetLogFileSharePath()
-            Else
-                mail_msg &= "Error: " & mDataImportTask.PostTaskErrorMessage
+            If mDataImportTask.PostTaskErrorMessage.Contains("since already in database") Then
+                messageType = ILogger.logMsgType.logWarning
             End If
 
+            m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, messageType, LOG_DATABASE)
+
+            Dim mail_msg = New StringBuilder()
+            mail_msg.AppendLine("There is a problem with the following XML file: " & moveLocPath)
+            mail_msg.AppendLine("Operator: " & m_xml_operator_Name)
+
+            Dim msgTypeString As String
+            If messageType = ILogger.logMsgType.logError Then
+                msgTypeString = "Error"
+            Else
+                msgTypeString = "Warning"
+            End If
+
+            If (String.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage)) Then
+                mail_msg.AppendLine(msgTypeString & ": Check the log for details; " + GetLogFileSharePath())
+            Else
+                mail_msg.AppendLine(msgTypeString & ": " & mDataImportTask.PostTaskErrorMessage)
+            End If
 
             ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error             
             Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
@@ -235,8 +251,8 @@ Public Class clsProcessXmlTriggerFile
                 mDatabaseErrorMsg = errorSolution
             End If
 
-            ' Send an e-mail
-            CreateMail(mail_msg, m_xml_operator_email, " - Database error.")
+            ' Send an e-mail; subject will be "Data Import Manager - Database error." or "Data Import Manager - Database warning."
+            CreateMail(mail_msg.ToString(), m_xml_operator_email, " - Database " & msgTypeString.ToLower() & ".")
             Return False
         End If
 

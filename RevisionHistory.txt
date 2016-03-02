@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.5905; March 2, 2016
+	- Now flagging message "Cannot add dataset XYZ since already in database" as a warning instead of an error
+
 Version 1.2.5900; February 26, 2016
 	- Now simply logging deadlock errors but leaving the .xml file in place for another import attempt
 
