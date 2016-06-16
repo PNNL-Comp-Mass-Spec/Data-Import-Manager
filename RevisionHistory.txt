@@ -1,5 +1,9 @@
 Data Import Manager History
 
+Version 1.2.6010; June 15, 2016
+	- Include the log file path in the error e-mail
+	- Define mDatasetPath earlier so that it is not empty if a network error occurs 
+
 Version 1.2.5905; March 2, 2016
 	- Now flagging message "Cannot add dataset XYZ since already in database" as a warning instead of an error
 

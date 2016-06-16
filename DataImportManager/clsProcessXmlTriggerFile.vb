@@ -382,7 +382,7 @@ Public Class clsProcessXmlTriggerFile
                 m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
                 mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
                 mail_msg &= "There was a time validation error with the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
-                mail_msg &= "Check the log for details.  " & ControlChars.NewLine
+                mail_msg &= "Check the log for details; " + GetLogFileSharePath() & ControlChars.NewLine
                 mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
                 CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
                 Return False
@@ -394,7 +394,7 @@ Public Class clsProcessXmlTriggerFile
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
                 mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
-                mail_msg &= "Check the log for details.  " & ControlChars.NewLine
+                mail_msg &= "Check the log for details; " + GetLogFileSharePath() & ControlChars.NewLine
                 mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
                 CreateMail(mail_msg, m_xml_operator_email, " - XML validation error.")
                 Return False
@@ -433,7 +433,7 @@ Public Class clsProcessXmlTriggerFile
                 mail_msg &= "The dataset is not available for capture and was not added to DMS: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
 
                 If String.IsNullOrEmpty(myDataXMLValidation.ErrorMessage) Then
-                    mail_msg &= "Check the log for details.  " & ControlChars.NewLine
+                    mail_msg &= "Check the log for details; " + GetLogFileSharePath() & ControlChars.NewLine
                 Else
                     mail_msg &= myDataXMLValidation.ErrorMessage & ControlChars.NewLine
                 End If
