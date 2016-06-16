@@ -334,7 +334,7 @@ Public Class clsXMLTimeValidation
     Private Function PerformValidation() As IXMLValidateStatus.XmlValidateStatus
         Dim m_Connected = False
         Dim Pwd As String
-        Dim RawFName As String = String.Empty
+        Dim instrumentFileOrFolderName As String = String.Empty
         Dim resType As RawDSTypes
         Dim dtFileModDate As DateTime
         Dim dtRunFinishWithTolerance As DateTime
@@ -369,6 +369,19 @@ Public Class clsXMLTimeValidation
                     m_logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_DATABASE)
                 End If
             End If
+
+            ' Define the source path now, before attempting to connect to Bionet
+            ' This is done so that mDatasetPath will be defined so we can include it in a log message if a connection error occurs
+            Dim datasetSourcePath As String
+            If String.IsNullOrWhiteSpace(mCaptureSubfolder) Then
+                datasetSourcePath = String.Copy(mSourcePath)
+            Else
+                datasetSourcePath = Path.Combine(mSourcePath, mCaptureSubfolder)
+            End If
+
+            ' Initially define this as the dataset source folder and the dataset name
+            ' It will later be updated to have the actual instrument file or folder name
+            mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName)
 
             If mCaptureType = "secfso" AndAlso Not GetHostName().ToLower().StartsWith("monroe") Then
                 ' Source folder is on bionet; establish a connection
@@ -448,19 +461,12 @@ Public Class clsXMLTimeValidation
                 mSleepInterval = 900
             End If
 
-            ' Now that we're connected, append mCaptureSubfolder if not empty
-
-            Dim datasetSourcePath As String
-            If String.IsNullOrWhiteSpace(mCaptureSubfolder) Then
-                datasetSourcePath = String.Copy(mSourcePath)
-            Else
-                datasetSourcePath = Path.Combine(mSourcePath, mCaptureSubfolder)
-            End If
-
-            ' Determine dataset type
+            ' Determine dataset type            
             currentTask = "Determining dataset type for " & mDatasetName & " at " & datasetSourcePath
             If TraceMode Then ShowTraceMessage(currentTask)
-            resType = GetRawDSType(mSourcePath, mCaptureSubfolder, mDatasetName, RawFName)
+
+            ' This call updates instrumentFileOrFolderName
+            resType = GetRawDSType(mSourcePath, mCaptureSubfolder, mDatasetName, instrumentFileOrFolderName)
 
             currentTask = "Validating operator name " & mOperatorPRN & " for " & mDatasetName & " at " & datasetSourcePath
             If TraceMode Then ShowTraceMessage(currentTask)
@@ -479,7 +485,6 @@ Public Class clsXMLTimeValidation
                     ' No raw dataset file or folder found
                     currentTask = "Dataset not found at " & datasetSourcePath
                     If TraceMode Then ShowTraceMessage(currentTask)
-                    mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName)
 
                     ' Disconnect from BioNet if necessary
                     If m_Connected Then
@@ -495,7 +500,9 @@ Public Class clsXMLTimeValidation
                     ' Check the file size
                     currentTask = "Dataset found at " & datasetSourcePath & "; verifying file size is constant"
                     If TraceMode Then ShowTraceMessage(currentTask)
-                    mDatasetPath = Path.Combine(datasetSourcePath, RawFName)
+
+                    ' Update the dataset path to include the instrument file or folder name
+                    mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrFolderName)
 
                     Dim blnLogonFailure = False
 
@@ -555,7 +562,9 @@ Public Class clsXMLTimeValidation
                     ' Dataset found in a folder with an extension
                     ' Verify the folder size is constant
                     currentTask = "Dataset folder found at " & datasetSourcePath & "; verifying folder size is constant for "
-                    mDatasetPath = Path.Combine(datasetSourcePath, RawFName)
+
+                    ' Update the dataset path to include the instrument file or folder name
+                    mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrFolderName)
                     currentTask &= mDatasetPath
 
                     If TraceMode Then ShowTraceMessage(currentTask)
