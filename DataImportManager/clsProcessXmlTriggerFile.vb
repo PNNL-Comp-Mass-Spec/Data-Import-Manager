@@ -1,5 +1,4 @@
 ﻿Imports System.Collections.Concurrent
-Imports System.Data.SqlClient
 Imports System.IO
 Imports System.Net.Mail
 Imports System.Text
@@ -128,12 +127,27 @@ Public Class clsProcessXmlTriggerFile
     ''' <returns></returns>
     ''' <remarks></remarks>
     Private Function GetLogFileSharePath() As String
+        Dim logFileName = m_MgrSettings.GetParam("logfilename")
+        Return GetLogFileSharePath(logFileName)
+    End Function
+
+    ''' <summary>
+    ''' Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
+    ''' </summary>
+    ''' <param name="logFileName">Name of the current log file</param>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    Public Shared Function GetLogFileSharePath(logFileName As String) As String
 
         Dim strLogFilePath As String
 
-        Dim FInfo = New FileInfo(GetExePath())
+        Dim fiExe = New FileInfo(GetExePath())
 
-        strLogFilePath = Path.Combine(FInfo.Directory.Name, m_MgrSettings.GetParam("logfilename"))
+        If String.IsNullOrEmpty(logFileName) Then
+            strLogFilePath = Path.Combine(fiExe.Directory.Name, "DataImportManager")
+        Else
+            strLogFilePath = Path.Combine(fiExe.Directory.Name, logFileName)
+        End If
 
         ' strLogFilePath should look like this:
         '	DataImportManager\Logs\DataImportManager

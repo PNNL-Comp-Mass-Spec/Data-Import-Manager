@@ -442,40 +442,66 @@ Public Class clsMainProcess
         m_Logger.PostEntry(message, ILogger.logMsgType.logError, True)
     End Sub
 
-    Private Function DeleteXmlFiles(FileDirectory As String, NoDays As Integer) As Boolean
+    Private Function DeleteXmlFiles(folderPath As String, fileAgeDays As Integer) As Boolean
 
         Dim filedate As DateTime
         Dim daysDiff As Integer
-        Dim workDirectory As String
 
-        workDirectory = FileDirectory
+        Dim workingDirectory = New DirectoryInfo(folderPath)
+
         ' Verify directory exists
-        If Not Directory.Exists(workDirectory) Then
+        If Not workingDirectory.Exists Then
             ' There's a serious problem if the success/failure directory can't be found!!!
 
-            Dim statusMsg As String = "Xml success/failure folder not found: " & workDirectory
+            Dim statusMsg As String = "Xml success/failure folder not found: " & folderPath
             If TraceMode Then ShowTraceMessage(statusMsg)
 
             m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
             Return False
         End If
 
-        ' Load all the Xml File names and dates in the transfer directory into a string dictionary
+        Dim deleteFailureCount = 0
+
         Try
-            Dim XmlFilesToDelete() As String = Directory.GetFiles(Path.Combine(workDirectory, workDirectory))
-            For Each XmlFile As String In XmlFilesToDelete
-                filedate = File.GetLastWriteTimeUtc(XmlFile)
+
+            Dim xmlFiles As List(Of FileInfo) = workingDirectory.GetFiles("*.xml").ToList()
+
+            For Each xmlFile In xmlFiles
+                filedate = xmlFile.LastWriteTimeUtc
                 daysDiff = DateTime.UtcNow.Subtract(filedate).Days
-                If daysDiff > NoDays Then
-                    File.Delete(XmlFile)
+                If daysDiff > fileAgeDays Then
+                    If PreviewMode Then
+                        Console.WriteLine("Delete old file: " & xmlFile.FullName)
+                    Else
+                        Try
+                            xmlFile.Delete()
+                        Catch ex As Exception
+                            Dim errMsg = "Error deleting old Xml Data file " & xmlFile.FullName & ": " & ex.Message
+                            If TraceMode Then ShowTraceMessage(errMsg)
+                            m_Logger.PostError(errMsg, ex, LOG_LOCAL_ONLY)
+                            deleteFailureCount += 1
+                        End Try
+
+                    End If
+
                 End If
             Next
         Catch ex As Exception
-            Dim errMsg = "Error deleting old Xml Data files at " & FileDirectory
+            Dim errMsg = "Error deleting old Xml Data files at " & folderPath
             If TraceMode Then ShowTraceMessage(errMsg)
             m_Logger.PostError(errMsg, ex, LOG_DATABASE)
             Return False
         End Try
+
+        If deleteFailureCount > 0 Then
+            Dim logFileName = m_MgrSettings.GetParam("logfilename")
+            Dim errMsg =
+                "Error deleting " & deleteFailureCount & " XML files at " & folderPath &
+                " -- for a detailed list, see log file " & clsProcessXmlTriggerFile.GetLogFileSharePath(logFileName)
+
+            If TraceMode Then ShowTraceMessage(errMsg)
+            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_DATABASE)
+        End If
 
         ' Everything must be OK if we got to here
         Return True

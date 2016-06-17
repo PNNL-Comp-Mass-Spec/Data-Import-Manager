@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6011; June 16, 2016
+	- Continue trying to delete old XML files if an error occurs
+
 Version 1.2.6010; June 15, 2016
 	- Include the log file path in the error e-mail
 	- Define mDatasetPath earlier so that it is not empty if a network error occurs 
