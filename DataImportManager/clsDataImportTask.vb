@@ -7,11 +7,11 @@ Public Class clsDataImportTask
 	Inherits clsDBTask
 
 #Region "Member Variables"
-    Protected mPostTaskErrorMessage As String = String.Empty
-    Protected mDBErrorMessage As String
+    Private mPostTaskErrorMessage As String = String.Empty
+    Private mDBErrorMessage As String
 
-    Protected mp_stored_proc As String
-    Protected mp_xmlContents As String
+    Private mp_stored_proc As String
+    Private mp_xmlContents As String
 #End Region
 
 #Region "Properties"
@@ -66,7 +66,7 @@ Public Class clsDataImportTask
             End If
             fileImported = ImportDataTask()
         Catch ex As Exception
-            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & ex.Message, ILogger.logMsgType.logError, True)
+            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End Try
 
@@ -142,7 +142,7 @@ Public Class clsDataImportTask
                 Outcome = True
             Else
                 mPostTaskErrorMessage = CStr(sc.Parameters("@message").Value)
-                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage, ILogger.logMsgType.logError, True)
+                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
                 Outcome = False
             End If
 

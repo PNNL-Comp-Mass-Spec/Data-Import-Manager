@@ -22,19 +22,19 @@ Public Class clsXMLTimeValidation
 
     Private mErrorMessage As String = String.Empty
 
-    Protected mShareConnector As ShareConnector
-    Protected mSleepInterval As Integer = 30
+    Private mShareConnector As ShareConnector
+    Private mSleepInterval As Integer = 30
 
-    Protected ReadOnly mDMSInfoCache As DMSInfoCache
+    Private ReadOnly mDMSInfoCache As DMSInfoCache
 
-    Protected m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
-    Protected WithEvents m_FileTools As clsFileTools
+    Private m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
+    Private WithEvents m_FileTools As clsFileTools
 
     ' access to the logger
-    Protected m_logger As ILogger
+    Private m_logger As ILogger
 
     ' access to mgr parameters
-    Protected m_mgrParams As IMgrParams
+    Private m_mgrParams As IMgrParams
 
 #End Region
 
@@ -75,7 +75,7 @@ Public Class clsXMLTimeValidation
             Return mErrorMessage
         End Get
     End Property
-    
+
     Public ReadOnly Property OperatorEMail() As String
         Get
             Return FixNull(mOperatorEmail)
@@ -111,7 +111,7 @@ Public Class clsXMLTimeValidation
 #End Region
 
 #Region "Enums"
-    Protected Enum RawDSTypes
+    Private Enum RawDSTypes
         None
         File
         FolderNoExt
@@ -618,7 +618,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Protected Function DecodePassword(encodedPwd As String) As String
+    Private Function DecodePassword(encodedPwd As String) As String
 
         ' Decrypts password received from ini file
         ' Password was created by alternately subtracting or adding 1 to the ASCII value of each character
@@ -645,7 +645,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Protected Function GetRawDSType(
+    Private Function GetRawDSType(
       instrumentSourcePath As String,
       captureSubFolderName As String,
       currentDataset As String,
@@ -717,7 +717,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Protected Function ValidateFolderPath(InpPath As String) As Boolean
+    Private Function ValidateFolderPath(InpPath As String) As Boolean
         ' Verifies that the folder given by input path exists
 
         If Directory.Exists(InpPath) Then
@@ -728,7 +728,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Protected Sub DisconnectShare(ByRef MyConn As ShareConnector, ByRef ConnState As Boolean)
+    Private Sub DisconnectShare(ByRef MyConn As ShareConnector, ByRef ConnState As Boolean)
 
         If TraceMode Then ShowTraceMessage("Disconnecting from Bionet share")
 
@@ -745,7 +745,7 @@ Public Class clsXMLTimeValidation
     ''' <param name="sleepIntervalSeconds"></param>
     ''' <returns>True if constant, false if changed</returns>
     ''' <remarks></remarks>
-    Protected Function VerifyConstantFolderSize(folderPath As String, sleepIntervalSeconds As Integer) As Boolean
+    Private Function VerifyConstantFolderSize(folderPath As String, sleepIntervalSeconds As Integer) As Boolean
 
         If GetHostName().ToLower().StartsWith("monroe") Then
             Console.WriteLine("Skipping date validation because host name starts with Monroe")
@@ -790,7 +790,7 @@ Public Class clsXMLTimeValidation
     ''' <param name="blnLogonFailure"></param>
     ''' <returns>True if constant, false if changed</returns>
     ''' <remarks></remarks>
-    Protected Function VerifyConstantFileSize(filePath As String, sleepIntervalSeconds As Integer, ByRef blnLogonFailure As Boolean) As Boolean
+    Private Function VerifyConstantFileSize(filePath As String, sleepIntervalSeconds As Integer, ByRef blnLogonFailure As Boolean) As Boolean
 
         If GetHostName().ToLower().StartsWith("monroe") Then
             Console.WriteLine("Skipping file size validation because host name starts with Monroe")

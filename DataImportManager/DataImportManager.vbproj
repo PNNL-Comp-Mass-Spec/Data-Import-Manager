@@ -115,6 +115,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="clsDMSOperatorLookup.vb" />
+    <Compile Include="clsQueuedMail.vb" />
     <Compile Include="clsMainProcess.vb" />
     <Compile Include="clsMgrSettings.vb">
       <SubType>Code</SubType>

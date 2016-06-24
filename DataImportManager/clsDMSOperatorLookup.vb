@@ -70,11 +70,11 @@ Public Class DMSInfoCache
         m_logger = logger
         mTraceMode = traceMode
 
-        mErrorSolutions = New Dictionary(Of String, String)(StringComparison.CurrentCultureIgnoreCase)
+        mErrorSolutions = New Dictionary(Of String, String)(StringComparison.InvariantCultureIgnoreCase)
 
-        mInstruments = New Dictionary(Of String, udtInstrumentInfoType)(StringComparison.CurrentCultureIgnoreCase)
+        mInstruments = New Dictionary(Of String, udtInstrumentInfoType)(StringComparison.InvariantCultureIgnoreCase)
 
-        mOperators = New Dictionary(Of String, udtOperatorInfoType)(StringComparison.CurrentCultureIgnoreCase)
+        mOperators = New Dictionary(Of String, udtOperatorInfoType)(StringComparison.InvariantCultureIgnoreCase)
 
     End Sub
 
@@ -366,6 +366,8 @@ Public Class DMSInfoCache
 
             End Try
         End While
+
+        If mTraceMode Then ShowTraceMessage(" ... retrieved " & mOperators.Count & " users")
 
     End Sub
 

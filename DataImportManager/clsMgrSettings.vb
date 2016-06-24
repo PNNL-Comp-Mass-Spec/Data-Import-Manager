@@ -178,7 +178,7 @@ Public Class clsMgrSettings
     Private Function LoadMgrSettingsFromFile() As Dictionary(Of String, String)
 
         ' Load initial settings into string dictionary for return
-        Dim RetDict As New Dictionary(Of String, String)(StringComparer.CurrentCultureIgnoreCase)
+        Dim RetDict As New Dictionary(Of String, String)(StringComparer.InvariantCultureIgnoreCase)
 
         My.Settings.Reload()
         RetDict.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)
@@ -277,7 +277,7 @@ Public Class clsMgrSettings
 
     End Function
 
-    Protected Function DbCStr(InpObj As Object) As String
+    Private Function DbCStr(InpObj As Object) As String
 
         ' If input object is DbNull, returns String.empty, otherwise returns String representation of object
         If InpObj Is DBNull.Value Then

@@ -36,7 +36,7 @@ Public Class clsGlobal
                 File.Delete(flagFilePath)
             End If
         Catch ex As Exception
-            MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, ILogger.logMsgType.logError, True)
+            MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
         End Try
 
     End Sub
@@ -84,7 +84,7 @@ Public Class clsGlobal
             End Using
             Return xmlFileContents.ToString()
         Catch ex As Exception
-            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, ILogger.logMsgType.logError, True)
+            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return String.Empty
         End Try
 

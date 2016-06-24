@@ -7,39 +7,66 @@ Imports DataImportManager.clsGlobal
 
 Public Class clsProcessXmlTriggerFile
 
+#Region "Constants"
+    Public Const CHECK_THE_LOG_FOR_DETAILS As String = "Check the log for details"
+#End Region
+
+#Region "Structures"
     Public Structure udtXmlProcSettingsType
         Public DebugLevel As Integer
-        Public MailDisabled As Boolean
         Public PreviewMode As Boolean
         Public TraceMode As Boolean
         Public FailureFolder As String
         Public SuccessFolder As String
     End Structure
+#End Region
 
 #Region "Properties"
 
     Public Property ProcSettings As udtXmlProcSettingsType
 
+    ''' <summary>
+    ''' Mail message(s) that need to be sent
+    ''' </summary>
+    ''' <value></value>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    Public ReadOnly Property QueuedMail As Dictionary(Of String, List(Of clsQueuedMail))
+        Get
+            Return mQueuedMail
+        End Get
+    End Property
+
 #End Region
 
 #Region "Member variables"
     Private ReadOnly m_MgrSettings As clsMgrSettings
-    Protected ReadOnly m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
-    Protected ReadOnly mDMSInfoCache As DMSInfoCache
+    Private ReadOnly m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
+    Private ReadOnly mDMSInfoCache As DMSInfoCache
 
-    Protected ReadOnly m_Logger As ILogger
+    Private ReadOnly m_Logger As ILogger
 
-    Protected mDataImportTask As clsDataImportTask
-    Protected mDatabaseErrorMsg As String
+    Private mDataImportTask As clsDataImportTask
+    Private mDatabaseErrorMsg As String
 
     Private m_xml_operator_Name As String = String.Empty
     Private m_xml_operator_email As String = String.Empty
     Private m_xml_dataset_path As String = String.Empty
     Private m_xml_instrument_Name As String = String.Empty
 
+    Private ReadOnly mQueuedMail As Dictionary(Of String, List(Of clsQueuedMail))
 
 #End Region
 
+    ''' <summary>
+    ''' Constructor
+    ''' </summary>
+    ''' <param name="mgrSettings"></param>
+    ''' <param name="instrumentsToSkip"></param>
+    ''' <param name="infoCache"></param>
+    ''' <param name="oLogger"></param>
+    ''' <param name="udtSettings"></param>
+    ''' <remarks></remarks>
     Public Sub New(
        mgrSettings As clsMgrSettings,
        instrumentsToSkip As ConcurrentDictionary(Of String, Integer),
@@ -53,9 +80,11 @@ Public Class clsProcessXmlTriggerFile
         ProcSettings = udtSettings
 
         mDMSInfoCache = infoCache
+
+        mQueuedMail = New Dictionary(Of String, List(Of clsQueuedMail))
     End Sub
 
-    Protected Function CreateMail(mailMsg As String, addtnlRecipient As String, subjectAppend As String) As Boolean
+    Private Function CreateMail(mailMsg As String, addnlRecipient As String, subjectAppend As String) As Boolean
 
         Dim enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
         If Not enableEmail Then
@@ -63,8 +92,6 @@ Public Class clsProcessXmlTriggerFile
         End If
 
         Try
-            Const addMsg As String = ControlChars.NewLine & ControlChars.NewLine & "(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)"
-
             ' Create the mail message
             Dim mail As New MailMessage()
 
@@ -78,10 +105,10 @@ Public Class clsProcessXmlTriggerFile
                 mail.To.Add(emailAddress)
             Next
 
-            ' Possibly update the e-mail address for addtnlRecipient
-            If Not String.IsNullOrEmpty(addtnlRecipient) AndAlso Not mailRecipientsList.Contains(addtnlRecipient) Then
-                mail.To.Add(addtnlRecipient)
-                mailRecipientsText &= ";" & addtnlRecipient
+            ' Possibly update the e-mail address for addnlRecipient
+            If Not String.IsNullOrEmpty(addnlRecipient) AndAlso Not mailRecipientsList.Contains(addnlRecipient) Then
+                mail.To.Add(addnlRecipient)
+                mailRecipientsText &= ";" & addnlRecipient
             End If
 
             ' Set the Subject and Body
@@ -92,21 +119,28 @@ Public Class clsProcessXmlTriggerFile
                 ' Data Import Manager - Appended Info
                 mail.Subject = m_MgrSettings.GetParam("subject") + subjectAppend
             End If
-            mail.Body = mailMsg & ControlChars.NewLine & ControlChars.NewLine & mDatabaseErrorMsg & addMsg
+            mail.Body = mailMsg
 
             Dim statusMsg As String = "E-mailing " & mailRecipientsText & " regarding " & m_xml_dataset_path
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, True)
+            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
 
-            If ProcSettings.MailDisabled Then
-                ShowTraceMessage("Email that would be sent:")
-                ShowTraceMessage("  " & mailRecipientsText)
-                ShowTraceMessage("  " & mail.Subject)
-                ShowTraceMessage("  " & mail.Body)
+
+            ' Store the message and metadata
+            Dim messageToQueue = New clsQueuedMail(m_xml_operator_Name, mailRecipientsText, mail)
+
+            If Not String.IsNullOrEmpty(mDatabaseErrorMsg) Then
+                messageToQueue.DatabaseErrorMsg = mDatabaseErrorMsg
+            End If
+
+            ' Queue the message
+            Dim queuedMessages As List(Of clsQueuedMail) = Nothing
+            If mQueuedMail.TryGetValue(mailRecipientsText, queuedMessages) Then
+                queuedMessages.Add(messageToQueue)
             Else
-                ' Send the message
-                Dim smtp As New SmtpClient(m_MgrSettings.GetParam("smtpserver"))
-                smtp.Send(mail)
+                queuedMessages = New List(Of clsQueuedMail)
+                queuedMessages.Add(messageToQueue)
+                mQueuedMail.Add(mailRecipientsText, queuedMessages)
             End If
 
             Return True
@@ -114,7 +148,7 @@ Public Class clsProcessXmlTriggerFile
         Catch ex As Exception
             Dim statusMsg As String = "Error sending email message: " & ex.Message
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, True)
+            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End Try
 
@@ -238,14 +272,14 @@ Public Class clsProcessXmlTriggerFile
 
             If mDataImportTask.PostTaskErrorMessage.Contains("since already in database") Then
                 messageType = ILogger.logMsgType.logWarning
+                m_Logger.PostEntry(statusMsg & ". See: " & moveLocPath, messageType, LOG_LOCAL_ONLY)
+            Else
+                m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, messageType, LOG_DATABASE)
             End If
-
-            m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, messageType, LOG_DATABASE)
 
             Dim mail_msg = New StringBuilder()
             mail_msg.AppendLine("There is a problem with the following XML file: " & moveLocPath)
-            mail_msg.AppendLine("Operator: " & m_xml_operator_Name)
-
+            
             Dim msgTypeString As String
             If messageType = ILogger.logMsgType.logError Then
                 msgTypeString = "Error"
@@ -254,7 +288,7 @@ Public Class clsProcessXmlTriggerFile
             End If
 
             If (String.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage)) Then
-                mail_msg.AppendLine(msgTypeString & ": Check the log for details; " + GetLogFileSharePath())
+                mail_msg.AppendLine(msgTypeString & ": " & CHECK_THE_LOG_FOR_DETAILS)
             Else
                 mail_msg.AppendLine(msgTypeString & ": " & mDataImportTask.PostTaskErrorMessage)
             End If
@@ -262,6 +296,7 @@ Public Class clsProcessXmlTriggerFile
             ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error             
             Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
             If Not String.IsNullOrWhiteSpace(errorSolution) Then
+                ' Store the solution in the database error message variable so that it gets included in the message body
                 mDatabaseErrorMsg = errorSolution
             End If
 
@@ -316,7 +351,7 @@ Public Class clsProcessXmlTriggerFile
         Catch ex As Exception
             Dim statusMsg As String = "Exception in MoveXmlFile, " & ex.Message
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, True)
+            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return String.Empty
         End Try
 
@@ -352,8 +387,7 @@ Public Class clsProcessXmlTriggerFile
         Try
             Dim xmlRslt As IXMLValidateStatus.XmlValidateStatus
             Dim timeValFolder As String = m_MgrSettings.GetParam("timevalidationfolder")
-            Dim moveLocPath As String
-            Dim mail_msg As String
+            Dim moveLocPath As String            
             Dim failureFolder As String = m_MgrSettings.GetParam("failurefolder")
 
             Dim myDataXMLValidation = New clsXMLTimeValidation(m_MgrSettings, m_Logger, m_InstrumentsToSkip, mDMSInfoCache)
@@ -370,11 +404,19 @@ Public Class clsProcessXmlTriggerFile
 
                 moveLocPath = MoveXmlFile(triggerFile, failureFolder)
 
-                Dim statusMsg As String = "Operator not defined in " & moveLocPath
+                Dim statusMsg As String = "Undefined Operator in " & moveLocPath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
-                mail_msg = m_xml_operator_Name & ControlChars.NewLine
-                mail_msg &= "The dataset was not added to DMS: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
+
+                Dim mail_msg = New StringBuilder()
+                If String.IsNullOrWhiteSpace(m_xml_operator_Name) Then
+                    mail_msg.AppendLine("Operator name not listed in the XML file")
+                Else
+                    mail_msg.AppendLine("Operator name not defined in DMS: " & m_xml_operator_Name)
+                End If
+
+                mail_msg.AppendLine("The dataset was not added to DMS: ")
+                mail_msg.AppendLine(moveLocPath)
 
                 mDatabaseErrorMsg = "Operator payroll number/HID was blank"
                 Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
@@ -384,7 +426,7 @@ Public Class clsProcessXmlTriggerFile
                     mDatabaseErrorMsg = errorSolution
                 End If
 
-                CreateMail(mail_msg, m_xml_operator_email, " - Operator not defined.")
+                CreateMail(mail_msg.ToString(), m_xml_operator_email, " - Operator not defined.")
                 Return False
 
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED Then
@@ -394,11 +436,15 @@ Public Class clsProcessXmlTriggerFile
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
                 m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
-                mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
-                mail_msg &= "There was a time validation error with the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
-                mail_msg &= "Check the log for details; " + GetLogFileSharePath() & ControlChars.NewLine
-                mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
-                CreateMail(mail_msg, m_xml_operator_email, " - Time validation error.")
+
+                Dim mail_msg = New StringBuilder()
+                mail_msg.AppendLine("There was a time validation error with the following XML file: ")
+                mail_msg.AppendLine(moveLocPath)
+                mail_msg.AppendLine(CHECK_THE_LOG_FOR_DETAILS)
+                mail_msg.AppendLine("Dataset filename and location: ")
+                mail_msg.AppendLine(m_xml_dataset_path)
+
+                CreateMail(mail_msg.ToString(), m_xml_operator_email, " - Time validation error.")
                 Return False
 
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR Then
@@ -407,10 +453,15 @@ Public Class clsProcessXmlTriggerFile
                 Dim statusMsg As String = "An error was encountered during the validation process, file " & moveLocPath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
-                mail_msg = "XML error encountered during validation process for the following XML file: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
-                mail_msg &= "Check the log for details; " + GetLogFileSharePath() & ControlChars.NewLine
-                mail_msg &= "Dataset filename and location: " + m_xml_dataset_path
-                CreateMail(mail_msg, m_xml_operator_email, " - XML validation error.")
+
+                Dim mail_msg = New StringBuilder()
+                mail_msg.AppendLine("XML error encountered during validation process for the following XML file: ")
+                mail_msg.AppendLine(moveLocPath)
+                mail_msg.AppendLine(CHECK_THE_LOG_FOR_DETAILS)
+                mail_msg.AppendLine("Dataset filename and location: ")
+                mail_msg.AppendLine(m_xml_dataset_path)
+
+                CreateMail(mail_msg.ToString(), m_xml_operator_email, " - XML validation error.")
                 Return False
 
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE Then
@@ -443,16 +494,19 @@ Public Class clsProcessXmlTriggerFile
                 Dim statusMsg As String = "Dataset " & myDataXMLValidation.DatasetName & " not found at " & myDataXMLValidation.SourcePath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
                 m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
-                mail_msg = "Operator: " & m_xml_operator_Name & ControlChars.NewLine
-                mail_msg &= "The dataset is not available for capture and was not added to DMS: " & ControlChars.NewLine & moveLocPath & ControlChars.NewLine
+
+                Dim mail_msg = New StringBuilder()
+                mail_msg.AppendLine("The dataset is not available for capture and was not added to DMS: ")
+                mail_msg.AppendLine(moveLocPath)
 
                 If String.IsNullOrEmpty(myDataXMLValidation.ErrorMessage) Then
-                    mail_msg &= "Check the log for details; " + GetLogFileSharePath() & ControlChars.NewLine
+                    mail_msg.AppendLine(CHECK_THE_LOG_FOR_DETAILS)
                 Else
-                    mail_msg &= myDataXMLValidation.ErrorMessage & ControlChars.NewLine
+                    mail_msg.AppendLine(myDataXMLValidation.ErrorMessage)
                 End If
 
-                mail_msg &= "Dataset not found in following location: " + m_xml_dataset_path
+                mail_msg.AppendLine("Dataset not found in following location: ")
+                mail_msg.AppendLine(m_xml_dataset_path)
 
                 mDatabaseErrorMsg = "The dataset data is not available for capture"
                 Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
@@ -462,7 +516,7 @@ Public Class clsProcessXmlTriggerFile
                     mDatabaseErrorMsg = errorSolution
                 End If
 
-                CreateMail(mail_msg, m_xml_operator_email, " - Dataset not found.")
+                CreateMail(mail_msg.ToString(), m_xml_operator_email, " - Dataset not found.")
                 Return False
             ElseIf xmlRslt = IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING Then
                 ' The file is now missing; silently move on

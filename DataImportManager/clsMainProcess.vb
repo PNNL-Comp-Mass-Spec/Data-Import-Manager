@@ -2,7 +2,9 @@ Imports System.Collections.Concurrent
 Imports System.IO
 Imports DataImportManager.clsGlobal
 Imports System.Collections.Generic
+Imports System.Net.Mail
 Imports System.Runtime.InteropServices
+Imports System.Text
 Imports PRISM.Logging
 Imports System.Windows.Forms
 Imports System.Threading
@@ -26,11 +28,21 @@ Public Class clsMainProcess
     Private m_DebugLevel As Integer = 0
     Public m_db_Err_Msg As String
 
-    ' Keys in this dictionary are instrument names
-    ' Values are the number of datasets skipped for the given instrument
-    Private m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
+    ''' <summary>
+    ''' Keys in this dictionary are instrument names
+    ''' Values are the number of datasets skipped for the given instrument
+    ''' </summary>
+    ''' <remarks></remarks>
+    Private ReadOnly mInstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
 
     Private mFailureCount As Integer
+
+    ''' <summary>
+    ''' Keys in this dictionary are semicolon separated e-mail addresses
+    ''' Values are mail messages to send
+    ''' </summary>
+    ''' <remarks></remarks>
+    Private ReadOnly mQueuedMail As ConcurrentDictionary(Of String, List(Of clsQueuedMail))
 
 #End Region
 
@@ -47,6 +59,10 @@ Public Class clsMainProcess
     ''' <remarks></remarks>
     Public Sub New(blnTraceMode As Boolean)
         TraceMode = blnTraceMode
+
+        mInstrumentsToSkip = New ConcurrentDictionary(Of String, Integer)(StringComparer.InvariantCultureIgnoreCase)
+
+        mQueuedMail = New ConcurrentDictionary(Of String, List(Of clsQueuedMail))(StringComparer.InvariantCultureIgnoreCase)
     End Sub
 
     Public Function InitMgr() As Boolean
@@ -119,7 +135,6 @@ Public Class clsMainProcess
         ' Get the debug level
         m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
 
-        m_InstrumentsToSkip = New ConcurrentDictionary(Of String, Integer)(StringComparer.CurrentCultureIgnoreCase)
 
         ' Everything worked
         Return True
@@ -169,12 +184,12 @@ Public Class clsMainProcess
                     If Not String.IsNullOrEmpty(m_MgrSettings.ErrMsg) Then
                         ' Manager has been deactivated, so report this
                         If TraceMode Then ShowTraceMessage(m_MgrSettings.ErrMsg)
-                        m_Logger.PostEntry(m_MgrSettings.ErrMsg, ILogger.logMsgType.logWarning, True)
+                        m_Logger.PostEntry(m_MgrSettings.ErrMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
                     Else
                         ' Unknown problem reading config file
                         Const errMsg = "Unknown error re-reading config file"
                         If TraceMode Then ShowTraceMessage(errMsg)
-                        m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
+                        m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
                     End If
 
                     Exit Function
@@ -194,7 +209,7 @@ Public Class clsMainProcess
             ' Check to see if the manager is still active
             If Not m_MgrActive Then
                 If TraceMode Then ShowTraceMessage("Manager is inactive")
-                m_Logger.PostEntry("Manager inactive", ILogger.logMsgType.logNormal, True)
+                m_Logger.PostEntry("Manager inactive", ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
                 Exit Function
             End If
 
@@ -222,7 +237,7 @@ Public Class clsMainProcess
         Catch ex As Exception
             Dim errMsg As String = "Exception in clsMainProcess.DoImport(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
+            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End Try
 
@@ -296,7 +311,12 @@ Public Class clsMainProcess
                 Exit Sub
             End If
 
-            For Each kvItem As KeyValuePair(Of String, Integer) In m_InstrumentsToSkip
+            ' Send any queued mail
+            If mQueuedMail.Count > 0 Then
+                SendQueuedMail()
+            End If
+
+            For Each kvItem As KeyValuePair(Of String, Integer) In mInstrumentsToSkip
                 Dim strMessage As String = "Skipped " & kvItem.Value & " dataset"
                 If kvItem.Value <> 1 Then strMessage &= "s"
                 strMessage &= " for instrument " & kvItem.Key & " due to network errors"
@@ -323,11 +343,18 @@ Public Class clsMainProcess
 
             Dim errMsg = "Exception in clsMainProcess.DoDataImportTask(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, True)
+            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
         End Try
 
     End Sub
-    
+
+    Private Function GetLogFileSharePath() As String
+
+        Dim logFileName = m_MgrSettings.GetParam("logfilename")
+        Return clsProcessXmlTriggerFile.GetLogFileSharePath(logFileName)
+
+    End Function
+
     ''' <summary>
     ''' Retrieve the next chunk of items from a list
     ''' </summary>
@@ -336,7 +363,7 @@ Public Class clsMainProcess
     ''' <param name="chunksize">Number of items to return</param>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Protected Function GetNextChunk(Of T)(ByRef sourceList As List(Of T), chunksize As Integer) As IEnumerable(Of T)
+    Private Function GetNextChunk(Of T)(ByRef sourceList As List(Of T), chunksize As Integer) As IEnumerable(Of T)
         If chunksize < 1 Then chunksize = 1
         If sourceList.Count < 1 Then
             Return New List(Of T)
@@ -374,15 +401,43 @@ Public Class clsMainProcess
         With udtSettings
             .PreviewMode = PreviewMode
             .DebugLevel = m_DebugLevel
-            .MailDisabled = MailDisabled
             .PreviewMode = PreviewMode
             .TraceMode = TraceMode
             .FailureFolder = failureFolder
             .SuccessFolder = successfolder
         End With
 
-        Dim triggerProcessor = New clsProcessXmlTriggerFile(m_MgrSettings, m_InstrumentsToSkip, infoCache, m_Logger, udtSettings)
+        Dim triggerProcessor = New clsProcessXmlTriggerFile(m_MgrSettings, mInstrumentsToSkip, infoCache, m_Logger, udtSettings)
         triggerProcessor.ProcessFile(currentFile)
+
+        If triggerProcessor.QueuedMail.Count > 0 Then
+            AddToMailQueue(triggerProcessor.QueuedMail)
+        End If
+
+    End Sub
+
+    ''' <summary>
+    ''' Add one or more mail messages to mQueuedMail
+    ''' </summary>
+    ''' <param name="newQueuedMail"></param>
+    ''' <remarks></remarks>
+    Private Sub AddToMailQueue(newQueuedMail As Dictionary(Of String, List(Of clsQueuedMail)))
+
+        For Each newQueuedMessage In newQueuedMail
+            Dim recipients = newQueuedMessage.Key
+
+            Dim queuedMessages As List(Of clsQueuedMail) = Nothing
+            If mQueuedMail.TryGetValue(recipients, queuedMessages) Then
+                queuedMessages.AddRange(newQueuedMessage.Value)
+            Else
+                If Not mQueuedMail.TryAdd(recipients, newQueuedMessage.Value) Then
+                    If mQueuedMail.TryGetValue(recipients, queuedMessages) Then
+                        queuedMessages.AddRange(newQueuedMessage.Value)
+                    End If
+                End If
+            End If
+
+        Next
 
     End Sub
 
@@ -429,17 +484,138 @@ Public Class clsMainProcess
 
     End Function
 
+    ''' <summary>
+    ''' Send one digest e-mail to each unique combination of recipients
+    ''' </summary>
+    ''' <remarks>
+    ''' Use of a digest e-mail reduces the e-mail spam sent by this tool
+    ''' </remarks>
+    Private Sub SendQueuedMail()
+
+        Dim mailServer = m_MgrSettings.GetParam("smtpserver")
+        If String.IsNullOrEmpty(mailServer) Then
+            m_Logger.PostEntry("Manager parameter smtpserver is empty; cannot send mail", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            Return
+        End If
+
+        For Each queuedRecipientList In mQueuedMail
+            Dim recipients = queuedRecipientList.Key
+            Dim messageCount = queuedRecipientList.Value.Count
+
+            If messageCount < 1 Then
+                ' Empty clsQueuedMail list; this should never happen
+                m_Logger.PostEntry("Empty mail queue for recipients " & recipients & "; nothing to do", ILogger.logMsgType.logWarning, LOG_DATABASE)
+                Continue For
+            End If
+
+            Dim queuedMail As clsQueuedMail = queuedRecipientList.Value(0)
+            Dim mailToSend = queuedMail.Mail
+
+            Dim subjectList = New SortedSet(Of String)
+            Dim databaseErrors = New SortedSet(Of String)
+
+            Dim mailBody = New StringBuilder()
+
+            If Not String.IsNullOrWhiteSpace(queuedMail.InstrumentOperator) Then
+                mailBody.AppendLine("Operator: " & queuedMail.InstrumentOperator)
+                If messageCount > 1 Then
+                    mailBody.AppendLine()
+                End If
+            End If
+
+            mailBody.AppendLine(queuedMail.Mail.Body)
+
+            CheckNewSubjectAndDatabaseMsg(queuedMail, mailBody, subjectList, databaseErrors)
+
+            If messageCount > 1 Then
+
+                ' Append the information for the additional messages
+                For messageIndex = 1 To messageCount - 1
+                    Dim additionalQueuedItem As clsQueuedMail = queuedRecipientList.Value(messageIndex)
+
+                    mailBody.AppendLine()
+                    mailBody.AppendLine("------------------------------------")
+                    mailBody.AppendLine()
+                    mailBody.AppendLine(additionalQueuedItem.Body)
+
+                    CheckNewSubjectAndDatabaseMsg(additionalQueuedItem, mailBody, subjectList, databaseErrors)
+
+                Next
+
+                If subjectList.Count > 1 Then
+                    ' Possibly update the subject of the e-mail
+                    ' Subjects will typically only be:
+                    ' "Data Import Manager - Database error."
+                    '   or
+                    ' "Data Import Manager - Database warning."
+                    '  or
+                    ' "Data Import Manager - Operator not defined."
+
+                    ' If any of the subjects contains "error", use it for the mailsubject
+                    For Each subject In From item In subjectList Where item.ToLower().Contains("error") Select item
+                        mailToSend.Subject = subject
+                        Exit For
+                    Next
+
+                End If
+
+            End If
+
+            If mailBody.ToString().Contains(clsProcessXmlTriggerFile.CHECK_THE_LOG_FOR_DETAILS) Then
+                mailBody.AppendLine()
+                mailBody.AppendLine("Log file location: " & GetLogFileSharePath())
+            End If
+
+            mailBody.AppendLine()
+            mailBody.AppendLine("(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)")
+
+            mailToSend.Body = mailBody.ToString()
+
+            If MailDisabled Then
+                ShowTraceMessage("E-mail that would be sent:")
+                ShowTraceMessage("  " & recipients)
+                ShowTraceMessage("  " & mailToSend.Subject)
+                ShowTraceMessage("  " & ControlChars.NewLine & mailToSend.Body)
+            Else
+                Dim smtp As New SmtpClient()
+                smtp.Send(mailToSend)
+
+                Threading.Thread.Sleep(100)
+            End If
+        Next
+
+    End Sub
+
+    Private Sub CheckNewSubjectAndDatabaseMsg(
+      queuedMail As clsQueuedMail,
+      mailBody As StringBuilder,
+      subjectList As ISet(Of String),
+      databaseErrors As ISet(Of String))
+
+        If Not subjectList.Contains(queuedMail.Subject) Then
+            subjectList.Add(queuedMail.Subject)
+        End If
+
+        If Not String.IsNullOrWhiteSpace(queuedMail.DatabaseErrorMsg) Then
+            If Not databaseErrors.Contains(queuedMail.DatabaseErrorMsg) Then
+                mailBody.AppendLine(queuedMail.DatabaseErrorMsg)
+                databaseErrors.Add(queuedMail.DatabaseErrorMsg)
+            End If
+        End If
+
+    End Sub
+
     Private Sub m_FileWatcher_Changed(sender As Object, e As FileSystemEventArgs) Handles m_FileWatcher.Changed
         m_ConfigChanged = True
         If m_DebugLevel > 3 Then
-            m_Logger.PostEntry("Config file changed", ILogger.logMsgType.logDebug, True)
+            m_Logger.PostEntry("Config file changed", ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
         End If
         m_FileWatcher.EnableRaisingEvents = False  'Turn off change detection until current change has been acted upon
     End Sub
 
     Private Sub OnDbErrorEvent(message As String)
         If TraceMode Then ShowTraceMessage("Database error message: " & message)
-        m_Logger.PostEntry(message, ILogger.logMsgType.logError, True)
+        m_Logger.PostEntry(message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
     End Sub
 
     Private Function DeleteXmlFiles(folderPath As String, fileAgeDays As Integer) As Boolean
@@ -494,10 +670,9 @@ Public Class clsMainProcess
         End Try
 
         If deleteFailureCount > 0 Then
-            Dim logFileName = m_MgrSettings.GetParam("logfilename")
             Dim errMsg =
                 "Error deleting " & deleteFailureCount & " XML files at " & folderPath &
-                " -- for a detailed list, see log file " & clsProcessXmlTriggerFile.GetLogFileSharePath(logFileName)
+                " -- for a detailed list, see log file " & GetLogFileSharePath()
 
             If TraceMode Then ShowTraceMessage(errMsg)
             m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_DATABASE)
@@ -514,7 +689,7 @@ Public Class clsMainProcess
 
             Dim statusMsg As String = "Error while disabling manager: " & m_MgrSettings.ErrMsg
             If TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, True)
+            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
         End If
 
     End Sub
