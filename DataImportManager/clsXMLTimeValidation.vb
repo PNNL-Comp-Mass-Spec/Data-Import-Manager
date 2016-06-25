@@ -27,6 +27,8 @@ Public Class clsXMLTimeValidation
 
     Private ReadOnly mDMSInfoCache As DMSInfoCache
 
+    Private ReadOnly mProcSettings As clsProcessXmlTriggerFile.udtXmlProcSettingsType
+
     Private m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
     Private WithEvents m_FileTools As clsFileTools
 
@@ -35,6 +37,7 @@ Public Class clsXMLTimeValidation
 
     ' access to mgr parameters
     Private m_mgrParams As IMgrParams
+
 
 #End Region
 
@@ -131,7 +134,8 @@ Public Class clsXMLTimeValidation
       mgrParams As IMgrParams,
       logger As ILogger,
       dctInstrumentsToSkip As ConcurrentDictionary(Of String, Integer),
-      dmsCache As DMSInfoCache)
+      dmsCache As DMSInfoCache,
+      udtProcSettings As clsProcessXmlTriggerFile.udtXmlProcSettingsType)
 
         m_mgrParams = mgrParams
         m_logger = logger
@@ -139,6 +143,7 @@ Public Class clsXMLTimeValidation
         m_FileTools = New clsFileTools
         m_InstrumentsToSkip = dctInstrumentsToSkip
         mDMSInfoCache = dmsCache
+        mProcSettings = udtProcSettings
     End Sub
 
     Private Function FixNull(strText As String) As String
@@ -345,6 +350,8 @@ Public Class clsXMLTimeValidation
         Dim currentTask As String = String.Empty
         Dim statusMsg As String = String.Empty
 
+        Dim ignoreInstrumentSourceErrors = False
+
         Try
 
             If String.IsNullOrEmpty(mCaptureType) OrElse String.IsNullOrEmpty(mSourcePath) Then
@@ -394,8 +401,9 @@ Public Class clsXMLTimeValidation
                     m_UserName = GetHostName() & "\" & m_UserName
                 End If
 
-                Dim currentTaskBase = "Connecting to " & mSourcePath & " using secfso, user " & m_UserName &
-                 ", and encoded password " & m_Pwd
+                Dim currentTaskBase = "Connecting to " & mSourcePath &
+                    " using secfso, user " & m_UserName & "," &
+                    " and encoded password " & m_Pwd
 
                 currentTask = currentTaskBase & "; Decoding password"
                 If TraceMode Then ShowTraceMessage(currentTask)
@@ -435,7 +443,11 @@ Public Class clsXMLTimeValidation
                         If TraceMode Then ShowTraceMessage(statusMsg)
                         ' Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
                         ' Need to completely exit the manager
-                        Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
+                        If mProcSettings.IgnoreInstrumentSourceErrors Then
+                            ignoreInstrumentSourceErrors = True
+                        Else
+                            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
+                        End If
 
                     Else
                         statusMsg = "You can diagnose the problem using this query: "
@@ -443,15 +455,23 @@ Public Class clsXMLTimeValidation
                         m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
                     End If
 
-                    statusMsg = "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method " &
-                                "FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID " &
-                                "WHERE IN_Name = '" & mInstrumentName & "'"
+                    If Not ignoreInstrumentSourceErrors Then
 
-                    If TraceMode Then ShowTraceMessage(statusMsg)
-                    m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                        If mProcSettings.IgnoreInstrumentSourceErrors Then
+                            ignoreInstrumentSourceErrors = True
+                        Else
+                            statusMsg = "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method " &
+                                        "FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID " &
+                                        "WHERE IN_Name = '" & mInstrumentName & "'"
 
-                    Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+                            If TraceMode Then ShowTraceMessage(statusMsg)
+                            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+
+                            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
+                        End If
+                    End If
                 End If
+
             End If
 
             ' Make sure mSleepInterval isn't too large
@@ -466,7 +486,7 @@ Public Class clsXMLTimeValidation
             If TraceMode Then ShowTraceMessage(currentTask)
 
             ' This call updates instrumentFileOrFolderName
-            resType = GetRawDSType(mSourcePath, mCaptureSubfolder, mDatasetName, instrumentFileOrFolderName)
+            resType = GetRawDSType(mSourcePath, mCaptureSubfolder, mDatasetName, ignoreInstrumentSourceErrors, instrumentFileOrFolderName)
 
             currentTask = "Validating operator name " & mOperatorPRN & " for " & mDatasetName & " at " & datasetSourcePath
             If TraceMode Then ShowTraceMessage(currentTask)
@@ -504,11 +524,11 @@ Public Class clsXMLTimeValidation
                     ' Update the dataset path to include the instrument file or folder name
                     mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrFolderName)
 
-                    Dim blnLogonFailure = False
+                    Dim logonFailure = False
 
-                    If Not VerifyConstantFileSize(mDatasetPath, mSleepInterval, blnLogonFailure) Then
+                    If Not VerifyConstantFileSize(mDatasetPath, mSleepInterval, logonFailure) Then
 
-                        If Not blnLogonFailure Then
+                        If Not logonFailure Then
                             statusMsg = "Dataset '" & mDatasetName & "' not ready (file size changed over " & mSleepInterval & " seconds)"
                             If TraceMode Then ShowTraceMessage(statusMsg)
                             m_logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
@@ -520,7 +540,7 @@ Public Class clsXMLTimeValidation
                             DisconnectShare(mShareConnector, m_Connected)
                         End If
 
-                        If blnLogonFailure Then
+                        If logonFailure Then
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
                         Else
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
@@ -649,6 +669,7 @@ Public Class clsXMLTimeValidation
       instrumentSourcePath As String,
       captureSubFolderName As String,
       currentDataset As String,
+      ignoreInstrumentSourceErrors As Boolean,
       <Out()> ByRef instrumentFileOrFolderName As String) As RawDSTypes
 
         ' Determines if raw dataset exists as a single file, folder with same name as dataset, or 
@@ -657,11 +678,20 @@ Public Class clsXMLTimeValidation
 
         ' Verify instrument transfer folder exists
         Dim diSourceFolder = New DirectoryInfo(instrumentSourcePath)
-        If TraceMode Then ShowTraceMessage("Instantiated diSourceFolder with " & "[" & instrumentSourcePath & "]")
+        If TraceMode Then ShowTraceMessage("Instantiated diSourceFolder with " & instrumentSourcePath)
 
         If Not diSourceFolder.Exists Then
-            mErrorMessage = "Source folder not found for dataset " & currentDataset & ": [" & diSourceFolder.FullName & "]"
-            If TraceMode Then clsMainProcess.ShowTraceMessage(mErrorMessage)
+
+            Dim msg = "Source folder not found for dataset " & currentDataset & ": " & diSourceFolder.FullName
+            If TraceMode Then clsMainProcess.ShowTraceMessage(msg)
+
+            If ignoreInstrumentSourceErrors Then
+                ' Simply assume it's a Thermo .raw file
+                instrumentFileOrFolderName = currentDataset & ".raw"
+                Return RawDSTypes.None
+            End If
+
+            mErrorMessage = msg
             m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             instrumentFileOrFolderName = String.Empty
             Return RawDSTypes.None
@@ -711,7 +741,7 @@ Public Class clsXMLTimeValidation
             End If
         Next
 
-        ' If we got to here, then the raw dataset wasn't found, so there was a problem
+        ' If we got to here, the raw dataset wasn't found, so there was a problem
         instrumentFileOrFolderName = String.Empty
         Return RawDSTypes.None
 
@@ -745,12 +775,9 @@ Public Class clsXMLTimeValidation
     ''' <param name="sleepIntervalSeconds"></param>
     ''' <returns>True if constant, false if changed</returns>
     ''' <remarks></remarks>
-    Private Function VerifyConstantFolderSize(folderPath As String, sleepIntervalSeconds As Integer) As Boolean
-
-        If GetHostName().ToLower().StartsWith("monroe") Then
-            Console.WriteLine("Skipping date validation because host name starts with Monroe")
-            Return True
-        End If
+    Private Function VerifyConstantFolderSize(
+      folderPath As String,
+      sleepIntervalSeconds As Integer) As Boolean
 
         ' Sleep interval should be no more than 15 minutes (900 seconds)
         If sleepIntervalSeconds > 900 Then sleepIntervalSeconds = 900
@@ -787,21 +814,19 @@ Public Class clsXMLTimeValidation
     ''' </summary>
     ''' <param name="filePath"></param>
     ''' <param name="sleepIntervalSeconds"></param>
-    ''' <param name="blnLogonFailure"></param>
+    ''' <param name="logonFailure"></param>
     ''' <returns>True if constant, false if changed</returns>
     ''' <remarks></remarks>
-    Private Function VerifyConstantFileSize(filePath As String, sleepIntervalSeconds As Integer, ByRef blnLogonFailure As Boolean) As Boolean
-
-        If GetHostName().ToLower().StartsWith("monroe") Then
-            Console.WriteLine("Skipping file size validation because host name starts with Monroe")
-            Return True
-        End If
-
-        blnLogonFailure = False
+    Private Function VerifyConstantFileSize(
+      filePath As String,
+      sleepIntervalSeconds As Integer,
+      <Out()> ByRef logonFailure As Boolean) As Boolean
 
         ' Sleep interval should be no more than 15 minutes (900 seconds)
         If sleepIntervalSeconds > 900 Then sleepIntervalSeconds = 900
         If sleepIntervalSeconds < 1 Then sleepIntervalSeconds = 1
+
+        logonFailure = False
 
         Try
             ' Get the initial size of the file
@@ -841,6 +866,7 @@ Public Class clsXMLTimeValidation
                 ' This error occasionally occurs when monitoring a .UIMF file on an IMS instrument
                 ' We'll treat this as an indicator that the file size is not constant					                
                 If TraceMode Then ShowTraceMessage("Error message contains 'unknown user name or bad password'; assuming this means the file size is not constant")
+                logonFailure = True
             Else
                 Throw
             End If
@@ -866,9 +892,9 @@ Public Class clsXMLTimeValidation
             Dim operatorInfo = mDMSInfoCache.GetOperatorName(mOperatorPRN, userCountMatched)
 
             ' Update the operator name, e-mail, and PRN
-            mOperatorName = operatorInfo.name
-            mOperatorEmail = operatorInfo.email
-            mOperatorPRN = operatorInfo.username
+            mOperatorName = operatorInfo.Name
+            mOperatorEmail = operatorInfo.Email
+            mOperatorPRN = operatorInfo.Username
 
             If userCountMatched = 1 Then
                 ' We matched a single user using strQueryName

@@ -11,7 +11,7 @@
 Public Class clsEmergencyLog
 
 	'*********************************************************************************************************
-    'Clsss for logging of problems prior to manager's full logging capability being available
+    'Class for logging of problems prior to manager's full logging capability being available
 	'*********************************************************************************************************
 
 #Region "Methods"

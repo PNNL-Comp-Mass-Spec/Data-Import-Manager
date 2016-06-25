@@ -5,11 +5,12 @@ Imports System.Collections.Generic
 Imports System.IO
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "June 23, 2016"
+    Public Const PROGRAM_DATE As String = "June 24, 2016"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
     Private mPreviewMode As Boolean
+    Private mIgnoreInstrumentSourceErrors As Boolean
 
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
@@ -20,6 +21,7 @@ Module modMain
         mMailDisabled = False
         mTraceMode = False
         mPreviewMode = False
+        mIgnoreInstrumentSourceErrors = False
 
         Try
 
@@ -41,6 +43,7 @@ Module modMain
                 Dim oMainProcess = New clsMainProcess(mTraceMode)
                 oMainProcess.MailDisabled = mMailDisabled
                 oMainProcess.PreviewMode = mPreviewMode
+                oMainProcess.IgnoreInstrumentSourceErrors = mIgnoreInstrumentSourceErrors
 
                 Try
                     If Not oMainProcess.InitMgr() Then
@@ -85,7 +88,7 @@ Module modMain
     Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
-        Dim lstValidParameters As List(Of String) = New List(Of String) From {"NoMail", "Trace", "Preview"}
+        Dim lstValidParameters As List(Of String) = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
 
         Try
             ' Make sure no invalid parameters are present
@@ -100,6 +103,7 @@ Module modMain
                 If objParseCommandLine.IsParameterPresent("NoMail") Then mMailDisabled = True
                 If objParseCommandLine.IsParameterPresent("Trace") Then mTraceMode = True
                 If objParseCommandLine.IsParameterPresent("Preview") Then mPreviewMode = True
+                If objParseCommandLine.IsParameterPresent("ISE") Then mIgnoreInstrumentSourceErrors = True
 
                 If mPreviewMode Then
                     mMailDisabled = True
@@ -154,7 +158,7 @@ Module modMain
 
             Console.WriteLine("This program parses the instrument trigger files used for adding datasets to DMS. Normal operation is to run the program without any command line switches.")
             Console.WriteLine()
-            Console.WriteLine("Program syntax:" & ControlChars.NewLine & Path.GetFileName(GetAppPath()) & " [/NoMail] [/Trace] [/Preview]")
+            Console.WriteLine("Program syntax:" & ControlChars.NewLine & Path.GetFileName(GetAppPath()) & " [/NoMail] [/Trace] [/Preview] [/ISE]")
             Console.WriteLine()
 
             Console.WriteLine("Use /NoMail to disable sending e-mail when errors are encountered")
@@ -166,6 +170,8 @@ Module modMain
             Console.WriteLine("Use /Preview to enable preview mode, where we report any trigger files found, but do not " +
                               "post them to DMS and do not move them to the failure folder if there is an error. " +
                               "Using /Preview forces /NoMail and /Trace to both be enabled")
+            Console.WriteLine()
+            Console.WriteLine("Use /ISE to ignore instrument source check errors (e.g. cannot access bionet)")
             Console.WriteLine()
 
             Console.WriteLine("Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)")

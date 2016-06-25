@@ -51,6 +51,33 @@ Public Class clsGlobal
 
     End Function
 
+    ''' <summary>
+    ''' Parses the .StackTrace text of the given exception to return a compact description of the current stack
+    ''' </summary>
+    ''' <param name="ex"></param>
+    ''' <returns>String similar to "Stack trace: clsCodeTest.Test-:-clsCodeTest.TestException-:-clsCodeTest.InnerTestException in clsCodeTest.vb:line 86"</returns>
+    ''' <remarks></remarks>
+    Public Shared Function GetExceptionStackTrace(ex As Exception) As String
+        Return GetExceptionStackTrace(ex, False)
+    End Function
+
+    ''' <summary>
+    ''' Parses the .StackTrace text of the given exception to return a compact description of the current stack
+    ''' </summary>
+    ''' <param name="ex"></param>
+    ''' <param name="multiLineOutput">When true, format the stack trace using newline characters instead of -:-</param>
+    ''' <returns>String similar to "Stack trace: clsCodeTest.Test-:-clsCodeTest.TestException-:-clsCodeTest.InnerTestException in clsCodeTest.vb:line 86"</returns>
+    ''' <remarks></remarks>
+    Public Shared Function GetExceptionStackTrace(ex As Exception, multiLineOutput As Boolean) As String
+
+        If multiLineOutput Then
+            Return Utilities.GetExceptionStackTraceMultiLine(ex)
+        End If
+
+        Return Utilities.GetExceptionStackTrace(ex)
+
+    End Function
+
     Public Shared Function GetExePath() As String
         ' Could use Application.ExecutablePath
         ' Instead, use reflection
