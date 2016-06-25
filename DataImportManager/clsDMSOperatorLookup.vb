@@ -20,11 +20,10 @@ Public Class DMSInfoCache
         Public ID As Integer
     End Structure
 #End Region
- 
 
 #Region "Properties and Events"
 
-    Public ReadOnly Property Connectionstring As String
+    Public ReadOnly Property ConnectionString As String
         Get
             Return mConnectionString
         End Get
@@ -99,9 +98,8 @@ Public Class DMSInfoCache
         End While
 
         Throw New Exception("Unable to connect to the database after 3 tries")
-
     End Function
-    
+
     Public Function GetDbErrorSolution(errorText As String) As String
 
         If mErrorSolutions.Count = 0 Then
@@ -152,7 +150,7 @@ Public Class DMSInfoCache
 
         If blnSuccess AndAlso Not String.IsNullOrEmpty(operatorInfo.Name) Then
 
-            If mTraceMode Then
+            If mTraceMode And False Then
                 ShowTraceMessage("  Operator: " & operatorInfo.Name)
                 ShowTraceMessage("  EMail: " & operatorInfo.Email)
                 ShowTraceMessage("  Username: " & operatorInfo.Username)
@@ -448,7 +446,7 @@ Public Class DMSInfoCache
             Dim strLogMsg = "LookupOperatorName: Operator not found in T_Users.U_PRN: " & operatorPrnToFind
             m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
 
-            operatorInfo.Name = "Operator " + operatorPrnToFind + " not found in T_Users; should be network login name, e.g. D3E154"
+            operatorInfo.Name = "Operator [" + operatorPrnToFind + "] not found in T_Users; should be network login name (D3E154) or full name (Moore, Ronald J)"
             Return False
         End If
 

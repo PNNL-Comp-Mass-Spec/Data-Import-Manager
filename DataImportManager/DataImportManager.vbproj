@@ -132,6 +132,8 @@
     </Compile>
     <Compile Include="clsParseCommandLine.vb" />
     <Compile Include="clsProcessXmlTriggerFile.vb" />
+    <Compile Include="clsValidationError.vb" />
+    <Compile Include="clsValidationErrorSummary.vb" />
     <Compile Include="clsXMLTimeValidation.vb" />
     <Compile Include="ITaskParams.vb">
       <SubType>Code</SubType>

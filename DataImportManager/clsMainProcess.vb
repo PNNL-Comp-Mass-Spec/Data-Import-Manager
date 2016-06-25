@@ -47,9 +47,10 @@ Public Class clsMainProcess
 #End Region
 
 #Region "Auto Properties"
+    Public Property IgnoreInstrumentSourceErrors As Boolean
     Public Property MailDisabled As Boolean
-    Public Property TraceMode As Boolean
     Public Property PreviewMode As Boolean
+    Public Property TraceMode As Boolean
 #End Region
 
     ''' <summary>
@@ -76,7 +77,7 @@ Public Class clsMainProcess
             End If
         Catch ex As Exception
             If TraceMode Then ShowTraceMessage("Exception instantiating m_MgrSettings: " & ex.Message)
-            Throw New Exception("InitMgr, " & ex.Message)
+            Throw New Exception("InitMgr, " & ex.Message, ex)
             ' Failures are logged by clsMgrSettings to local emergency log file
         End Try
 
@@ -109,7 +110,7 @@ Public Class clsMainProcess
 
         Catch ex As Exception
             If TraceMode Then ShowTraceMessage("Exception loading initial settings: " & ex.Message)
-            Throw New Exception("InitMgr, " & ex.Message)
+            Throw New Exception("InitMgr, " & ex.Message, ex)
         End Try
 
         ' Setup the logger
@@ -237,7 +238,7 @@ Public Class clsMainProcess
         Catch ex As Exception
             Dim errMsg As String = "Exception in clsMainProcess.DoImport(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(errMsg & "; " & GetExceptionStackTrace(ex), ILogger.logMsgType.logError, LOG_DATABASE)
             Return False
         End Try
 
@@ -271,10 +272,10 @@ Public Class clsMainProcess
                 End If
 
                 If GetHostName().ToLower().StartsWith("monroe") Then
-                    Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
+                    ' Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
                     importDelay = 1
                 ElseIf PreviewMode Then
-                    Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
+                    ' Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
                     importDelay = 1
                 End If
 
@@ -287,8 +288,10 @@ Public Class clsMainProcess
                 ' Randomize order of files in m_XmlFilesToLoad
                 xmlFilesToImport.Shuffle()
 
-                ' Process the files in parallel, in groups of 50 at a time
+                If TraceMode Then ShowTraceMessage("Processing " & xmlFilesToImport.Count & " XML files")
 
+                ' Process the files in parallel, in groups of 50 at a time
+                '
                 Do
                     Dim currentChunk As IEnumerable(Of FileInfo) = GetNextChunk(xmlFilesToImport, 50)
 
@@ -343,7 +346,8 @@ Public Class clsMainProcess
 
             Dim errMsg = "Exception in clsMainProcess.DoDataImportTask(), " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+
+            m_Logger.PostEntry(errMsg & "; " & GetExceptionStackTrace(ex), ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
         End Try
 
     End Sub
@@ -399,8 +403,8 @@ Public Class clsMainProcess
 
         Dim udtSettings = New clsProcessXmlTriggerFile.udtXmlProcSettingsType
         With udtSettings
-            .PreviewMode = PreviewMode
             .DebugLevel = m_DebugLevel
+            .IgnoreInstrumentSourceErrors = IgnoreInstrumentSourceErrors
             .PreviewMode = PreviewMode
             .TraceMode = TraceMode
             .FailureFolder = failureFolder
@@ -492,116 +496,264 @@ Public Class clsMainProcess
     ''' </remarks>
     Private Sub SendQueuedMail()
 
-        Dim mailServer = m_MgrSettings.GetParam("smtpserver")
-        If String.IsNullOrEmpty(mailServer) Then
-            m_Logger.PostEntry("Manager parameter smtpserver is empty; cannot send mail", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-            Return
-        End If
+        Dim currentTask = "Initializing"
+        Dim msg As String
 
-        For Each queuedRecipientList In mQueuedMail
-            Dim recipients = queuedRecipientList.Key
-            Dim messageCount = queuedRecipientList.Value.Count
+        Try
 
-            If messageCount < 1 Then
-                ' Empty clsQueuedMail list; this should never happen
-                m_Logger.PostEntry("Empty mail queue for recipients " & recipients & "; nothing to do", ILogger.logMsgType.logWarning, LOG_DATABASE)
-                Continue For
+            currentTask = "Get smptserver param"
+            Dim mailServer = m_MgrSettings.GetParam("smtpserver")
+            If String.IsNullOrEmpty(mailServer) Then
+                msg = "Manager parameter smtpserver is empty; cannot send mail"
+                If TraceMode Then ShowTraceMessage(msg)
+                m_Logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                Return
             End If
 
-            Dim queuedMail As clsQueuedMail = queuedRecipientList.Value(0)
-            Dim mailToSend = queuedMail.Mail
+            Dim currentLogFile = New FileInfo(m_Logger.CurrentLogFilePath)
 
-            Dim subjectList = New SortedSet(Of String)
-            Dim databaseErrors = New SortedSet(Of String)
+            Dim mailLogFile = New FileInfo(Path.Combine(currentLogFile.Directory.FullName, "MailLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"))
+            Dim newLogFile = Not mailLogFile.Exists()
+            Dim mailContentPreview = New StringBuilder()
 
-            Dim mailBody = New StringBuilder()
-
-            If Not String.IsNullOrWhiteSpace(queuedMail.InstrumentOperator) Then
-                mailBody.AppendLine("Operator: " & queuedMail.InstrumentOperator)
-                If messageCount > 1 Then
-                    mailBody.AppendLine()
-                End If
+            If newLogFile Then
+                If TraceMode Then ShowTraceMessage("Creating new mail log file " & mailLogFile.FullName)
+            Else
+                If TraceMode Then ShowTraceMessage("Appending to mail log file " & mailLogFile.FullName)
             End If
 
-            mailBody.AppendLine(queuedMail.Mail.Body)
+            currentTask = "Create the mail logger"
+            Using mailLogger = New StreamWriter(New FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
 
-            CheckNewSubjectAndDatabaseMsg(queuedMail, mailBody, subjectList, databaseErrors)
+                mailLogger.AutoFlush = True
 
-            If messageCount > 1 Then
+                currentTask = "Iterate over mQueuedMail"
+                For Each queuedMailContainer In mQueuedMail
+                    Dim recipients = queuedMailContainer.Key
+                    Dim messageCount = queuedMailContainer.Value.Count
 
-                ' Append the information for the additional messages
-                For messageIndex = 1 To messageCount - 1
-                    Dim additionalQueuedItem As clsQueuedMail = queuedRecipientList.Value(messageIndex)
+                    If messageCount < 1 Then
+                        If TraceMode Then ShowTraceMessage("Empty clsQueuedMail list; this should never happen")
+                        m_Logger.PostEntry("Empty mail queue for recipients " & recipients & "; nothing to do", ILogger.logMsgType.logWarning, LOG_DATABASE)
+                        Continue For
+                    End If
+
+                    currentTask = "Get first queued mail"
+                    Dim firstQueuedMail As clsQueuedMail = queuedMailContainer.Value(0)
+
+                    If firstQueuedMail Is Nothing Then
+                        msg = "firstQueuedMail item is null in SendQueuedMail"
+                        If TraceMode Then ShowTraceMessage(msg)
+                        m_Logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_DATABASE)
+
+                        Dim defaultRecipients = m_MgrSettings.GetParam("to")
+                        firstQueuedMail = New clsQueuedMail("Unknown Operator", defaultRecipients, "Exception", New List(Of clsValidationError))
+                    End If
+
+                    ' Create the mail message
+                    Dim mailToSend As New MailMessage()
+
+                    ' Set the addresses
+                    mailToSend.From = New MailAddress(m_MgrSettings.GetParam("from"))
+
+                    Dim mailRecipientsList = firstQueuedMail.Recipients.Split(";"c).Distinct().ToList()
+                    For Each emailAddress As String In mailRecipientsList
+                        mailToSend.To.Add(emailAddress)
+                    Next
+
+                    mailToSend.Subject = firstQueuedMail.Subject
+
+                    Dim subjectList = New SortedSet(Of String)
+                    Dim databaseErrorMsgs = New SortedSet(Of String)
+                    Dim instrumentFilePaths = New SortedSet(Of String)
+
+                    Dim mailBody = New StringBuilder()
+
+                    Dim statusMsg As String
+                    If messageCount = 1 Then
+                        statusMsg = "E-mailing " & recipients & " regarding " & firstQueuedMail.InstrumentDatasetPath
+                        If TraceMode Then ShowTraceMessage(statusMsg)
+                        m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
+                    Else
+                        statusMsg = "E-mailing " & recipients & " regarding " & messageCount & " errors"
+                        If TraceMode Then ShowTraceMessage(statusMsg)
+                        m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
+                    End If
+
+                    If Not String.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator) Then
+                        mailBody.AppendLine("Operator: " & firstQueuedMail.InstrumentOperator)
+                        If messageCount > 1 Then
+                            mailBody.AppendLine()
+                        End If
+                    End If
+
+                    ' Summarize the validation errors
+                    Dim summarizedErrors = New Dictionary(Of String, clsValidationErrorSummary)
+                    Dim messageNumber = 0
+                    Dim nextSortWeight = 1
+
+                    currentTask = "Summarize validation errors in queuedMailContainer.Value"
+                    For Each queuedMailItem In queuedMailContainer.Value
+
+                        If queuedMailItem Is Nothing Then
+                            msg = "queuedMailItem is nothing for " & queuedMailContainer.Key
+                            If TraceMode Then ShowTraceMessage(msg)
+                            m_Logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                        End If
+
+                        messageNumber += 1
+
+                        If Not String.IsNullOrWhiteSpace(queuedMailItem.InstrumentDatasetPath) AndAlso
+                            Not instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath) Then
+                            instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath)
+                        End If
+
+                        statusMsg = String.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath)
+                        If TraceMode Then ShowTraceMessage(statusMsg)
+                        m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
+
+                        currentTask = "Iterate over queuedMailItem.ValidationErrors, message" & messageNumber
+                        For Each validationError In queuedMailItem.ValidationErrors
+
+                            Dim errorSummary As clsValidationErrorSummary = Nothing
+                            If Not summarizedErrors.TryGetValue(validationError.IssueType, errorSummary) Then
+                                errorSummary = New clsValidationErrorSummary(validationError.IssueType, nextSortWeight)
+                                nextSortWeight += 1
+                                summarizedErrors.Add(validationError.IssueType, errorSummary)
+                            End If
+
+                            If String.IsNullOrWhiteSpace(validationError.AdditionalInfo) Then
+                                errorSummary.AffectedItems.Add(validationError.IssueDetail)
+                            Else
+                                errorSummary.AffectedItems.Add(validationError.IssueDetail & ControlChars.NewLine & "    " &
+                                                               validationError.AdditionalInfo)
+                            End If
+
+                            If Not String.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg) Then
+                                If Not databaseErrorMsgs.Contains(queuedMailItem.DatabaseErrorMsg) Then
+                                    databaseErrorMsgs.Add(queuedMailItem.DatabaseErrorMsg)
+                                    errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg
+                                End If
+                            End If
+
+                        Next
+
+                        If Not subjectList.Contains(queuedMailItem.Subject) Then
+                            subjectList.Add(queuedMailItem.Subject)
+                        End If
+
+                    Next
+
+                    currentTask = "Iterate over summarizedErrors, sorted by SortWeight"
+                    For Each errorEntry In (From item In summarizedErrors Order By item.Value.SortWeight Select item)
+                        Dim errorSummary = errorEntry.Value
+
+                        Dim affectedItems = (From item In errorSummary.AffectedItems Where Not String.IsNullOrWhiteSpace(item) Select item).ToList()
+
+                        If affectedItems.Count > 0 Then
+                            mailBody.AppendLine(errorEntry.Key & ": ")
+                            For Each affectedItem In affectedItems
+                                mailBody.AppendLine("  " & affectedItem)
+                            Next
+                        Else
+                            mailBody.AppendLine(errorEntry.Key)
+                        End If
+
+                        mailBody.AppendLine()
+
+                        If Not String.IsNullOrWhiteSpace(errorSummary.DatabaseErrorMsg) Then
+                            mailBody.AppendLine(errorSummary.DatabaseErrorMsg)
+                            mailBody.AppendLine()
+                        End If
+                    Next
+
+                    If instrumentFilePaths.Count = 1 Then
+                        mailBody.AppendLine("Instrument file: " & ControlChars.NewLine & "  " & instrumentFilePaths(0))
+                    ElseIf instrumentFilePaths.Count > 1 Then
+                        mailBody.AppendLine("Instrument files:")
+                        For Each triggerFile In instrumentFilePaths
+                            mailBody.AppendLine("  " & triggerFile)
+                        Next
+                    End If
+
+                    currentTask = "Examine subject"
+                    If subjectList.Count > 1 Then
+                        ' Possibly update the subject of the e-mail
+                        ' Common subjects:
+                        ' "Data Import Manager - Database error."
+                        '   or
+                        ' "Data Import Manager - Database warning."
+                        '  or
+                        ' "Data Import Manager - Operator not defined."
+
+                        ' If any of the subjects contains "error", use it for the mailsubject
+                        For Each subject In From item In subjectList Where item.ToLower().Contains("error") Select item
+                            mailToSend.Subject = subject
+                            Exit For
+                        Next
+
+                    End If
 
                     mailBody.AppendLine()
-                    mailBody.AppendLine("------------------------------------")
+                    mailBody.AppendLine("Log file location:")
+                    mailBody.AppendLine("  " & GetLogFileSharePath())
                     mailBody.AppendLine()
-                    mailBody.AppendLine(additionalQueuedItem.Body)
+                    mailBody.AppendLine("This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.")
 
-                    CheckNewSubjectAndDatabaseMsg(additionalQueuedItem, mailBody, subjectList, databaseErrors)
+                    If messageCount > 1 Then
+                        ' Add the message count to the subject, e.g. 3x
+                        mailToSend.Subject = String.Format("{0} ({1}x)", mailToSend.Subject, messageCount)
+                    End If
+
+                    mailToSend.Body = mailBody.ToString()
+
+                    If MailDisabled Then
+                        currentTask = "Cache the mail for preview"
+                        mailContentPreview.AppendLine("E-mail that would be sent:")
+                        mailContentPreview.AppendLine("To: " & recipients)
+                        mailContentPreview.AppendLine("Subject: " & mailToSend.Subject)
+                        mailContentPreview.AppendLine()
+                        mailContentPreview.AppendLine(mailToSend.Body)
+                        mailContentPreview.AppendLine()
+                    Else
+                        currentTask = "Send the mail"
+                        Dim smtp As New SmtpClient(mailServer)
+                        smtp.Send(mailToSend)
+
+                        Thread.Sleep(100)
+                    End If
+
+                    If newLogFile Then
+                        newLogFile = False
+                    Else
+                        mailLogger.WriteLine()
+                        mailLogger.WriteLine("===============================================")
+                    End If
+
+                    mailLogger.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss tt"))
+                    mailLogger.WriteLine()
+
+                    mailLogger.WriteLine("To: " & recipients)
+                    mailLogger.WriteLine("Subject: " & mailToSend.Subject)
+                    mailLogger.WriteLine()
+                    mailLogger.WriteLine(mailToSend.Body)
 
                 Next
 
-                If subjectList.Count > 1 Then
-                    ' Possibly update the subject of the e-mail
-                    ' Subjects will typically only be:
-                    ' "Data Import Manager - Database error."
-                    '   or
-                    ' "Data Import Manager - Database warning."
-                    '  or
-                    ' "Data Import Manager - Operator not defined."
-
-                    ' If any of the subjects contains "error", use it for the mailsubject
-                    For Each subject In From item In subjectList Where item.ToLower().Contains("error") Select item
-                        mailToSend.Subject = subject
-                        Exit For
-                    Next
-
+                currentTask = "Preview cached messages"
+                If mailContentPreview.Length > 0 Then
+                    ShowTraceMessage("Mail content preview" & ControlChars.NewLine &
+                                     mailContentPreview.ToString())
                 End If
 
-            End If
+            End Using
+        Catch ex As Exception
+            msg = "Error in SendQueuedMail, task " & currentTask & ": " & ex.Message
+            If TraceMode Then ShowTraceMessage(msg)
+            m_Logger.PostEntry(msg & "; " & GetExceptionStackTrace(ex), ILogger.logMsgType.logError, LOG_DATABASE)
 
-            If mailBody.ToString().Contains(clsProcessXmlTriggerFile.CHECK_THE_LOG_FOR_DETAILS) Then
-                mailBody.AppendLine()
-                mailBody.AppendLine("Log file location: " & GetLogFileSharePath())
-            End If
-
-            mailBody.AppendLine()
-            mailBody.AppendLine("(NOTE: This message was sent from an account that is not monitored. If you have any questions, please reply to the list of recipients directly.)")
-
-            mailToSend.Body = mailBody.ToString()
-
-            If MailDisabled Then
-                ShowTraceMessage("E-mail that would be sent:")
-                ShowTraceMessage("  " & recipients)
-                ShowTraceMessage("  " & mailToSend.Subject)
-                ShowTraceMessage("  " & ControlChars.NewLine & mailToSend.Body)
-            Else
-                Dim smtp As New SmtpClient()
-                smtp.Send(mailToSend)
-
-                Threading.Thread.Sleep(100)
-            End If
-        Next
-
-    End Sub
-
-    Private Sub CheckNewSubjectAndDatabaseMsg(
-      queuedMail As clsQueuedMail,
-      mailBody As StringBuilder,
-      subjectList As ISet(Of String),
-      databaseErrors As ISet(Of String))
-
-        If Not subjectList.Contains(queuedMail.Subject) Then
-            subjectList.Add(queuedMail.Subject)
-        End If
-
-        If Not String.IsNullOrWhiteSpace(queuedMail.DatabaseErrorMsg) Then
-            If Not databaseErrors.Contains(queuedMail.DatabaseErrorMsg) Then
-                mailBody.AppendLine(queuedMail.DatabaseErrorMsg)
-                databaseErrors.Add(queuedMail.DatabaseErrorMsg)
-            End If
-        End If
+            Throw New Exception(msg, ex)
+        End Try
 
     End Sub
 
@@ -647,7 +799,7 @@ Public Class clsMainProcess
                 daysDiff = DateTime.UtcNow.Subtract(filedate).Days
                 If daysDiff > fileAgeDays Then
                     If PreviewMode Then
-                        Console.WriteLine("Delete old file: " & xmlFile.FullName)
+                        Console.WriteLine("Preview: delete old file: " & xmlFile.FullName)
                     Else
                         Try
                             xmlFile.Delete()
