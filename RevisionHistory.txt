@@ -1,6 +1,9 @@
 Data Import Manager History
 
-Version 1.2.608; June 23, 2016
+Version 1.2.6024; June 29, 2016
+	- Condense duplicate messages when sending a notification e-mail
+
+Version 1.2.6018; June 23, 2016
 	- Group errors together into a single e-mail for each unique set of mail recipients
 
 Version 1.2.6011; June 16, 2016

@@ -10,6 +10,7 @@ Imports System.Windows.Forms
 Imports System.Threading
 Imports System.Threading.Tasks
 Imports PRISM
+Imports DataImportManager.clsValidationErrorSummary
 
 Public Class clsMainProcess
 
@@ -622,12 +623,11 @@ Public Class clsMainProcess
                                 summarizedErrors.Add(validationError.IssueType, errorSummary)
                             End If
 
-                            If String.IsNullOrWhiteSpace(validationError.AdditionalInfo) Then
-                                errorSummary.AffectedItems.Add(validationError.IssueDetail)
-                            Else
-                                errorSummary.AffectedItems.Add(validationError.IssueDetail & ControlChars.NewLine & "    " &
-                                                               validationError.AdditionalInfo)
-                            End If
+                            Dim affectedItem As New udtAffectedItem
+                            affectedItem.IssueDetail = validationError.IssueDetail
+                            affectedItem.AdditionalInfo = validationError.AdditionalInfo
+
+                            errorSummary.AffectedItems.Add(affectedItem)
 
                             If Not String.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg) Then
                                 If Not databaseErrorMsgs.Contains(queuedMailItem.DatabaseErrorMsg) Then
@@ -645,16 +645,33 @@ Public Class clsMainProcess
                     Next
 
                     currentTask = "Iterate over summarizedErrors, sorted by SortWeight"
+
+                    Dim additionalInfoList = New List(Of String)
+
                     For Each errorEntry In (From item In summarizedErrors Order By item.Value.SortWeight Select item)
                         Dim errorSummary = errorEntry.Value
 
-                        Dim affectedItems = (From item In errorSummary.AffectedItems Where Not String.IsNullOrWhiteSpace(item) Select item).ToList()
+                        Dim affectedItems = (From item In errorSummary.AffectedItems Where Not String.IsNullOrWhiteSpace(item.IssueDetail) Select item).ToList()
 
                         If affectedItems.Count > 0 Then
                             mailBody.AppendLine(errorEntry.Key & ": ")
                             For Each affectedItem In affectedItems
-                                mailBody.AppendLine("  " & affectedItem)
+
+                                mailBody.AppendLine("  " & affectedItem.IssueDetail)
+
+                                If Not String.IsNullOrWhiteSpace(affectedItem.AdditionalInfo) Then
+                                    If Not String.Equals(additionalInfoList.LastOrDefault, affectedItem.AdditionalInfo) Then
+                                        additionalInfoList.Add(affectedItem.AdditionalInfo)
+                                    End If
+                                End If
+
                             Next
+
+                            For Each infoItem In additionalInfoList
+                                ' Add the cached additional info items
+                                mailBody.AppendLine("  " & infoItem)
+                            Next
+
                         Else
                             mailBody.AppendLine(errorEntry.Key)
                         End If

@@ -1,11 +1,16 @@
 ﻿Public Class clsValidationErrorSummary
 
-    Private ReadOnly mAffectedItems As List(Of String)
+    Public Structure udtAffectedItem
+        Public IssueDetail As String
+        Public AdditionalInfo As String
+    End Structure
+
+    Private ReadOnly mAffectedItems As List(Of udtAffectedItem)
     Private ReadOnly mIssueType As String
     Private ReadOnly mSortWeight As Integer
 
     ' ReSharper disable once ConvertToVbAutoProperty
-    Public ReadOnly Property AffectedItems As List(Of String)
+    Public ReadOnly Property AffectedItems As List(Of udtAffectedItem)
         Get
             Return mAffectedItems
         End Get
@@ -37,7 +42,7 @@
         mIssueType = issueType
         mSortWeight = sortWeight
 
-        mAffectedItems = New List(Of String)
+        mAffectedItems = New List(Of udtAffectedItem)
         DatabaseErrorMsg = String.Empty
     End Sub
 End Class

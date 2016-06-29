@@ -5,7 +5,7 @@ Imports System.Collections.Generic
 Imports System.IO
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "June 24, 2016"
+    Public Const PROGRAM_DATE As String = "June 29, 2016"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean

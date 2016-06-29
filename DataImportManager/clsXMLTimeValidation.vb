@@ -350,7 +350,7 @@ Public Class clsXMLTimeValidation
         Dim currentTask As String = String.Empty
         Dim statusMsg As String = String.Empty
 
-        Dim ignoreInstrumentSourceErrors = False
+        Dim ignoreInstrumentSourceErrors = mProcSettings.IgnoreInstrumentSourceErrors
 
         Try
 
@@ -526,7 +526,13 @@ Public Class clsXMLTimeValidation
 
                     Dim logonFailure = False
 
-                    If Not VerifyConstantFileSize(mDatasetPath, mSleepInterval, logonFailure) Then
+                    If ignoreInstrumentSourceErrors And Not File.Exists(mDatasetPath) Then
+                        ' Assume the file is a constant size
+                        statusMsg = "File not found, but assuming constant size: " & mDatasetPath
+                        If TraceMode Then ShowTraceMessage(statusMsg)
+                        m_logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+
+                    ElseIf Not VerifyConstantFileSize(mDatasetPath, mSleepInterval, logonFailure) Then
 
                         If Not logonFailure Then
                             statusMsg = "Dataset '" & mDatasetName & "' not ready (file size changed over " & mSleepInterval & " seconds)"
@@ -688,7 +694,7 @@ Public Class clsXMLTimeValidation
             If ignoreInstrumentSourceErrors Then
                 ' Simply assume it's a Thermo .raw file
                 instrumentFileOrFolderName = currentDataset & ".raw"
-                Return RawDSTypes.None
+                Return RawDSTypes.File
             End If
 
             mErrorMessage = msg
