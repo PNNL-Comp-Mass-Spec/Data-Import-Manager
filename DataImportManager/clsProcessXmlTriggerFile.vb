@@ -491,7 +491,7 @@ Public Class clsProcessXmlTriggerFile
 
                 Dim newError = New clsValidationError("Dataset not found on the instrument", moveLocPath)
                 If String.IsNullOrEmpty(myDataXMLValidation.ErrorMessage) Then
-                    newError.AdditionalInfo = CHECK_THE_LOG_FOR_DETAILS
+                    newError.AdditionalInfo = String.Empty
                 Else
                     newError.AdditionalInfo = myDataXMLValidation.ErrorMessage
                 End If
