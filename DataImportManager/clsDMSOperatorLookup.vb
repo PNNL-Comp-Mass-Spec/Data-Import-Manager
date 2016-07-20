@@ -7,9 +7,14 @@ Public Class DMSInfoCache
 
 #Region "Structures"
     Public Structure udtInstrumentInfoType
+        ' ReSharper disable once NotAccessedField.Global
         Public InstrumentClass As String
+
+        ' ReSharper disable once NotAccessedField.Global
         Public RawDataType As String
+
         Public CaptureType As String
+
         Public SourcePath As String
     End Structure
 
@@ -22,13 +27,6 @@ Public Class DMSInfoCache
 #End Region
 
 #Region "Properties and Events"
-
-    Public ReadOnly Property ConnectionString As String
-        Get
-            Return mConnectionString
-        End Get
-    End Property
-
 
     Public Event DBErrorEvent(message As String)
 
@@ -455,17 +453,17 @@ Public Class DMSInfoCache
     ' event handler for InfoMessage event
     ' errors and warnings sent from the SQL server are caught here
     '
-    Private Sub OnInfoMessage(ByVal sender As Object, ByVal args As SqlInfoMessageEventArgs)
+    Private Sub OnInfoMessage(sender As Object, args As SqlInfoMessageEventArgs)
         Dim err As SqlError
         Dim s As String
         For Each err In args.Errors
-            s = "Message: " & err.Message & _
-                ", Source: " & err.Source & _
-                ", Class: " & err.Class & _
-                ", State: " & err.State & _
-                ", Number: " & err.Number & _
-                ", LineNumber: " & err.LineNumber & _
-                ", Procedure:" & err.Procedure & _
+            s = "Message: " & err.Message &
+                ", Source: " & err.Source &
+                ", Class: " & err.Class &
+                ", State: " & err.State &
+                ", Number: " & err.Number &
+                ", LineNumber: " & err.LineNumber &
+                ", Procedure:" & err.Procedure &
                 ", Server: " & err.Server
             RaiseEvent DBErrorEvent(s)
         Next

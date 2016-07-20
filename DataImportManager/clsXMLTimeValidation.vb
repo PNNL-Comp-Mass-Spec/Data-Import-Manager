@@ -29,20 +29,21 @@ Public Class clsXMLTimeValidation
 
     Private ReadOnly mProcSettings As clsProcessXmlTriggerFile.udtXmlProcSettingsType
 
-    Private m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
+    Private ReadOnly m_InstrumentsToSkip As ConcurrentDictionary(Of String, Integer)
     Private WithEvents m_FileTools As clsFileTools
 
     ' access to the logger
-    Private m_logger As ILogger
+    Private ReadOnly m_logger As ILogger
 
     ' access to mgr parameters
-    Private m_mgrParams As IMgrParams
+    Private ReadOnly m_mgrParams As IMgrParams
 
 
 #End Region
 
 #Region "Properties"
 
+    ' ReSharper disable once UnusedMember.Global
     Public ReadOnly Property CaptureSubfolder As String
         Get
             Return mCaptureSubfolder
@@ -91,6 +92,7 @@ Public Class clsXMLTimeValidation
         End Get
     End Property
 
+    ' ReSharper disable once UnusedMember.Global
     Public ReadOnly Property OperatorPRN() As String
         Get
             Return FixNull(mOperatorPRN)
@@ -750,17 +752,6 @@ Public Class clsXMLTimeValidation
         ' If we got to here, the raw dataset wasn't found, so there was a problem
         instrumentFileOrFolderName = String.Empty
         Return RawDSTypes.None
-
-    End Function
-
-    Private Function ValidateFolderPath(InpPath As String) As Boolean
-        ' Verifies that the folder given by input path exists
-
-        If Directory.Exists(InpPath) Then
-            ValidateFolderPath = True
-        Else
-            ValidateFolderPath = False
-        End If
 
     End Function
 

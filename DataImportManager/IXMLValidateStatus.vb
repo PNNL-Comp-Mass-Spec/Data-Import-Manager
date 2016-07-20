@@ -3,6 +3,7 @@ Public Interface IXMLValidateStatus
     Enum XmlValidateStatus
         XML_VALIDATE_SUCCESS = 0
         XML_VALIDATE_FAILED = 1
+        <Obsolete("Old enum")>
         XML_VALIDATE_NO_CHECK = 2
         XML_VALIDATE_ENCOUNTERED_ERROR = 3
         XML_VALIDATE_BAD_XML = 4

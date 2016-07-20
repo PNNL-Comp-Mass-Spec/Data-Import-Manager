@@ -1,9 +1,13 @@
-﻿Imports System.Collections.Generic
-Imports System.Threading
+﻿Imports System.Threading
 Imports System.Runtime.CompilerServices
 
 Module modExtensionMethods
 
+    ' ReSharper disable once ClassNeverInstantiated.Global
+    ''' <summary>
+    ''' This class is used by xmlFilesToImport.Shuffle()
+    ''' in DoDataImportTask
+    ''' </summary>    
     Public NotInheritable Class ThreadSafeRandom
 
         Private Sub New()
@@ -23,7 +27,7 @@ Module modExtensionMethods
         End Function
     End Class
     
-    <Extension> _
+    <Extension>
     Public Sub Shuffle(Of T)(list As IList(Of T))
         Dim n As Integer = list.Count
         While n > 1

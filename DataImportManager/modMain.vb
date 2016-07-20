@@ -5,7 +5,7 @@ Imports System.Collections.Generic
 Imports System.IO
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "June 29, 2016"
+    Public Const PROGRAM_DATE As String = "July 19, 2016"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
@@ -16,7 +16,7 @@ Module modMain
         ' Returns 0 if no error, error code if an error
 
         Dim intReturnCode As Integer
-        Dim objParseCommandLine As New clsParseCommandLine
+        Dim objParseCommandLine As New clsParseCommandLine()
 
         mMailDisabled = False
         mTraceMode = False
@@ -88,7 +88,7 @@ Module modMain
     Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
-        Dim lstValidParameters As List(Of String) = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
+        Dim lstValidParameters = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
 
         Try
             ' Make sure no invalid parameters are present
@@ -122,7 +122,7 @@ Module modMain
     End Function
 
     Private Sub ShowErrorMessage(strMessage As String)
-        Const strSeparator As String = "------------------------------------------------------------------------------"
+        Const strSeparator = "------------------------------------------------------------------------------"
 
         Console.WriteLine()
         Console.WriteLine(strSeparator)
@@ -134,7 +134,7 @@ Module modMain
     End Sub
 
     Private Sub ShowErrorMessage(strTitle As String, items As IEnumerable(Of String))
-        Const strSeparator As String = "------------------------------------------------------------------------------"
+        Const strSeparator = "------------------------------------------------------------------------------"
         Dim strMessage As String
 
         Console.WriteLine()
@@ -189,7 +189,7 @@ Module modMain
             Console.WriteLine()
 
             ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
-            System.Threading.Thread.Sleep(750)
+            Threading.Thread.Sleep(750)
 
         Catch ex As Exception
             ShowErrorMessage("Error displaying the program syntax: " & ex.Message)
@@ -199,7 +199,7 @@ Module modMain
 
     Private Sub WriteToErrorStream(strErrorMessage As String)
         Try
-            Using swErrorStream As StreamWriter = New StreamWriter(Console.OpenStandardError())
+            Using swErrorStream = New StreamWriter(Console.OpenStandardError())
                 swErrorStream.WriteLine(strErrorMessage)
             End Using
         Catch ex As Exception

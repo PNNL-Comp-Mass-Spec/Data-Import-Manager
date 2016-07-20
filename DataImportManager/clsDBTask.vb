@@ -7,14 +7,14 @@ Public MustInherit Class clsDBTask
 #Region "Member Variables"
 
     ' access to the logger
-    Protected m_logger As ILogger
+    Protected ReadOnly m_logger As ILogger
 
     ' access to mgr parameters
-    Protected m_mgrParams As IMgrParams
+    Protected ReadOnly m_mgrParams As IMgrParams
 
     ' DB access
-    Protected m_DBCn As SqlConnection
-    Protected m_error_list As New StringCollection()
+    Protected ReadOnly m_DBCn As SqlConnection
+    Protected ReadOnly m_error_list As New StringCollection()
 
 #End Region
 

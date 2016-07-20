@@ -4,18 +4,19 @@ Imports PRISM.Logging
 Imports System.Text
 Imports System.Reflection
 
+' ReSharper disable once ClassNeverInstantiated.Global
 Public Class clsGlobal
 
-	'Constants
-	Public Const LOG_LOCAL_ONLY As Boolean = True
-	Public Const LOG_DATABASE As Boolean = False
+    'Constants
+    Public Const LOG_LOCAL_ONLY As Boolean = True
+    Public Const LOG_DATABASE As Boolean = False
 
     Private Const FLAG_FILE_NAME As String = "FlagFile.txt"
 
-	Public Shared Sub CreateStatusFlagFile()
+    Public Shared Sub CreateStatusFlagFile()
 
-		'Creates a dummy file in the application directory to be used for controlling task request
-		'	bypass
+        'Creates a dummy file in the application directory to be used for controlling task request
+        '	bypass
 
         Dim fiAppProgram As New FileInfo(GetExePath())
         Dim fiFlagFile As New FileInfo(Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME))
@@ -25,7 +26,7 @@ Public Class clsGlobal
 
     End Sub
 
-    Public Shared Sub DeleteStatusFlagFile(ByVal MyLogger As ILogger)
+    Public Shared Sub DeleteStatusFlagFile(MyLogger As ILogger)
 
         'Deletes the task request control flag file
         Dim fiAppProgram As New FileInfo(GetExePath())
@@ -94,7 +95,8 @@ Public Class clsGlobal
         Return hostName
 
     End Function
-    Public Shared Function LoadXmlFileContentsIntoString(ByVal triggerFile As FileInfo, ByVal MyLogger As ILogger) As String
+
+    Public Shared Function LoadXmlFileContentsIntoString(triggerFile As FileInfo, MyLogger As ILogger) As String
         Try
             ' Read the contents of the xml file into a string which will be passed into a stored procedure.
             If Not triggerFile.Exists Then

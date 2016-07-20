@@ -17,6 +17,8 @@ Imports System.Threading
 #Region "Interfaces"
 Public Interface IMgrParams
     Function GetParam(ItemKey As String) As String
+
+    ' ReSharper disable once UnusedMember.Global
     Sub SetParam(ItemKey As String, ItemValue As String)
 End Interface
 #End Region
@@ -324,6 +326,7 @@ Public Class clsMgrSettings
 
     End Sub
 
+    ' ReSharper disable once UnusedMember.Global
     ''' <summary>
     ''' Gets a collection representing all keys in the parameters string dictionary
     ''' </summary>
@@ -370,7 +373,7 @@ Public Class clsMgrSettings
 
         Try
             'Select the element containing the value for the specified key containing the key
-            Dim MyElement As XmlElement = CType(MyNode.SelectSingleNode(String.Format("//setting[@name='{0}']/value", Key)), XmlElement)
+            Dim MyElement = CType(MyNode.SelectSingleNode(String.Format("//setting[@name='{0}']/value", Key)), XmlElement)
             If MyElement IsNot Nothing Then
                 'Set key to specified value
                 MyElement.InnerText = Value
