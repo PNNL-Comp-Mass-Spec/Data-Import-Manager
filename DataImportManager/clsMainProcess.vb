@@ -1,7 +1,6 @@
 Imports System.Collections.Concurrent
 Imports System.IO
 Imports DataImportManager.clsGlobal
-Imports System.Collections.Generic
 Imports System.Net.Mail
 Imports System.Runtime.InteropServices
 Imports System.Text
@@ -27,7 +26,6 @@ Public Class clsMainProcess
     Private WithEvents m_FileWatcher As New FileSystemWatcher
     Private m_MgrActive As Boolean = True
     Private m_DebugLevel As Integer = 0
-    Public m_db_Err_Msg As String
 
     ''' <summary>
     ''' Keys in this dictionary are instrument names
@@ -599,21 +597,25 @@ Public Class clsMainProcess
                         If queuedMailItem Is Nothing Then
                             msg = "queuedMailItem is nothing for " & queuedMailContainer.Key
                             If TraceMode Then ShowTraceMessage(msg)
-                            m_Logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                            m_Logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_DATABASE)
+                            Continue For
                         End If
 
                         messageNumber += 1
 
-                        If Not String.IsNullOrWhiteSpace(queuedMailItem.InstrumentDatasetPath) AndAlso
-                            Not instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath) Then
-                            instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath)
+                        If String.IsNullOrWhiteSpace(queuedMailItem.InstrumentDatasetPath) Then
+                            statusMsg = String.Format("XML File {0}: queuedMailItem.InstrumentDatasetPath is empty", messageNumber)
+                        Else
+                            statusMsg = String.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath)
+                            If Not instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath) Then
+                                instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath)
+                            End If
                         End If
 
-                        statusMsg = String.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath)
                         If TraceMode Then ShowTraceMessage(statusMsg)
                         m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logDebug, LOG_LOCAL_ONLY)
 
-                        currentTask = "Iterate over queuedMailItem.ValidationErrors, message" & messageNumber
+                        currentTask = "Iterate over queuedMailItem.ValidationErrors, message " & messageNumber
                         For Each validationError In queuedMailItem.ValidationErrors
 
                             Dim errorSummary As clsValidationErrorSummary = Nothing
@@ -789,9 +791,6 @@ Public Class clsMainProcess
 
     Private Function DeleteXmlFiles(folderPath As String, fileAgeDays As Integer) As Boolean
 
-        Dim filedate As DateTime
-        Dim daysDiff As Integer
-
         Dim workingDirectory = New DirectoryInfo(folderPath)
 
         ' Verify directory exists
@@ -812,8 +811,8 @@ Public Class clsMainProcess
             Dim xmlFiles As List(Of FileInfo) = workingDirectory.GetFiles("*.xml").ToList()
 
             For Each xmlFile In xmlFiles
-                filedate = xmlFile.LastWriteTimeUtc
-                daysDiff = DateTime.UtcNow.Subtract(filedate).Days
+                Dim filedate = xmlFile.LastWriteTimeUtc
+                Dim daysDiff = DateTime.UtcNow.Subtract(filedate).Days
                 If daysDiff > fileAgeDays Then
                     If PreviewMode Then
                         Console.WriteLine("Preview: delete old file: " & xmlFile.FullName)
