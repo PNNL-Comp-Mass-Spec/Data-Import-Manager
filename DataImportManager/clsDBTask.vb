@@ -14,7 +14,6 @@ Public MustInherit Class clsDBTask
 
     ' DB access
     Protected ReadOnly m_DBCn As SqlConnection
-    Protected ReadOnly m_error_list As New StringCollection()
 
 #End Region
 
@@ -33,16 +32,6 @@ Public MustInherit Class clsDBTask
         m_mgrParams = mgrParams
         m_logger = logger
         m_DBCn = dbConnection
-    End Sub
-
-    Protected Sub LogErrorEvents()
-        If m_error_list.Count > 0 Then
-            m_logger.PostEntry("Warning messages were posted to local log", ILogger.logMsgType.logWarning, True)
-        End If
-        Dim s As String
-        For Each s In m_error_list
-            m_logger.PostEntry(s, ILogger.logMsgType.logWarning, True)
-        Next
     End Sub
 
 End Class

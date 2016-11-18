@@ -88,7 +88,6 @@ Public Class clsDataImportTask
 
             ' Initialize database error message
             mDBErrorMessage = String.Empty
-            m_error_list.Clear()
 
             ' Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
             '
@@ -151,17 +150,6 @@ Public Class clsDataImportTask
             mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & ex.Message
             Outcome = False
         End Try
-
-        LogErrorEvents()
-
-        ' Set variable for email error
-        If m_error_list.Count > 0 Then
-            Dim errorMsgList = String.Empty
-            For Each errMsg In m_error_list
-                errorMsgList = ControlChars.NewLine & errMsg & errorMsgList
-            Next
-            mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & errorMsgList
-        End If
 
         Return Outcome
 
