@@ -5,9 +5,8 @@
 ' Copyright 2006, Battelle Memorial Institute
 ' Created 04/26/2007
 '
-' Last modified 05/29/2007
 '*********************************************************************************************************
-Imports System.Collections.Generic
+
 Imports System.Data.SqlClient
 Imports System.Xml
 Imports System.Windows.Forms

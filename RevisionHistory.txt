@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6166; November 18, 2016
+	- Log errors with message "transaction cannot be committed" but leave the .xml file in place for another import attempt
+
 Version 1.2.6024; June 29, 2016
 	- Condense duplicate messages when sending a notification e-mail
 

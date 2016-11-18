@@ -1,5 +1,6 @@
 ﻿Imports System.Collections.Concurrent
 Imports System.IO
+Imports System.Windows.Forms
 Imports PRISM.Logging
 Imports DataImportManager.clsGlobal
 
@@ -98,7 +99,7 @@ Public Class clsProcessXmlTriggerFile
         End If
 
         Try
-           
+
             Dim mailRecipients = m_MgrSettings.GetParam("to")
             Dim mailRecipientsList = mailRecipients.Split(";"c).Distinct().ToList()
 
@@ -191,6 +192,11 @@ Public Class clsProcessXmlTriggerFile
 
     End Function
 
+    ''' <summary>
+    ''' Validate the XML trigger file, then send it to the database using mDataImportTask.PostTask
+    ''' </summary>
+    ''' <param name="triggerFile"></param>
+    ''' <returns>True if success, false if an error</returns>
     Public Function ProcessFile(triggerFile As FileInfo) As Boolean
 
         mDatabaseErrorMsg = String.Empty
@@ -246,61 +252,74 @@ Public Class clsProcessXmlTriggerFile
 
         If success Then
             MoveXmlFile(triggerFile, ProcSettings.SuccessFolder)
-        Else
-            If (mDataImportTask.PostTaskErrorMessage.Contains("deadlocked")) Then
-                ' Log the error and leave the file for another attempt
-                m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-                Return False
-            End If
 
-            Dim messageType = ILogger.logMsgType.logError
-
-            Dim moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureFolder)
-            statusMsg = "Error posting xml file to database: " & mDataImportTask.PostTaskErrorMessage
+            statusMsg = "Completed Data import task for dataset: " & triggerFile.FullName
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
+            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
 
-            If mDataImportTask.PostTaskErrorMessage.Contains("since already in database") Then
-                messageType = ILogger.logMsgType.logWarning
-                m_Logger.PostEntry(statusMsg & ". See: " & moveLocPath, messageType, LOG_LOCAL_ONLY)
-            Else
-                m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, messageType, LOG_DATABASE)
-            End If
+            Return True
 
-            Dim validationErrors = New List(Of clsValidationError)
-            Dim newError = New clsValidationError("XML trigger file problem", moveLocPath)
+        End If
 
-            Dim msgTypeString As String
-            If messageType = ILogger.logMsgType.logError Then
-                msgTypeString = "Error"
-            Else
-                msgTypeString = "Warning"
-            End If
-
-            If (String.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage)) Then
-                newError.AdditionalInfo = msgTypeString & ": " & CHECK_THE_LOG_FOR_DETAILS
-            Else
-                newError.AdditionalInfo = msgTypeString & ": " & mDataImportTask.PostTaskErrorMessage
-            End If
-
-            validationErrors.Add(newError)
-
-            ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error             
-            Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
-            If Not String.IsNullOrWhiteSpace(errorSolution) Then
-                ' Store the solution in the database error message variable so that it gets included in the message body
-                mDatabaseErrorMsg = errorSolution
-            End If
-
-            ' Send an e-mail; subject will be "Data Import Manager - Database error." or "Data Import Manager - Database warning."
-            CacheMail(validationErrors, m_xml_operator_email, " - Database " & msgTypeString.ToLower() & ".")
+        ' Look for:
+        ' Transaction (Process ID 67) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction
+        If (mDataImportTask.PostTaskErrorMessage.Contains("deadlocked")) Then
+            ' Log the error and leave the file for another attempt
+            statusMsg = "Deadlock encountered"
+            m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End If
 
-        statusMsg = "Completed Data import task for dataset: " & triggerFile.FullName
-        If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-        m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+        ' Look for: 
+        ' The current transaction cannot be committed and cannot support operations that write to the log file. Roll back the transaction
+        If (mDataImportTask.PostTaskErrorMessage.Contains("current transaction cannot be committed")) Then
+            ' Log the error and leave the file for another attempt
+            statusMsg = "Transaction commit error"
+            m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            Return False
+        End If
 
-        Return success
+        Dim messageType = ILogger.logMsgType.logError
+
+        Dim moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureFolder)
+        statusMsg = "Error posting xml file to database: " & mDataImportTask.PostTaskErrorMessage
+        If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
+
+        If mDataImportTask.PostTaskErrorMessage.Contains("since already in database") Then
+            messageType = ILogger.logMsgType.logWarning
+            m_Logger.PostEntry(statusMsg & ". See: " & moveLocPath, messageType, LOG_LOCAL_ONLY)
+        Else
+            m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, messageType, LOG_DATABASE)
+        End If
+
+        Dim validationErrors = New List(Of clsValidationError)
+        Dim newError = New clsValidationError("XML trigger file problem", moveLocPath)
+
+        Dim msgTypeString As String
+        If messageType = ILogger.logMsgType.logError Then
+            msgTypeString = "Error"
+        Else
+            msgTypeString = "Warning"
+        End If
+
+        If (String.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage)) Then
+            newError.AdditionalInfo = msgTypeString & ": " & CHECK_THE_LOG_FOR_DETAILS
+        Else
+            newError.AdditionalInfo = msgTypeString & ": " & mDataImportTask.PostTaskErrorMessage
+        End If
+
+        validationErrors.Add(newError)
+
+        ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error             
+        Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
+        If Not String.IsNullOrWhiteSpace(errorSolution) Then
+            ' Store the solution in the database error message variable so that it gets included in the message body
+            mDatabaseErrorMsg = errorSolution
+        End If
+
+        ' Send an e-mail; subject will be "Data Import Manager - Database error." or "Data Import Manager - Database warning."
+        CacheMail(validationErrors, m_xml_operator_email, " - Database " & msgTypeString.ToLower() & ".")
+        Return False
 
     End Function
 

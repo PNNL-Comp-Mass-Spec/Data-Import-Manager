@@ -5,7 +5,6 @@
 ' Copyright 2006, Battelle Memorial Institute
 ' Created 04/30/2007
 '
-' Last modified 05/01/2007
 '*********************************************************************************************************
 
 ' ReSharper disable once ClassNeverInstantiated.Global

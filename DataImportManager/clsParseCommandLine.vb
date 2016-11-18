@@ -24,10 +24,6 @@ Option Strict On
 ' SOFTWARE.  This notice including this sentence must appear on any copies of 
 ' this computer software.
 
-'
-' Last modified October 29, 2015
-
-Imports System.Collections.Generic
 Imports System.Runtime.InteropServices
 
 Public Class clsParseCommandLine
