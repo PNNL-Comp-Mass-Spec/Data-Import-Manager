@@ -4,7 +4,7 @@ Imports System.IO
 Imports DataImportManager.clsGlobal
 
 Public Class clsDataImportTask
-	Inherits clsDBTask
+    Inherits clsDBTask
 
 #Region "Member Variables"
     Private mPostTaskErrorMessage As String = String.Empty
@@ -81,7 +81,6 @@ Public Class clsDataImportTask
     ''' <remarks></remarks>
     Private Function ImportDataTask() As Boolean
 
-        Dim sc As SqlCommand
         Dim Outcome As Boolean
 
         Try
@@ -93,31 +92,17 @@ Public Class clsDataImportTask
             '
             mp_stored_proc = m_mgrParams.GetParam("storedprocedure")
 
-            sc = New SqlCommand(mp_stored_proc, m_DBCn)
+            Dim sc = New SqlCommand(mp_stored_proc, m_DBCn)
             sc.CommandType = CommandType.StoredProcedure
             sc.CommandTimeout = 45
 
-            ' define parameters for command object
-            '
-            Dim myParm As SqlParameter
             '
             ' define parameter for stored procedure's return value
             '
-            myParm = sc.Parameters.Add("@Return", SqlDbType.Int)
-            myParm.Direction = ParameterDirection.ReturnValue
-            '
-            ' define parameters for the stored procedure's arguments
-            '
-            myParm = sc.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000)
-            myParm.Direction = ParameterDirection.Input
-            myParm.Value = mp_xmlContents
-
-            myParm = sc.Parameters.Add("@mode", SqlDbType.VarChar, 24)
-            myParm.Direction = ParameterDirection.Input
-            myParm.Value = "add"
-
-            myParm = sc.Parameters.Add("@message", SqlDbType.VarChar, 512)
-            myParm.Direction = ParameterDirection.Output
+            sc.Parameters.Add("@Return", SqlDbType.Int).Direction = ParameterDirection.ReturnValue
+            sc.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000).Value = mp_xmlContents
+            sc.Parameters.Add("@mode", SqlDbType.VarChar, 24).Value = "add"
+            sc.Parameters.Add("@message", SqlDbType.VarChar, 512).Direction = ParameterDirection.Output
 
             If PreviewMode Then
                 ShowTraceMessage("Preview: call stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
@@ -132,8 +117,7 @@ Public Class clsDataImportTask
 
             ' get return value
             '
-            Dim ret As Integer
-            ret = CInt(sc.Parameters("@Return").Value)
+            Dim ret = CInt(sc.Parameters("@Return").Value)
 
             If ret = 0 Then
                 ' get values for output parameters
