@@ -1,7 +1,7 @@
 ﻿Imports System.Data.SqlClient
 Imports System.Runtime.InteropServices
 Imports System.Threading
-Imports PRISM.Logging
+Imports PRISM
 
 Public Class DMSInfoCache
 
@@ -236,7 +236,7 @@ Public Class DMSInfoCache
                 retryCount -= 1S
                 Dim errorMessage = "Exception querying database in LoadErrorSolutionsFromDMS: " + ex.Message
 
-                m_logger.PostEntry(errorMessage, ILogger.logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
+                m_logger.PostEntry(errorMessage, logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
 
                 If retryCount > 0 Then
                     ' Delay for 5 second before trying again
@@ -295,7 +295,7 @@ Public Class DMSInfoCache
                 retryCount -= 1S
                 Dim errorMessage = "Exception querying database in LoadErrorSolutionsFromDMS: " + ex.Message
 
-                m_logger.PostEntry(errorMessage, ILogger.logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
+                m_logger.PostEntry(errorMessage, logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
 
                 If retryCount > 0 Then
                     ' Delay for 5 second before trying again
@@ -353,7 +353,7 @@ Public Class DMSInfoCache
                 retryCount -= 1S
                 Dim errorMessage = "Exception querying database in LoadOperatorsFromDMS: " + ex.Message
 
-                m_logger.PostEntry(errorMessage, ILogger.logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
+                m_logger.PostEntry(errorMessage, logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
 
                 If retryCount > 0 Then
                     ' Delay for 5 second before trying again
@@ -400,7 +400,7 @@ Public Class DMSInfoCache
         If query1.Count = 1 Then
             operatorInfo = query1.First
             Dim strLogMsg = "Matched " & operatorInfo.Username & " using LINQ (the lookup with .TryGetValue(" & operatorPrnToFind & ") failed)"
-            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            m_logger.PostEntry(strLogMsg, logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
             If mTraceMode Then ShowTraceMessage(strLogMsg)
 
             userCountMatched = 1
@@ -433,7 +433,7 @@ Public Class DMSInfoCache
         ElseIf userCountMatched > 1 Then
             operatorInfo = query2.FirstOrDefault()
             Dim strLogMsg = "LookupOperatorName: Ambiguous match found for '" & strQueryName & "' in T_Users; will e-mail '" & operatorInfo.Email & "'"
-            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            m_logger.PostEntry(strLogMsg, logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
 
             operatorInfo.Name = "Ambiguous match found for operator (" + strQueryName + "); use network login instead, e.g. D3E154"
 
@@ -442,7 +442,7 @@ Public Class DMSInfoCache
         Else
             ' No match
             Dim strLogMsg = "LookupOperatorName: Operator not found in T_Users.U_PRN: " & operatorPrnToFind
-            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            m_logger.PostEntry(strLogMsg, logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
 
             operatorInfo.Name = "Operator [" + operatorPrnToFind + "] not found in T_Users; should be network login name (D3E154) or full name (Moore, Ronald J)"
             Return False

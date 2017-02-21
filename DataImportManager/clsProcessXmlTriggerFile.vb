@@ -1,8 +1,7 @@
 ﻿Imports System.Collections.Concurrent
 Imports System.IO
-Imports System.Windows.Forms
-Imports PRISM.Logging
 Imports DataImportManager.clsGlobal
+Imports PRISM
 
 Public Class clsProcessXmlTriggerFile
 
@@ -91,11 +90,11 @@ Public Class clsProcessXmlTriggerFile
         mQueuedMail = New Dictionary(Of String, List(Of clsQueuedMail))
     End Sub
 
-    Private Function CacheMail(validationErrors As List(Of clsValidationError), addnlRecipient As String, subjectAppend As String) As Boolean
+    Private Sub CacheMail(validationErrors As List(Of clsValidationError), addnlRecipient As String, subjectAppend As String)
 
         Dim enableEmail = CBool(m_MgrSettings.GetParam("enableemail"))
         If Not enableEmail Then
-            Return False
+            Return
         End If
 
         Try
@@ -137,17 +136,17 @@ Public Class clsProcessXmlTriggerFile
                 mQueuedMail.Add(mailRecipients, queuedMessages)
             End If
 
-            Return True
+            Return
 
         Catch ex As Exception
             Dim statusMsg As String = "Error sending email message: " & ex.Message
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
-            Return False
+            m_Logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
+            Return
         End Try
 
 
-    End Function
+    End Sub
 
     ''' <summary>
     ''' Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
@@ -207,7 +206,7 @@ Public Class clsProcessXmlTriggerFile
             Console.WriteLine("-------------------------------------------")
             ShowTraceMessage(statusMsg)
         End If
-        m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+        m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
 
         If Not ValidateXMLFileMain(triggerFile) Then
             Return False
@@ -216,14 +215,14 @@ Public Class clsProcessXmlTriggerFile
         If Not triggerFile.Exists Then
             statusMsg = "XML file no longer exists; cannot import: " & triggerFile.FullName
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
             Return False
         End If
 
         If ProcSettings.DebugLevel >= 2 Then
             statusMsg = "Posting Dataset XML file to database: " & triggerFile.Name
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
         End If
 
         ' Open a new database connection
@@ -246,7 +245,7 @@ Public Class clsProcessXmlTriggerFile
             ' Log the error and leave the file for another attempt
             statusMsg = "Encountered database timeout error for dataset: " & triggerFile.FullName
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
+            m_Logger.PostEntry(statusMsg, logMsgType.logError, LOG_DATABASE)
             Return False
         End If
 
@@ -255,7 +254,7 @@ Public Class clsProcessXmlTriggerFile
 
             statusMsg = "Completed Data import task for dataset: " & triggerFile.FullName
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
 
             Return True
 
@@ -266,7 +265,7 @@ Public Class clsProcessXmlTriggerFile
         If (mDataImportTask.PostTaskErrorMessage.Contains("deadlocked")) Then
             ' Log the error and leave the file for another attempt
             statusMsg = "Deadlock encountered"
-            m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End If
 
@@ -275,18 +274,18 @@ Public Class clsProcessXmlTriggerFile
         If (mDataImportTask.PostTaskErrorMessage.Contains("current transaction cannot be committed")) Then
             ' Log the error and leave the file for another attempt
             statusMsg = "Transaction commit error"
-            m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End If
 
-        Dim messageType = ILogger.logMsgType.logError
+        Dim messageType = logMsgType.logError
 
         Dim moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureFolder)
         statusMsg = "Error posting xml file to database: " & mDataImportTask.PostTaskErrorMessage
         If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
 
         If mDataImportTask.PostTaskErrorMessage.Contains("since already in database") Then
-            messageType = ILogger.logMsgType.logWarning
+            messageType = logMsgType.logWarning
             m_Logger.PostEntry(statusMsg & ". See: " & moveLocPath, messageType, LOG_LOCAL_ONLY)
         Else
             m_Logger.PostEntry(statusMsg & ". View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, messageType, LOG_DATABASE)
@@ -296,7 +295,7 @@ Public Class clsProcessXmlTriggerFile
         Dim newError = New clsValidationError("XML trigger file problem", moveLocPath)
 
         Dim msgTypeString As String
-        If messageType = ILogger.logMsgType.logError Then
+        If messageType = logMsgType.logError Then
             msgTypeString = "Error"
         Else
             msgTypeString = "Warning"
@@ -370,7 +369,7 @@ Public Class clsProcessXmlTriggerFile
         Catch ex As Exception
             Dim statusMsg As String = "Exception in MoveXmlFile, " & ex.Message
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_Logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
             Return String.Empty
         End Try
 
@@ -425,7 +424,7 @@ Public Class clsProcessXmlTriggerFile
 
                 Dim statusMsg As String = "Undefined Operator in " & moveLocPath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-                m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
+                m_Logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_DATABASE)
 
                 Dim validationErrors = New List(Of clsValidationError)
 
@@ -453,12 +452,12 @@ Public Class clsProcessXmlTriggerFile
 
                 Dim statusMsg As String = "XML Time validation error, file " & moveLocPath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-                m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
-                m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, ILogger.logMsgType.logError, LOG_DATABASE)
+                m_Logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
+                m_Logger.PostEntry("Time validation error. View details in log at " & GetLogFileSharePath() & " for: " & moveLocPath, logMsgType.logError, LOG_DATABASE)
 
                 Dim validationErrors = New List(Of clsValidationError)
                 validationErrors.Add(New clsValidationError("Time validation error", moveLocPath))
-                
+
                 CacheMail(validationErrors, m_xml_operator_email, " - Time validation error.")
                 Return False
 
@@ -467,7 +466,7 @@ Public Class clsProcessXmlTriggerFile
 
                 Dim statusMsg As String = "An error was encountered during the validation process, file " & moveLocPath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-                m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
+                m_Logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_DATABASE)
 
                 Dim validationErrors = New List(Of clsValidationError)
                 validationErrors.Add(New clsValidationError("XML error encountered during validation process", moveLocPath))
@@ -488,7 +487,7 @@ Public Class clsProcessXmlTriggerFile
 
                 Dim statusMsg As String = " ... skipped since m_InstrumentsToSkip contains " & m_xml_instrument_Name
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-                m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logNormal, LOG_LOCAL_ONLY)
+                m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
                 UpdateInstrumentsToSkip(m_xml_instrument_Name)
                 Return False
 
@@ -504,7 +503,7 @@ Public Class clsProcessXmlTriggerFile
 
                 Dim statusMsg As String = "Dataset " & myDataXMLValidation.DatasetName & " not found at " & myDataXMLValidation.SourcePath
                 If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
-                m_Logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_DATABASE)
+                m_Logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_DATABASE)
 
                 Dim validationErrors = New List(Of clsValidationError)
 
@@ -552,3 +551,4 @@ Public Class clsProcessXmlTriggerFile
 
     End Function
 End Class
+

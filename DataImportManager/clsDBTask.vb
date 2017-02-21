@@ -1,6 +1,5 @@
-Imports System.Collections.Specialized
 Imports System.Data.SqlClient
-Imports PRISM.Logging
+Imports PRISM
 
 Public MustInherit Class clsDBTask
 

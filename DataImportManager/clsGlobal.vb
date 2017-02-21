@@ -1,8 +1,8 @@
 'Contains functions/variables common to all parts of the Analysis Manager
 Imports System.IO
-Imports PRISM.Logging
 Imports System.Text
 Imports System.Reflection
+Imports PRISM
 
 ' ReSharper disable once ClassNeverInstantiated.Global
 Public Class clsGlobal
@@ -37,7 +37,7 @@ Public Class clsGlobal
                 File.Delete(flagFilePath)
             End If
         Catch ex As Exception
-            MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
         End Try
 
     End Sub
@@ -100,7 +100,7 @@ Public Class clsGlobal
         Try
             ' Read the contents of the xml file into a string which will be passed into a stored procedure.
             If Not triggerFile.Exists Then
-                MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.", logMsgType.logError, LOG_LOCAL_ONLY)
                 Return String.Empty
             End If
             Dim xmlFileContents = New StringBuilder
@@ -113,7 +113,7 @@ Public Class clsGlobal
             End Using
             Return xmlFileContents.ToString()
         Catch ex As Exception
-            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return String.Empty
         End Try
 

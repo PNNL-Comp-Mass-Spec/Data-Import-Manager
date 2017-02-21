@@ -1,10 +1,9 @@
 Imports System.Collections.Concurrent
-Imports PRISM.Logging
-Imports PRISM.Files
 Imports System.IO
-Imports DataImportManager.clsGlobal
 Imports System.Threading
 Imports System.Runtime.InteropServices
+Imports DataImportManager.clsGlobal
+Imports PRISM
 
 Public Class clsXMLTimeValidation
 
@@ -168,7 +167,7 @@ Public Class clsXMLTimeValidation
             mErrorMessage = "Error reading the XML file " & triggerFile.Name
             Dim errMsg = "clsXMLTimeValidation.ValidateXMLFile(), " & mErrorMessage & ": " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry(errMsg, logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -188,7 +187,7 @@ Public Class clsXMLTimeValidation
 
         Catch ex As Exception
             mErrorMessage = "Exception calling PerformValidation"
-            m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -231,7 +230,7 @@ Public Class clsXMLTimeValidation
                                 Dim msg = "clsXMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " &
                                           "this indicates a bug with Buzzard; see: " & triggerFile.Name
 
-                                m_logger.PostEntry(msg, ILogger.logMsgType.logError, LOG_DATABASE)
+                                m_logger.PostEntry(msg, logMsgType.logError, LOG_DATABASE)
                                 mCaptureSubfolder = String.Empty
                             End If
 
@@ -247,7 +246,7 @@ Public Class clsXMLTimeValidation
             Next table
 
             If String.IsNullOrEmpty(mInstrumentName) Then
-                m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), The instrument name was blank.", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), The instrument name was blank.", logMsgType.logError, LOG_LOCAL_ONLY)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_BAD_XML
             End If
 
@@ -262,7 +261,7 @@ Public Class clsXMLTimeValidation
             End If
 
         Catch ex As Exception
-            m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), Error reading XML File, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry("clsXMLTimeValidation.GetXMLParameters(), Error reading XML File, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -284,7 +283,7 @@ Public Class clsXMLTimeValidation
             If dateNow < fileModDateDelay Then
                 Dim statusMessage = "clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name
                 If TraceMode Then ShowTraceMessage(statusMessage)
-                m_logger.PostEntry(statusMessage, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                m_logger.PostEntry(statusMessage, logMsgType.logWarning, LOG_LOCAL_ONLY)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_WAIT_FOR_FILES
             End If
 
@@ -293,7 +292,7 @@ Public Class clsXMLTimeValidation
         Catch ex As Exception
             Dim errMsg = "clsXMLTimeValidation.InstrumentWaitDelay(), Error determining wait delay, " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry(errMsg, logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -312,7 +311,7 @@ Public Class clsXMLTimeValidation
             Dim udtInstrumentInfo = New DMSInfoCache.udtInstrumentInfoType
 
             If Not mDMSInfoCache.GetInstrumentInfo(insName, udtInstrumentInfo) Then
-                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " & insName & " not found in data from V_Instrument_List_Export", ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " & insName & " not found in data from V_Instrument_List_Export", logMsgType.logError, LOG_LOCAL_ONLY)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
 
@@ -320,19 +319,19 @@ Public Class clsXMLTimeValidation
             mSourcePath = udtInstrumentInfo.SourcePath
 
             If String.IsNullOrWhiteSpace(mCaptureType) Then
-                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " & insName & " has an empty value for Capture in V_Instrument_List_Export", ILogger.logMsgType.logError, LOG_DATABASE)
+                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " & insName & " has an empty value for Capture in V_Instrument_List_Export", logMsgType.logError, LOG_DATABASE)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
 
             If String.IsNullOrWhiteSpace(mSourcePath) Then
-                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " & insName & " has an empty value for SourcePath in V_Instrument_List_Export", ILogger.logMsgType.logError, LOG_DATABASE)
+                m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " & insName & " has an empty value for SourcePath in V_Instrument_List_Export", logMsgType.logError, LOG_DATABASE)
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
 
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_CONTINUE
 
         Catch ex As Exception
-            m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Error retrieving source path and capture type for instrument '" & insName & "': " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry("clsXMLTimeValidation.SetDbInstrumentParameters(), Error retrieving source path and capture type for instrument '" & insName & "': " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
         End Try
 
@@ -375,7 +374,7 @@ Public Class clsXMLTimeValidation
                         ShowTraceMessage("ERROR: " & errMsg)
                         Console.WriteLine(" - - - - - - - - ")
                     End If
-                    m_logger.PostEntry(errMsg, ILogger.logMsgType.logError, LOG_DATABASE)
+                    m_logger.PostEntry(errMsg, logMsgType.logError, LOG_DATABASE)
                 End If
             End If
 
@@ -428,17 +427,17 @@ Public Class clsXMLTimeValidation
                     If TraceMode Then ShowTraceMessage(mErrorMessage)
                     mErrorMessage &= " using 'secfso'" + "; error code " + mShareConnector.ErrorMessage
 
-                    m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                    m_logger.PostEntry(mErrorMessage, logMsgType.logError, LOG_LOCAL_ONLY)
 
                     If mShareConnector.ErrorMessage = "1326" Then
                         statusMsg = "You likely need to change the Capture_Method from secfso to fso; use the following query: "
                         If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                        m_logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
 
                     ElseIf mShareConnector.ErrorMessage = "53" Then
                         statusMsg = "The password may need to be reset; diagnose things further using the following query: "
                         If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                        m_logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
 
                     ElseIf mShareConnector.ErrorMessage = "1219" OrElse mShareConnector.ErrorMessage = "1203" Then
                         statusMsg = "Likely had error 'An unexpected network error occurred' while validating the Dataset specified by the XML file (ErrorMessage=" & mShareConnector.ErrorMessage & ")"
@@ -454,7 +453,7 @@ Public Class clsXMLTimeValidation
                     Else
                         statusMsg = "You can diagnose the problem using this query: "
                         If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                        m_logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
                     End If
 
                     If Not ignoreInstrumentSourceErrors Then
@@ -467,7 +466,7 @@ Public Class clsXMLTimeValidation
                                         "WHERE IN_Name = '" & mInstrumentName & "'"
 
                             If TraceMode Then ShowTraceMessage(statusMsg)
-                            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                            m_logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
 
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
                         End If
@@ -479,7 +478,7 @@ Public Class clsXMLTimeValidation
             ' Make sure mSleepInterval isn't too large
             If mSleepInterval > 900 Then
                 m_logger.PostEntry("Sleep interval of " & mSleepInterval & " seconds is too large; decreasing to 900 seconds",
-                 ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                 logMsgType.logWarning, LOG_LOCAL_ONLY)
                 mSleepInterval = 900
             End If
 
@@ -532,14 +531,14 @@ Public Class clsXMLTimeValidation
                         ' Assume the file is a constant size
                         statusMsg = "File not found, but assuming constant size: " & mDatasetPath
                         If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                        m_logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
 
                     ElseIf Not VerifyConstantFileSize(mDatasetPath, mSleepInterval, logonFailure) Then
 
                         If Not logonFailure Then
                             statusMsg = "Dataset '" & mDatasetName & "' not ready (file size changed over " & mSleepInterval & " seconds)"
                             If TraceMode Then ShowTraceMessage(statusMsg)
-                            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                            m_logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
                         End If
 
                         If m_Connected Then
@@ -581,7 +580,7 @@ Public Class clsXMLTimeValidation
                              " vs. Run Finish UTC date: " & CStr(dtRunFinishWithTolerance) & " (includes " & intTimeValToleranceMinutes &
                              " minute tolerance)"
                             If TraceMode Then ShowTraceMessage(statusMsg)
-                            m_logger.PostEntry(statusMsg, ILogger.logMsgType.logError, LOG_DATABASE)
+                            m_logger.PostEntry(statusMsg, logMsgType.logError, LOG_DATABASE)
                             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_FAILED
                         End If
                     End If
@@ -600,7 +599,7 @@ Public Class clsXMLTimeValidation
                     If Not VerifyConstantFolderSize(mDatasetPath, mSleepInterval) Then
                         m_logger.PostEntry(
                          "Dataset '" & mDatasetName & "' not ready (folder size changed over " & mSleepInterval & " seconds)",
-                         ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                         logMsgType.logWarning, LOG_LOCAL_ONLY)
 
                         If m_Connected Then
                             currentTask = "Dataset folder size changed; disconnecting from " & mSourcePath
@@ -612,7 +611,7 @@ Public Class clsXMLTimeValidation
 
                 Case Else
                     m_logger.PostEntry("Invalid dataset type for " & mDatasetName & ": " & resType.ToString,
-                     ILogger.logMsgType.logError, LOG_DATABASE)
+                     logMsgType.logError, LOG_DATABASE)
                     If m_Connected Then
                         currentTask = "Invalid dataset type; disconnecting from " & mSourcePath
                         DisconnectShare(mShareConnector, m_Connected)
@@ -624,7 +623,7 @@ Public Class clsXMLTimeValidation
             Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SUCCESS
 
         Catch ex As Exception
-            m_logger.PostEntry("clsXMLTimeValidation.GetInstrumentName(), Error reading XML File, current task: " & currentTask & "; " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry("clsXMLTimeValidation.GetInstrumentName(), Error reading XML File, current task: " & currentTask & "; " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
 
             If ex.Message.Contains("unknown user name or bad password") Then
                 ' Example message: Error accessing '\\VOrbi05.bionet\ProteomicsData\QC_Shew_11_02_pt5_d2_1Apr12_Earth_12-03-14.raw': Logon failure: unknown user name or bad password
@@ -700,7 +699,7 @@ Public Class clsXMLTimeValidation
             End If
 
             mErrorMessage = msg
-            m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry(mErrorMessage, logMsgType.logError, LOG_LOCAL_ONLY)
             instrumentFileOrFolderName = String.Empty
             Return RawDSTypes.None
         End If
@@ -709,7 +708,7 @@ Public Class clsXMLTimeValidation
             If captureSubFolderName.Length > 255 Then
                 mErrorMessage = "Subfolder path for dataset " & currentDataset & " is too long (over 255 characters): [" & captureSubFolderName & "]"
                 If TraceMode Then clsMainProcess.ShowTraceMessage(mErrorMessage)
-                m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                m_logger.PostEntry(mErrorMessage, logMsgType.logError, LOG_LOCAL_ONLY)
                 instrumentFileOrFolderName = String.Empty
                 Return RawDSTypes.None
             End If
@@ -718,7 +717,7 @@ Public Class clsXMLTimeValidation
             If Not diSubfolder.Exists Then
                 mErrorMessage = "Source folder not found for dataset " & currentDataset & " in the given subfolder: [" & diSubfolder.FullName & "]"
                 If TraceMode Then clsMainProcess.ShowTraceMessage(mErrorMessage)
-                m_logger.PostEntry(mErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                m_logger.PostEntry(mErrorMessage, logMsgType.logError, LOG_LOCAL_ONLY)
                 instrumentFileOrFolderName = String.Empty
                 Return RawDSTypes.None
             End If
@@ -855,7 +854,7 @@ Public Class clsXMLTimeValidation
         Catch ex As Exception
             Dim errMsg = "Error accessing '" & filePath & "': " & ex.Message
             If TraceMode Then ShowTraceMessage(errMsg)
-            m_logger.PostEntry(errMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+            m_logger.PostEntry(errMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
 
             ' Check for "Logon failure: unknown user name or bad password."
 
@@ -879,7 +878,7 @@ Public Class clsXMLTimeValidation
             If String.IsNullOrWhiteSpace(mOperatorPRN) Then
                 Dim strLogMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)"
                 If TraceMode Then ShowTraceMessage(strLogMsg)
-                m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logWarning, LOG_LOCAL_ONLY)
+                m_logger.PostEntry(strLogMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
 
                 mOperatorName = strLogMsg
                 Return False
@@ -904,7 +903,7 @@ Public Class clsXMLTimeValidation
 
         Catch ex As Exception
             Dim strLogMsg = "clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name, " & ex.Message
-            m_logger.PostEntry(strLogMsg, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry(strLogMsg, logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End Try
 

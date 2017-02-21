@@ -1,7 +1,7 @@
-Imports PRISM.Logging
 Imports System.Data.SqlClient
 Imports System.IO
 Imports DataImportManager.clsGlobal
+Imports PRISM
 
 Public Class clsDataImportTask
     Inherits clsDBTask
@@ -66,7 +66,7 @@ Public Class clsDataImportTask
             End If
             fileImported = ImportDataTask()
         Catch ex As Exception
-            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & ex.Message, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
         End Try
 
@@ -125,7 +125,7 @@ Public Class clsDataImportTask
                 Outcome = True
             Else
                 mPostTaskErrorMessage = CStr(sc.Parameters("@message").Value)
-                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage, ILogger.logMsgType.logError, LOG_LOCAL_ONLY)
+                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage, logMsgType.logError, LOG_LOCAL_ONLY)
                 Outcome = False
             End If
 
