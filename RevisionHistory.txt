@@ -1,5 +1,9 @@
 Data Import Manager History
 
+Version 1.2.6261; February 21, 2017
+	- Updated to new PRISM.dll with flattened namespace
+	- Update to .NET 4.5.2
+
 Version 1.2.6166; November 18, 2016
 	- Log errors with message "transaction cannot be committed" but leave the .xml file in place for another import attempt
 
