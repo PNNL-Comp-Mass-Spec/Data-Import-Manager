@@ -35,7 +35,7 @@ Public Class clsDataImportTask
             End If
         End Get
     End Property
-    
+
     Public Property PreviewMode As Boolean
 
 #End Region
@@ -59,12 +59,15 @@ Public Class clsDataImportTask
         Dim fileImported As Boolean
 
         Try
-            ' Call request stored procedure
+            ' Load the XML file into memory
             mp_xmlContents = LoadXmlFileContentsIntoString(triggerFile, m_logger)
             If String.IsNullOrEmpty(mp_xmlContents) Then
                 Return False
             End If
+
+            ' Call the stored procedure (typically AddNewDataset)
             fileImported = ImportDataTask()
+
         Catch ex As Exception
             m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return False
@@ -75,7 +78,7 @@ Public Class clsDataImportTask
     End Function
 
     ''' <summary>
-    ''' Posts the given XML to DMS5 using AddNewDataset
+    ''' Posts the given XML to DMS5 using stored procedure AddNewDataset
     ''' </summary>
     ''' <returns>True if success, false if an error</returns>
     ''' <remarks></remarks>
