@@ -2,9 +2,10 @@
 
 Imports System.Reflection
 Imports System.IO
+Imports PRISM
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "November 18, 2016"
+    Public Const PROGRAM_DATE As String = "April 7, 2017"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
