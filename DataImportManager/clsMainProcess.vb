@@ -81,14 +81,14 @@ Public Class clsMainProcess
 
         Dim connectionstring = m_MgrSettings.GetParam("connectionstring")
 
-        Dim FInfo = New FileInfo(GetExePath())
+        Dim exeFile = New FileInfo(GetExePath())
         Try
             ' Load initial settings
             m_MgrActive = CBool(m_MgrSettings.GetParam("mgractive"))
             m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
 
             ' create the object that will manage the logging
-            Dim logFilePath = Path.Combine(FInfo.DirectoryName, m_MgrSettings.GetParam("logfilename"))
+            Dim logFilePath = Path.Combine(exeFile.DirectoryName, m_MgrSettings.GetParam("logfilename"))
 
             ' Make sure the log folder exists
             Try
@@ -112,7 +112,7 @@ Public Class clsMainProcess
         End Try
 
         ' Setup the logger
-        Dim LogFileName As String = Path.Combine(FInfo.DirectoryName, m_MgrSettings.GetParam("logfilename"))
+        Dim LogFileName As String = Path.Combine(exeFile.DirectoryName, m_MgrSettings.GetParam("logfilename"))
         Dim DbLogger As New clsDBLogger
         DbLogger.LogFilePath = LogFileName
         DbLogger.ConnectionString = m_MgrSettings.GetParam("connectionstring")
@@ -123,7 +123,7 @@ Public Class clsMainProcess
         m_FileWatcher = New FileSystemWatcher
         With m_FileWatcher
             .BeginInit()
-            .Path = FInfo.DirectoryName
+            .Path = exeFile.DirectoryName
             .IncludeSubdirectories = False
             .Filter = m_MgrSettings.GetParam("configfilename")
             .NotifyFilter = NotifyFilters.LastWrite Or NotifyFilters.Size
