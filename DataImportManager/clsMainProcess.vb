@@ -508,10 +508,27 @@ Public Class clsMainProcess
                 Return
             End If
 
-            Dim currentLogFile = New FileInfo(m_Logger.CurrentLogFilePath)
+            currentTask = "Check for new log file"
 
-            Dim mailLogFile = New FileInfo(Path.Combine(currentLogFile.Directory.FullName, "MailLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"))
-            Dim newLogFile = Not mailLogFile.Exists()
+            Dim logFileName = "MailLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"
+            Dim mailLogFile As FileInfo
+            Dim newLogFile As Boolean
+
+            If String.IsNullOrWhiteSpace(m_Logger.CurrentLogFilePath) Then
+                Dim exeFile = New FileInfo(GetExePath())
+                mailLogFile = New FileInfo(Path.Combine(exeFile.DirectoryName, logFileName))
+                newLogFile = True
+            Else
+                currentTask = "Get current log file path"
+                Dim currentLogFile = New FileInfo(m_Logger.CurrentLogFilePath)
+
+                currentTask = "Get new log file path"
+                mailLogFile = New FileInfo(Path.Combine(currentLogFile.Directory.FullName, logFileName))
+                newLogFile = Not mailLogFile.Exists()
+            End If
+
+            currentTask = "Initialize stringbuilder"
+
             Dim mailContentPreview = New StringBuilder()
 
             If newLogFile Then
