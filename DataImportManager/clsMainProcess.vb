@@ -59,9 +59,9 @@ Public Class clsMainProcess
     Public Sub New(blnTraceMode As Boolean)
         TraceMode = blnTraceMode
 
-        mInstrumentsToSkip = New ConcurrentDictionary(Of String, Integer)(StringComparer.InvariantCultureIgnoreCase)
+        mInstrumentsToSkip = New ConcurrentDictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
 
-        mQueuedMail = New ConcurrentDictionary(Of String, List(Of clsQueuedMail))(StringComparer.InvariantCultureIgnoreCase)
+        mQueuedMail = New ConcurrentDictionary(Of String, List(Of clsQueuedMail))(StringComparer.OrdinalIgnoreCase)
     End Sub
 
     Public Function InitMgr() As Boolean

@@ -179,7 +179,7 @@ Public Class clsMgrSettings
     Private Function LoadMgrSettingsFromFile() As Dictionary(Of String, String)
 
         ' Load initial settings into string dictionary for return
-        Dim RetDict As New Dictionary(Of String, String)(StringComparer.InvariantCultureIgnoreCase)
+        Dim RetDict As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
 
         My.Settings.Reload()
         RetDict.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)

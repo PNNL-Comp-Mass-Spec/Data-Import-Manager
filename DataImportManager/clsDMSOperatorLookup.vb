@@ -67,11 +67,11 @@ Public Class DMSInfoCache
         m_logger = logger
         mTraceMode = traceMode
 
-        mErrorSolutions = New Dictionary(Of String, String)(StringComparison.InvariantCultureIgnoreCase)
+        mErrorSolutions = New Dictionary(Of String, String)(StringComparison.OrdinalIgnoreCase)
 
-        mInstruments = New Dictionary(Of String, udtInstrumentInfoType)(StringComparison.InvariantCultureIgnoreCase)
+        mInstruments = New Dictionary(Of String, udtInstrumentInfoType)(StringComparison.OrdinalIgnoreCase)
 
-        mOperators = New Dictionary(Of String, udtOperatorInfoType)(StringComparison.InvariantCultureIgnoreCase)
+        mOperators = New Dictionary(Of String, udtOperatorInfoType)(StringComparison.OrdinalIgnoreCase)
 
     End Sub
 
