@@ -269,7 +269,7 @@ Public Class clsProcessXmlTriggerFile
             Return False
         End If
 
-        ' Look for: 
+        ' Look for:
         ' The current transaction cannot be committed and cannot support operations that write to the log file. Roll back the transaction
         If (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("current transaction cannot be committed")) Then
             ' Log the error and leave the file for another attempt
@@ -309,7 +309,7 @@ Public Class clsProcessXmlTriggerFile
 
         validationErrors.Add(newError)
 
-        ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error             
+        ' Check whether there is a suggested solution in table T_DIM_Error_Solution for the error
         Dim errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg)
         If Not String.IsNullOrWhiteSpace(errorSolution) Then
             ' Store the solution in the database error message variable so that it gets included in the message body

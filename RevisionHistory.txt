@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6422; August 1, 2017
+	- Gracefully handle error "The handle is invalid" when examining files on the instrument computer
+
 Version 1.2.6320; April 21, 2017
 	- Check for empty CurrentLogFilePath
 

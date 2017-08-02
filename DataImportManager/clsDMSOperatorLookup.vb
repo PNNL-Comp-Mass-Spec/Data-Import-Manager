@@ -450,9 +450,12 @@ Public Class DMSInfoCache
 
     End Function
 
-    ' event handler for InfoMessage event
-    ' errors and warnings sent from the SQL server are caught here
-    '
+    ''' <summary>
+    ''' Event handler for InfoMessage event
+    ''' Errors and warnings sent from the SQL server are caught here
+    ''' </summary>
+    ''' <param name="sender"></param>
+    ''' <param name="args"></param>
     Private Sub OnInfoMessage(sender As Object, args As SqlInfoMessageEventArgs)
         Dim err As SqlError
         Dim s As String
