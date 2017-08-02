@@ -241,7 +241,7 @@ Public Class clsProcessXmlTriggerFile
 
         mDatabaseErrorMsg = mDataImportTask.DBErrorMessage
 
-        If mDatabaseErrorMsg.Contains("Timeout expired.") Then
+        If mDatabaseErrorMsg.ToLower().Contains("timeout expired.") Then
             ' Log the error and leave the file for another attempt
             statusMsg = "Encountered database timeout error for dataset: " & triggerFile.FullName
             If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
@@ -262,7 +262,7 @@ Public Class clsProcessXmlTriggerFile
 
         ' Look for:
         ' Transaction (Process ID 67) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction
-        If (mDataImportTask.PostTaskErrorMessage.Contains("deadlocked")) Then
+        If (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("deadlocked")) Then
             ' Log the error and leave the file for another attempt
             statusMsg = "Deadlock encountered"
             m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, logMsgType.logError, LOG_LOCAL_ONLY)
@@ -271,7 +271,7 @@ Public Class clsProcessXmlTriggerFile
 
         ' Look for: 
         ' The current transaction cannot be committed and cannot support operations that write to the log file. Roll back the transaction
-        If (mDataImportTask.PostTaskErrorMessage.Contains("current transaction cannot be committed")) Then
+        If (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("current transaction cannot be committed")) Then
             ' Log the error and leave the file for another attempt
             statusMsg = "Transaction commit error"
             m_Logger.PostEntry(statusMsg & ": " & triggerFile.Name, logMsgType.logError, LOG_LOCAL_ONLY)
@@ -284,7 +284,7 @@ Public Class clsProcessXmlTriggerFile
         statusMsg = "Error posting xml file to database: " & mDataImportTask.PostTaskErrorMessage
         If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
 
-        If mDataImportTask.PostTaskErrorMessage.Contains("since already in database") Then
+        If mDataImportTask.PostTaskErrorMessage.ToLower().Contains("since already in database") Then
             messageType = logMsgType.logWarning
             m_Logger.PostEntry(statusMsg & ". See: " & moveLocPath, messageType, LOG_LOCAL_ONLY)
         Else
