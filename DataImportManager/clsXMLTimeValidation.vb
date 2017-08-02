@@ -2,6 +2,7 @@ Imports System.Collections.Concurrent
 Imports System.IO
 Imports System.Threading
 Imports System.Runtime.InteropServices
+Imports System.Runtime.Remoting.Messaging
 Imports DataImportManager.clsGlobal
 Imports PRISM
 
@@ -482,7 +483,7 @@ Public Class clsXMLTimeValidation
                 mSleepInterval = 900
             End If
 
-            ' Determine dataset type            
+            ' Determine dataset type
             currentTask = "Determining dataset type for " & mDatasetName & " at " & datasetSourcePath
             If TraceMode Then ShowTraceMessage(currentTask)
 
@@ -625,16 +626,18 @@ Public Class clsXMLTimeValidation
         Catch ex As Exception
             m_logger.PostEntry("clsXMLTimeValidation.GetInstrumentName(), Error reading XML File, current task: " & currentTask & "; " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
 
-            If ex.Message.Contains("unknown user name or bad password") Then
+            If ContainsIgnoreCase(ex.Message, "unknown user name or bad password") Then
                 ' Example message: Error accessing '\\VOrbi05.bionet\ProteomicsData\QC_Shew_11_02_pt5_d2_1Apr12_Earth_12-03-14.raw': Logon failure: unknown user name or bad password
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
 
-            ElseIf ex.Message.Contains("Access to the path") AndAlso ex.Message.Contains("is denied") Then
+            ElseIf ContainsIgnoreCase(ex.Message, "Access to the path") AndAlso ContainsIgnoreCase(ex.Message, "is denied") Then
                 ' Example message: Access to the path '\\exact01.bionet\ProteomicsData\Alz_Cap_Test_14_31Mar12_Roc_12-03-16.raw' is denied.
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE
 
-            ElseIf ex.Message.Contains("network path was not found") Then
+            ElseIf ContainsIgnoreCase(ex.Message, "network path was not found") Then
                 ' Example message: The network path was not found.
+                Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
+            ElseIf ContainsIgnoreCase(ex.Message, "The handle is invalid") Then
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR
 
             Else
@@ -679,7 +682,7 @@ Public Class clsXMLTimeValidation
       ignoreInstrumentSourceErrors As Boolean,
       <Out()> ByRef instrumentFileOrFolderName As String) As RawDSTypes
 
-        ' Determines if raw dataset exists as a single file, folder with same name as dataset, or 
+        ' Determines if raw dataset exists as a single file, folder with same name as dataset, or
         '	folder with dataset name + extension. Returns enum specifying what was found and instrumentFileOrFolderName
         ' containing full name of the file or folder
 
@@ -858,9 +861,9 @@ Public Class clsXMLTimeValidation
 
             ' Check for "Logon failure: unknown user name or bad password."
 
-            If ex.Message.Contains("unknown user name or bad password") Then
+            If ContainsIgnoreCase(ex.Message, "unknown user name or bad password") Then
                 ' This error occasionally occurs when monitoring a .UIMF file on an IMS instrument
-                ' We'll treat this as an indicator that the file size is not constant					                
+                ' We'll treat this as an indicator that the file size is not constant
                 If TraceMode Then ShowTraceMessage("Error message contains 'unknown user name or bad password'; assuming this means the file size is not constant")
                 logonFailure = True
             Else
@@ -870,6 +873,13 @@ Public Class clsXMLTimeValidation
 
         Return False
 
+    End Function
+
+    Private Function ContainsIgnoreCase(textToSearch As String, textToFind As String) As Boolean
+
+        If textToSearch.ToLower().Contains(textToFind.ToLower()) Then Return True
+
+        Return False
     End Function
 
     Private Function SetOperatorName() As Boolean
