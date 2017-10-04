@@ -512,20 +512,19 @@ Public Class clsMainProcess
 
             Dim logFileName = "MailLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"
             Dim mailLogFile As FileInfo
-            Dim newLogFile As Boolean
 
             If String.IsNullOrWhiteSpace(m_Logger.CurrentLogFilePath) Then
                 Dim exeFile = New FileInfo(GetExePath())
-                mailLogFile = New FileInfo(Path.Combine(exeFile.DirectoryName, logFileName))
-                newLogFile = True
+                mailLogFile = New FileInfo(Path.Combine(exeFile.DirectoryName, "Logs", logFileName))
             Else
                 currentTask = "Get current log file path"
                 Dim currentLogFile = New FileInfo(m_Logger.CurrentLogFilePath)
 
                 currentTask = "Get new log file path"
                 mailLogFile = New FileInfo(Path.Combine(currentLogFile.Directory.FullName, logFileName))
-                newLogFile = Not mailLogFile.Exists()
             End If
+
+            Dim newLogFile = Not mailLogFile.Exists()
 
             currentTask = "Initialize stringbuilder"
 
