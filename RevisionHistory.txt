@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6485; October 3, 2017
+	- Verify that the Secondary Logon service is running if error "user name or password is incorrect" is reported
+
 Version 1.2.6422; August 1, 2017
 	- Gracefully handle error "The handle is invalid" when examining files on the instrument computer
 

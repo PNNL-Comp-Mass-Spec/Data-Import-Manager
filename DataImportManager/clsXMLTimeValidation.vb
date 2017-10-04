@@ -2,7 +2,6 @@ Imports System.Collections.Concurrent
 Imports System.IO
 Imports System.Threading
 Imports System.Runtime.InteropServices
-Imports System.Runtime.Remoting.Messaging
 Imports DataImportManager.clsGlobal
 Imports PRISM
 
@@ -268,7 +267,7 @@ Public Class clsXMLTimeValidation
 
     End Function
 
-    Private Function InstrumentWaitDelay(triggerFile As FileInfo) As IXMLValidateStatus.XmlValidateStatus
+    Private Function InstrumentWaitDelay(triggerFile As FileSystemInfo) As IXMLValidateStatus.XmlValidateStatus
 
         Try
             Dim fileModDate As DateTime

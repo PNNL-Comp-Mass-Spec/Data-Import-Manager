@@ -5,7 +5,7 @@ Imports System.IO
 Imports PRISM
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "August 1, 2017"
+    Public Const PROGRAM_DATE As String = "October 3, 2017"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
@@ -207,7 +207,7 @@ Module modMain
         End Try
     End Sub
 
-    Public Sub ShowTraceMessage(strMessage As String)        
+    Public Sub ShowTraceMessage(strMessage As String)
         clsMainProcess.ShowTraceMessage(strMessage)
     End Sub
 
