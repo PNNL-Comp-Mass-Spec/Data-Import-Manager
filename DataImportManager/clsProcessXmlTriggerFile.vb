@@ -1,6 +1,7 @@
 ﻿Imports System.Collections.Concurrent
 Imports System.IO
 Imports System.ServiceProcess
+Imports System.Windows.Forms
 Imports DataImportManager.clsGlobal
 Imports PRISM
 
@@ -213,20 +214,46 @@ Public Class clsProcessXmlTriggerFile
 
         If Not ValidateXMLFileMain(triggerFile) Then
 
-            If Not mSecondaryLogonServiceChecked Then
-                mSecondaryLogonServiceChecked = True
-
-                ' Check the status of the Secondary Logon service
-                Dim sc = New ServiceController("seclogon")
-                If sc.Status <> ServiceControllerStatus.Running Then
-                    Dim serviceErrMsg = "The Secondary Logon service is not running; this is required to access files on Bionet"
-                    If ProcSettings.TraceMode Then ShowTraceMessage(serviceErrMsg)
-                    m_Logger.PostEntry(serviceErrMsg, logMsgType.logError, LOG_DATABASE)
-                End If
-
+            If mSecondaryLogonServiceChecked Then
+                Return False
             End If
 
-            Return False
+            mSecondaryLogonServiceChecked = True
+
+            ' Check the status of the Secondary Logon service
+            Dim sc = New ServiceController("seclogon")
+            If sc.Status = ServiceControllerStatus.Running Then
+                Return False
+            End If
+
+            Dim serviceErrMsg = "The Secondary Logon service is not running; this is required to access files on Bionet"
+            If ProcSettings.TraceMode Then ShowTraceMessage(serviceErrMsg)
+            m_Logger.PostEntry(serviceErrMsg, logMsgType.logError, LOG_DATABASE)
+
+            Try
+                ' Try to start it
+                m_Logger.PostEntry("Attempting to start the Secondary Logon service", logMsgType.logNormal, LOG_LOCAL_ONLY)
+
+                sc.Start()
+
+                Threading.Thread.Sleep(3000)
+
+                statusMsg = "Successfully started the Secondary Logon service"
+                If ProcSettings.TraceMode Then ShowTraceMessage(statusMsg)
+                m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_DATABASE)
+
+                ' Now that the service is running, try the validation one more time
+                If Not ValidateXMLFileMain(triggerFile) Then
+                    Return False
+                End If
+
+            Catch ex As Exception
+                Dim logMsg = "Unable to start the Secondary Logon service: " & ex.Message
+                If ProcSettings.TraceMode Then ShowTraceMessage(logMsg)
+                m_Logger.PostEntry(logMsg, logMsgType.logWarning, LOG_DATABASE)
+                Return False
+            End Try
+
         End If
 
         If Not triggerFile.Exists Then

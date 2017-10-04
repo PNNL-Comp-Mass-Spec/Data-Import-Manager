@@ -866,6 +866,8 @@ Public Class clsXMLTimeValidation
                 If TraceMode Then ShowTraceMessage("Error message contains 'unknown user name or bad password'; assuming this means the file size is not constant")
                 logonFailure = True
             Else
+                ' Note that error "The user name or password is incorrect" could be due to the Secondary Logon service not running
+                ' We check for that in clsProcessXmlTriggerFile.ProcessFile if ValidateXMLFileMain returns false
                 Throw
             End If
         End Try
