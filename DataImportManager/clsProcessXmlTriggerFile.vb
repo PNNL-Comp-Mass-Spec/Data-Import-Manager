@@ -1,5 +1,6 @@
 ﻿Imports System.Collections.Concurrent
 Imports System.IO
+Imports System.ServiceProcess
 Imports DataImportManager.clsGlobal
 Imports PRISM
 
@@ -47,6 +48,8 @@ Public Class clsProcessXmlTriggerFile
 
     Private mDataImportTask As clsDataImportTask
     Private mDatabaseErrorMsg As String
+
+    Private mSecondaryLogonServiceChecked As Boolean
 
     Private m_xml_operator_Name As String = String.Empty
 
@@ -209,6 +212,20 @@ Public Class clsProcessXmlTriggerFile
         m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
 
         If Not ValidateXMLFileMain(triggerFile) Then
+
+            If Not mSecondaryLogonServiceChecked Then
+                mSecondaryLogonServiceChecked = True
+
+                ' Check the status of the Secondary Logon service
+                Dim sc = New ServiceController("seclogon")
+                If sc.Status <> ServiceControllerStatus.Running Then
+                    Dim serviceErrMsg = "The Secondary Logon service is not running; this is required to access files on Bionet"
+                    If ProcSettings.TraceMode Then ShowTraceMessage(serviceErrMsg)
+                    m_Logger.PostEntry(serviceErrMsg, logMsgType.logError, LOG_DATABASE)
+                End If
+
+            End If
+
             Return False
         End If
 
