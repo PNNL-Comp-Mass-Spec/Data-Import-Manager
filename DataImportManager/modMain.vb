@@ -5,7 +5,7 @@ Imports System.IO
 Imports PRISM
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "October 4, 2017"
+    Public Const PROGRAM_DATE As String = "October 11, 2017"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
@@ -15,7 +15,7 @@ Module modMain
     Public Function Main() As Integer
         ' Returns 0 if no error, error code if an error
 
-        Dim intReturnCode As Integer
+        Dim returnCode As Integer
         Dim objParseCommandLine As New clsParseCommandLine()
 
         mMailDisabled = False
@@ -33,7 +33,7 @@ Module modMain
 
             If objParseCommandLine.NeedToShowHelp Then
                 ShowProgramHelp()
-                intReturnCode = -1
+                returnCode = -1
             Else
                 If mTraceMode Then ShowTraceMessage("Command line arguments parsed")
 
@@ -58,16 +58,16 @@ Module modMain
                 End Try
 
                 oMainProcess.DoImport()
-                intReturnCode = 0
+                returnCode = 0
 
             End If
 
         Catch ex As Exception
             ShowErrorMessage("Error occurred in modMain->Main: " & Environment.NewLine & ex.Message)
-            intReturnCode = -1
+            returnCode = -1
         End Try
 
-        Return intReturnCode
+        Return returnCode
 
     End Function
 
@@ -88,13 +88,13 @@ Module modMain
     Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
-        Dim lstValidParameters = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
+        Dim validParameters = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
 
         Try
             ' Make sure no invalid parameters are present
-            If objParseCommandLine.InvalidParametersPresent(lstValidParameters) Then
+            If objParseCommandLine.InvalidParametersPresent(validParameters) Then
                 ShowErrorMessage("Invalid commmand line parameters",
-                  (From item In objParseCommandLine.InvalidParameters(lstValidParameters) Select "/" + item).ToList())
+                  (From item In objParseCommandLine.InvalidParameters(validParameters) Select "/" + item).ToList())
                 Return False
             Else
 
@@ -121,35 +121,12 @@ Module modMain
 
     End Function
 
-    Private Sub ShowErrorMessage(strMessage As String)
-        Const strSeparator = "------------------------------------------------------------------------------"
-
-        Console.WriteLine()
-        Console.WriteLine(strSeparator)
-        Console.WriteLine(strMessage)
-        Console.WriteLine(strSeparator)
-        Console.WriteLine()
-
-        WriteToErrorStream(strMessage)
+    Private Sub ShowErrorMessage(message As String)
+        ConsoleMsgUtils.ShowError(message)
     End Sub
 
-    Private Sub ShowErrorMessage(strTitle As String, items As IEnumerable(Of String))
-        Const strSeparator = "------------------------------------------------------------------------------"
-        Dim strMessage As String
-
-        Console.WriteLine()
-        Console.WriteLine(strSeparator)
-        Console.WriteLine(strTitle)
-        strMessage = strTitle & ":"
-
-        For Each item As String In items
-            Console.WriteLine("   " + item)
-            strMessage &= " " & item
-        Next
-        Console.WriteLine(strSeparator)
-        Console.WriteLine()
-
-        WriteToErrorStream(strMessage)
+    Private Sub ShowErrorMessage(title As String, errorMessages As IEnumerable(Of String))
+        ConsoleMsgUtils.ShowErrors(title, errorMessages)
     End Sub
 
     Private Sub ShowProgramHelp()
@@ -197,18 +174,8 @@ Module modMain
 
     End Sub
 
-    Private Sub WriteToErrorStream(strErrorMessage As String)
-        Try
-            Using swErrorStream = New StreamWriter(Console.OpenStandardError())
-                swErrorStream.WriteLine(strErrorMessage)
-            End Using
-        Catch ex As Exception
-            ' Ignore errors here
-        End Try
-    End Sub
-
-    Public Sub ShowTraceMessage(strMessage As String)
-        clsMainProcess.ShowTraceMessage(strMessage)
+    Public Sub ShowTraceMessage(message As String)
+        clsMainProcess.ShowTraceMessage(message)
     End Sub
 
 End Module

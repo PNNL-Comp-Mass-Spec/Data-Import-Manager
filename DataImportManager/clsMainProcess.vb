@@ -40,7 +40,7 @@ Public Class clsMainProcess
     ''' Values are mail messages to send
     ''' </summary>
     ''' <remarks></remarks>
-    Private ReadOnly mQueuedMail As ConcurrentDictionary(Of String, List(Of clsQueuedMail))
+    Private ReadOnly mQueuedMail As ConcurrentDictionary(Of String, ConcurrentBag(Of clsQueuedMail))
 
 #End Region
 
@@ -61,7 +61,7 @@ Public Class clsMainProcess
 
         mInstrumentsToSkip = New ConcurrentDictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
 
-        mQueuedMail = New ConcurrentDictionary(Of String, List(Of clsQueuedMail))(StringComparer.OrdinalIgnoreCase)
+        mQueuedMail = New ConcurrentDictionary(Of String, ConcurrentBag(Of clsQueuedMail))(StringComparer.OrdinalIgnoreCase)
     End Sub
 
     Public Function InitMgr() As Boolean
@@ -423,18 +423,23 @@ Public Class clsMainProcess
     ''' </summary>
     ''' <param name="newQueuedMail"></param>
     ''' <remarks></remarks>
-    Private Sub AddToMailQueue(newQueuedMail As Dictionary(Of String, List(Of clsQueuedMail)))
+    Private Sub AddToMailQueue(newQueuedMail As ConcurrentDictionary(Of String, ConcurrentBag(Of clsQueuedMail)))
 
         For Each newQueuedMessage In newQueuedMail
             Dim recipients = newQueuedMessage.Key
 
-            Dim queuedMessages As List(Of clsQueuedMail) = Nothing
+            Dim queuedMessages As ConcurrentBag(Of clsQueuedMail) = Nothing
             If mQueuedMail.TryGetValue(recipients, queuedMessages) Then
-                queuedMessages.AddRange(newQueuedMessage.Value)
+                For Each msg In newQueuedMessage.Value
+                    queuedMessages.Add(msg)
+                Next
+
             Else
                 If Not mQueuedMail.TryAdd(recipients, newQueuedMessage.Value) Then
                     If mQueuedMail.TryGetValue(recipients, queuedMessages) Then
-                        queuedMessages.AddRange(newQueuedMessage.Value)
+                        For Each msg In newQueuedMessage.Value
+                            queuedMessages.Add(msg)
+                        Next
                     End If
                 End If
             End If

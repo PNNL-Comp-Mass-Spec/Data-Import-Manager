@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6493; October 11, 2017
+	- Switch from a List to a ConcurrentBag for tracking queued mail messages
+
 Version 1.2.6486; October 4, 2017
 	- Try to start the Secondary Logon service if it is stopped
 

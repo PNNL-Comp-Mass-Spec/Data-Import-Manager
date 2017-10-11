@@ -1,7 +1,6 @@
 ﻿Imports System.Collections.Concurrent
 Imports System.IO
 Imports System.ServiceProcess
-Imports System.Windows.Forms
 Imports DataImportManager.clsGlobal
 Imports PRISM
 
@@ -32,7 +31,7 @@ Public Class clsProcessXmlTriggerFile
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Public ReadOnly Property QueuedMail As Dictionary(Of String, List(Of clsQueuedMail))
+    Public ReadOnly Property QueuedMail As ConcurrentDictionary(Of String, ConcurrentBag(Of clsQueuedMail))
         Get
             Return mQueuedMail
         End Get
@@ -64,7 +63,7 @@ Public Class clsProcessXmlTriggerFile
 
     Private m_xml_instrument_Name As String = String.Empty
 
-    Private ReadOnly mQueuedMail As Dictionary(Of String, List(Of clsQueuedMail))
+    Private ReadOnly mQueuedMail As ConcurrentDictionary(Of String, ConcurrentBag(Of clsQueuedMail))
 
 #End Region
 
@@ -91,7 +90,7 @@ Public Class clsProcessXmlTriggerFile
 
         mDMSInfoCache = infoCache
 
-        mQueuedMail = New Dictionary(Of String, List(Of clsQueuedMail))
+        mQueuedMail = New ConcurrentDictionary(Of String, ConcurrentBag(Of clsQueuedMail))
     End Sub
 
     Private Sub CacheMail(validationErrors As List(Of clsValidationError), addnlRecipient As String, subjectAppend As String)
@@ -131,13 +130,19 @@ Public Class clsProcessXmlTriggerFile
             messageToQueue.InstrumentDatasetPath = m_xml_dataset_path
 
             ' Queue the message
-            Dim queuedMessages As List(Of clsQueuedMail) = Nothing
-            If mQueuedMail.TryGetValue(mailRecipients, queuedMessages) Then
-                queuedMessages.Add(messageToQueue)
+            Dim existingQueuedMessages As ConcurrentBag(Of clsQueuedMail) = Nothing
+            If mQueuedMail.TryGetValue(mailRecipients, existingQueuedMessages) Then
+                existingQueuedMessages.Add(messageToQueue)
             Else
-                queuedMessages = New List(Of clsQueuedMail)
-                queuedMessages.Add(messageToQueue)
-                mQueuedMail.Add(mailRecipients, queuedMessages)
+                Dim newQueuedMessages = New ConcurrentBag(Of clsQueuedMail)
+                newQueuedMessages.Add(messageToQueue)
+
+                If Not mQueuedMail.TryAdd(mailRecipients, newQueuedMessages) Then
+                    If mQueuedMail.TryGetValue(mailRecipients, existingQueuedMessages) Then
+                        existingQueuedMessages.Add(messageToQueue)
+                    End If
+                End If
+
             End If
 
             Return
