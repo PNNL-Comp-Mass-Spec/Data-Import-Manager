@@ -14,12 +14,13 @@ Imports System.Windows.Forms
 Imports System.Threading
 
 #Region "Interfaces"
-Public Interface IMgrParams
-    Function GetParam(ItemKey As String) As String
 
-    ' ReSharper disable once UnusedMember.Global
-    Sub SetParam(ItemKey As String, ItemValue As String)
+Public Interface IMgrParams
+    Function GetParam(itemKey As String) As String
+
+    Sub SetParam(itemKey As String, itemValue As String)
 End Interface
+
 #End Region
 
 Public Class clsMgrSettings
@@ -58,9 +59,9 @@ Public Class clsMgrSettings
     ''' Constructor
     ''' </summary>
     ''' <remarks>Logs errors to a file because logging hasn't been set up. Throws exception if a problem occurs</remarks>
-    Public Sub New(EmergencyLogFileNamePath As String)
+    Public Sub New(emergencyLogFileNamePath As String)
 
-        m_EmerLogFile = EmergencyLogFileNamePath
+        m_EmerLogFile = emergencyLogFileNamePath
 
         If Not LoadSettings(False) Then
             If Not m_ManagerDeactivated Then
@@ -76,12 +77,12 @@ Public Class clsMgrSettings
     ''' <param name="Reload">True if reloading as manager is running</param>
     ''' <returns>True if successful; False on error</returns>
     ''' <remarks></remarks>
-    Public Function LoadSettings(Reload As Boolean) As Boolean
+    Public Function LoadSettings(reload As Boolean) As Boolean
 
         m_ErrMsg = String.Empty
 
         ' If reloading, clear out the existing parameter string dictionary
-        If Reload Then
+        If reload Then
             If m_ParamDictionary IsNot Nothing Then
                 m_ParamDictionary.Clear()
             End If
@@ -118,7 +119,7 @@ Public Class clsMgrSettings
         End If
 
         ' If reloading, clear the "first run" flag
-        If Reload Then
+        If reload Then
             UpdateManagerSetting("FirstRun", "False")
         Else
             UpdateManagerSetting("FirstRun", "True")
@@ -179,15 +180,15 @@ Public Class clsMgrSettings
     Private Function LoadMgrSettingsFromFile() As Dictionary(Of String, String)
 
         ' Load initial settings into string dictionary for return
-        Dim RetDict As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
+        Dim mgrSettings As New Dictionary(Of String, String)(StringComparer.OrdinalIgnoreCase)
 
         My.Settings.Reload()
-        RetDict.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)
-        RetDict.Add("MgrActive_Local", My.Settings.MgrActive_Local.ToString)
-        RetDict.Add("MgrName", My.Settings.MgrName)
-        RetDict.Add("UsingDefaults", My.Settings.UsingDefaults.ToString)
+        mgrSettings.Add("MgrCnfgDbConnectStr", My.Settings.MgrCnfgDbConnectStr)
+        mgrSettings.Add("MgrActive_Local", My.Settings.MgrActive_Local.ToString)
+        mgrSettings.Add("MgrName", My.Settings.MgrName)
+        mgrSettings.Add("UsingDefaults", My.Settings.UsingDefaults.ToString)
 
-        Return RetDict
+        Return mgrSettings
 
     End Function
 
@@ -292,16 +293,16 @@ Public Class clsMgrSettings
     ''' <summary>
     ''' Gets a parameter from the parameters string dictionary
     ''' </summary>
-    ''' <param name="ItemKey">Key name for item</param>
+    ''' <param name="itemKey">Key name for item</param>
     ''' <returns>String value associated with specified key</returns>
     ''' <remarks>Returns Nothing if key isn't found</remarks>
-    Public Function GetParam(ItemKey As String) As String Implements IMgrParams.GetParam
+    Public Function GetParam(itemKey As String) As String Implements IMgrParams.GetParam
 
         Dim strValue As String = String.Empty
 
         If m_ParamDictionary Is Nothing Then Return String.Empty
 
-        If Not m_ParamDictionary.TryGetValue(ItemKey, strValue) Then
+        If Not m_ParamDictionary.TryGetValue(itemKey, strValue) Then
             Return String.Empty
         End If
 
@@ -316,16 +317,15 @@ Public Class clsMgrSettings
     ''' <summary>
     ''' Sets a parameter in the parameters string dictionary
     ''' </summary>
-    ''' <param name="ItemKey">Key name for the item</param>
-    ''' <param name="ItemValue">Value to assign to the key</param>
+    ''' <param name="itemKey">Key name for the item</param>
+    ''' <param name="itemValue">Value to assign to the key</param>
     ''' <remarks></remarks>
-    Public Sub SetParam(ItemKey As String, ItemValue As String) Implements IMgrParams.SetParam
+    Public Sub SetParam(itemKey As String, itemValue As String) Implements IMgrParams.SetParam
 
-        UpdateManagerSetting(ItemKey, ItemValue)
+        UpdateManagerSetting(itemKey, itemValue)
 
     End Sub
 
-    ' ReSharper disable once UnusedMember.Global
     ''' <summary>
     ''' Gets a collection representing all keys in the parameters string dictionary
     ''' </summary>
@@ -337,13 +337,14 @@ Public Class clsMgrSettings
 
     End Function
 
-    Public Sub UpdateManagerSetting(Key As String, Value As String)
-        If m_ParamDictionary.ContainsKey(Key) Then
-            m_ParamDictionary(Key) = Value
+    Public Sub UpdateManagerSetting(key As String, value As String)
+        If m_ParamDictionary.ContainsKey(key) Then
+            m_ParamDictionary(key) = value
         Else
-            m_ParamDictionary.Add(Key, Value)
+            m_ParamDictionary.Add(key, value)
         End If
     End Sub
+
     ''' <summary>
     ''' Writes specfied value to an application config file.
     ''' </summary>
@@ -351,7 +352,7 @@ Public Class clsMgrSettings
     ''' <param name="Value">New value for parameter</param>
     ''' <returns>TRUE for success; FALSE for error (ErrMsg property contains reason)</returns>
     ''' <remarks>This bit of lunacy is needed because MS doesn't supply a means to write to an app config file</remarks>
-    Public Function WriteConfigSetting(Key As String, Value As String) As Boolean
+    Public Function WriteConfigSetting(key As String, value As String) As Boolean
 
         m_ErrMsg = String.Empty
 
@@ -372,13 +373,13 @@ Public Class clsMgrSettings
 
         Try
             'Select the element containing the value for the specified key containing the key
-            Dim MyElement = CType(MyNode.SelectSingleNode(String.Format("//setting[@name='{0}']/value", Key)), XmlElement)
+            Dim MyElement = CType(MyNode.SelectSingleNode(String.Format("//setting[@name='{0}']/value", key)), XmlElement)
             If MyElement IsNot Nothing Then
                 'Set key to specified value
-                MyElement.InnerText = Value
+                MyElement.InnerText = value
             Else
                 'Key was not found
-                m_ErrMsg = "clsMgrSettings.WriteConfigSettings; specified key not found: " & Key
+                m_ErrMsg = "clsMgrSettings.WriteConfigSettings; specified key not found: " & key
                 Return False
             End If
             MyDoc.Save(GetConfigFilePath())

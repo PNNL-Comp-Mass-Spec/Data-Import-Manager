@@ -6,27 +6,26 @@
 ' Created 04/30/2007
 '
 '*********************************************************************************************************
+Imports System.IO
 
-' ReSharper disable once ClassNeverInstantiated.Global
+''' <summary>
+''' Class for logging of problems prior to manager's full logging capability being available
+''' </summary>
 Public Class clsEmergencyLog
 
-    '*********************************************************************************************************
-    'Class for logging of problems prior to manager's full logging capability being available
-    '*********************************************************************************************************
-
-#Region "Methods"
     ''' <summary>
     ''' Writes a message to the emergency log, which is used prior to establishing normal logging
     ''' </summary>
-    ''' <param name="LogFileNamePath"></param>
-    ''' <param name="LogMsg"></param>
+    ''' <param name="logFilePath"></param>
+    ''' <param name="message"></param>
     ''' <remarks></remarks>
-    Public Shared Sub WriteToLog(LogFileNamePath As String, LogMsg As String)
+    Public Shared Sub WriteToLog(logFilePath As String, message As String)
 
-        Dim CurDate As String = DateTime.Now().ToString("MM/dd/yyyy HH:mm:ss")
-        My.Computer.FileSystem.WriteAllText(LogFileNamePath, CurDate & ControlChars.Tab & LogMsg & ControlChars.CrLf, True)
+        Dim timeStamp As String = DateTime.Now().ToString("MM/dd/yyyy HH:mm:ss")
+        Using writer = New StreamWriter(New FileStream(logFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
+            writer.WriteLine(timeStamp & ControlChars.Tab & message)
+        End Using
 
     End Sub
-#End Region
 
 End Class

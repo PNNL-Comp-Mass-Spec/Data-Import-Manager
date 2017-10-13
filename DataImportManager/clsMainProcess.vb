@@ -79,7 +79,7 @@ Public Class clsMainProcess
             ' Failures are logged by clsMgrSettings to local emergency log file
         End Try
 
-        Dim connectionstring = m_MgrSettings.GetParam("connectionstring")
+        Dim connectionString = m_MgrSettings.GetParam("connectionstring")
 
         Dim exeFile = New FileInfo(GetExePath())
         Try
@@ -92,12 +92,12 @@ Public Class clsMainProcess
 
             ' Make sure the log folder exists
             Try
-                Dim fiLogFile = New FileInfo(logFilePath)
+                Dim fiLogFile = New FileInfo(logFileBaseName)
                 If Not Directory.Exists(fiLogFile.DirectoryName) Then
                     Directory.CreateDirectory(fiLogFile.DirectoryName)
                 End If
             Catch ex2 As Exception
-                Console.WriteLine("Error checking for valid directory for Logfile: " & logFilePath)
+                Console.WriteLine("Error checking for valid directory for logging: " & logFileBaseName)
             End Try
 
             Dim moduleName = m_MgrSettings.GetParam("modulename")
@@ -881,8 +881,8 @@ Public Class clsMainProcess
 
     End Sub
 
-    Public Shared Sub ShowTraceMessage(strMessage As String)
-        Console.WriteLine(DateTime.Now.ToString("hh:mm:ss.fff tt") & ": " & strMessage)
+    Public Shared Sub ShowTraceMessage(message As String)
+        Console.WriteLine(DateTime.Now.ToString("hh:mm:ss.fff tt") & ": " & message)
     End Sub
 
 End Class

@@ -26,7 +26,7 @@ Public Class clsGlobal
 
     End Sub
 
-    Public Shared Sub DeleteStatusFlagFile(MyLogger As ILogger)
+    Public Shared Sub DeleteStatusFlagFile(myLogger As ILogger)
 
         'Deletes the task request control flag file
         Dim fiAppProgram As New FileInfo(GetExePath())
@@ -37,7 +37,7 @@ Public Class clsGlobal
                 File.Delete(flagFilePath)
             End If
         Catch ex As Exception
-            MyLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
+            myLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
         End Try
 
     End Sub
@@ -96,11 +96,11 @@ Public Class clsGlobal
 
     End Function
 
-    Public Shared Function LoadXmlFileContentsIntoString(triggerFile As FileInfo, MyLogger As ILogger) As String
+    Public Shared Function LoadXmlFileContentsIntoString(triggerFile As FileInfo, myLogger As ILogger) As String
         Try
             ' Read the contents of the xml file into a string which will be passed into a stored procedure.
             If Not triggerFile.Exists Then
-                MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.", logMsgType.logError, LOG_LOCAL_ONLY)
+                myLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.", logMsgType.logError, LOG_LOCAL_ONLY)
                 Return String.Empty
             End If
             Dim xmlFileContents = New StringBuilder
@@ -113,7 +113,7 @@ Public Class clsGlobal
             End Using
             Return xmlFileContents.ToString()
         Catch ex As Exception
-            MyLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
+            myLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
             Return String.Empty
         End Try
 
