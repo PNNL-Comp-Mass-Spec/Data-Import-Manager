@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6495; October 13, 2017
+	- Updated PRISM.dll that auto-archives old log files
+
 Version 1.2.6493; October 11, 2017
 	- Switch from a List to a ConcurrentBag for tracking queued mail messages
 

@@ -140,7 +140,6 @@ Public Class clsMainProcess
         ' Get the debug level
         m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
 
-
         ' Everything worked
         Return True
 
@@ -311,7 +310,7 @@ Public Class clsMainProcess
 
             Else
                 If m_DebugLevel > 4 Or TraceMode Then
-                    Dim statusMsg = "No Data Files to import"
+                    Dim statusMsg = "No data files to import"
                     ShowTraceMessage(statusMsg)
                     m_Logger.PostEntry(statusMsg, logMsgType.logDebug, LOG_LOCAL_ONLY)
                 End If
