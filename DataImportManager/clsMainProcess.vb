@@ -20,7 +20,11 @@ Public Class clsMainProcess
 #Region "Member Variables"
     Private m_MgrSettings As clsMgrSettings
 
+    ''' <summary>
+    ''' Log messages using clsQueLogger in PRISM.dll
+    ''' </summary>
     Private m_Logger As ILogger
+
     Private m_ConfigChanged As Boolean = False
 
     Private m_FileWatcher As FileSystemWatcher
@@ -85,13 +89,12 @@ Public Class clsMainProcess
         Dim connectionString = m_MgrSettings.GetParam("connectionstring")
 
         Dim exeFile = New FileInfo(GetExePath())
+        Dim logFileBaseName As String = Path.Combine(exeFile.DirectoryName, m_MgrSettings.GetParam("logfilename"))
+
         Try
             ' Load initial settings
             m_MgrActive = CBool(m_MgrSettings.GetParam("mgractive"))
             m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
-
-            ' create the object that will manage the logging
-            Dim logFilePath = Path.Combine(exeFile.DirectoryName, m_MgrSettings.GetParam("logfilename"))
 
             ' Make sure the log folder exists
             Try
@@ -103,8 +106,14 @@ Public Class clsMainProcess
                 Console.WriteLine("Error checking for valid directory for logging: " & logFileBaseName)
             End Try
 
+            ' Create the object that will manage the logging
+
             Dim moduleName = m_MgrSettings.GetParam("modulename")
-            m_Logger = New clsQueLogger(New clsDBLogger(moduleName, connectionstring, logFilePath))
+            If String.IsNullOrWhiteSpace(moduleName) Then
+                moduleName = "DataImportManager: " & GetHostName()
+            End If
+
+            m_Logger = New clsQueLogger(New clsDBLogger(moduleName, connectionString, logFileBaseName))
 
             ' Write the initial log and status entries
             m_Logger.PostEntry("===== Started Data Import Manager V" & Application.ProductVersion & " =====", logMsgType.logNormal, LOG_LOCAL_ONLY)
