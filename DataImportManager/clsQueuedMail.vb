@@ -1,37 +1,17 @@
 ﻿
 Public Class clsQueuedMail
 
-    Private ReadOnly mOperator As String
-    Private ReadOnly mRecipients As String
-    Private ReadOnly mSubject As String
-    Private ReadOnly mValidationErrors As List(Of clsValidationError)
-
 #Region "Properties"
 
-    ' ReSharper disable once ConvertToVbAutoProperty
     Public ReadOnly Property InstrumentOperator As String
-        Get
-            Return mOperator
-        End Get
-    End Property
 
-    ' ReSharper disable once ConvertToVbAutoProperty
     ''' <summary>
     ''' Semi-colon separated list of e-mail addresses
     ''' </summary>
     ''' <remarks></remarks>
     Public ReadOnly Property Recipients As String
-        Get
-            Return mRecipients
-        End Get
-    End Property
 
-    ' ReSharper disable once ConvertToVbAutoProperty
     Public ReadOnly Property Subject As String
-        Get
-            Return mSubject
-        End Get
-    End Property
 
     ''' <summary>
     ''' Tracks any database message errors
@@ -42,12 +22,7 @@ Public Class clsQueuedMail
     ''' <remarks></remarks>
     Public Property DatabaseErrorMsg As String
 
-    ' ReSharper disable once ConvertToVbAutoProperty
     Public ReadOnly Property ValidationErrors As List(Of clsValidationError)
-        Get
-            Return mValidationErrors
-        End Get
-    End Property
 
     ''' <summary>
     ''' Tracks the path to the dataset on the instrument
@@ -63,20 +38,16 @@ Public Class clsQueuedMail
     ''' Constructor
     ''' </summary>
     ''' <param name="operatorName"></param>
-    ''' <param name="recipients"></param>
+    ''' <param name="recipientList"></param>
     ''' <param name="mailSubject"></param>
-    ''' <param name="validationErrors"></param>
+    ''' <param name="lstValidationErrors"></param>
     ''' <remarks></remarks>
-    Public Sub New(
-      operatorName As String,
-      recipients As String,
-      mailSubject As String,
-      validationErrors As List(Of clsValidationError))
+    Public Sub New(operatorName As String, recipientList As String, mailSubject As String, lstValidationErrors As List(Of clsValidationError))
 
-        mOperator = operatorName
-        mRecipients = recipients
-        mSubject = mailSubject
-        mValidationErrors = validationErrors
+        InstrumentOperator = operatorName
+        Recipients = recipientList
+        Subject = mailSubject
+        ValidationErrors = lstValidationErrors
 
         DatabaseErrorMsg = String.Empty
         InstrumentDatasetPath = String.Empty
