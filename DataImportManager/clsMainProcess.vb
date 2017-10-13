@@ -22,8 +22,11 @@ Public Class clsMainProcess
 
     Private m_Logger As ILogger
     Private m_ConfigChanged As Boolean = False
-    Private WithEvents m_FileWatcher As New FileSystemWatcher
+
+    Private m_FileWatcher As FileSystemWatcher
+
     Private m_MgrActive As Boolean = True
+
     Private m_DebugLevel As Integer = 0
 
     ''' <summary>
@@ -120,7 +123,7 @@ Public Class clsMainProcess
         m_Logger = New clsQueLogger(DbLogger)
 
         ' Set up the FileWatcher to detect setup file changes
-        m_FileWatcher = New FileSystemWatcher
+        m_FileWatcher = New FileSystemWatcher()
         With m_FileWatcher
             .BeginInit()
             .Path = exeFile.DirectoryName
@@ -130,6 +133,8 @@ Public Class clsMainProcess
             .EndInit()
             .EnableRaisingEvents = True
         End With
+
+        AddHandler m_FileWatcher.Changed, AddressOf FileWatcher_Changed
 
         ' Get the debug level
         m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
@@ -796,7 +801,7 @@ Public Class clsMainProcess
 
     End Sub
 
-    Private Sub m_FileWatcher_Changed(sender As Object, e As FileSystemEventArgs) Handles m_FileWatcher.Changed
+    Private Sub FileWatcher_Changed(sender As Object, e As FileSystemEventArgs)
         m_ConfigChanged = True
         If m_DebugLevel > 3 Then
             m_Logger.PostEntry("Config file changed", logMsgType.logDebug, LOG_LOCAL_ONLY)
