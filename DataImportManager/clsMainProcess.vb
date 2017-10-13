@@ -448,7 +448,7 @@ Public Class clsMainProcess
 
     End Sub
 
-    Public Function ScanXferDirectory(<Out()> ByRef xmlFilesToImport As List(Of FileInfo)) As ITaskParams.CloseOutType
+    Public Function ScanXferDirectory(<Out> ByRef xmlFilesToImport As List(Of FileInfo)) As ITaskParams.CloseOutType
 
         ' Copies the results to the transfer directory
         Dim serverXferDir As String = m_MgrSettings.GetParam("xferdir")

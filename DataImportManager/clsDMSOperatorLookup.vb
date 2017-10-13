@@ -116,7 +116,7 @@ Public Class DMSInfoCache
 
     End Function
 
-    Public Function GetInstrumentInfo(instrumentName As String, <Out()> ByRef udtInstrumentInfo As udtInstrumentInfoType) As Boolean
+    Public Function GetInstrumentInfo(instrumentName As String, <Out> ByRef udtInstrumentInfo As udtInstrumentInfoType) As Boolean
 
         If mInstruments.Count = 0 Then
             Using dbConnection = GetNewDbConnection()
@@ -133,7 +133,7 @@ Public Class DMSInfoCache
 
     End Function
 
-    Public Function GetOperatorName(operatorPRN As String, <Out()> ByRef userCountMatched As Integer) As udtOperatorInfoType
+    Public Function GetOperatorName(operatorPRN As String, <Out> ByRef userCountMatched As Integer) As udtOperatorInfoType
 
         If mOperators.Count = 0 Then
             Using dbConnection = GetNewDbConnection()
@@ -166,7 +166,7 @@ Public Class DMSInfoCache
 
     End Function
 
-    Private Function GetValue(reader As SqlDataReader, columnIndex As Integer, valueIfNull As Integer) As Integer
+    Private Function GetValue(reader As IDataRecord, columnIndex As Integer, valueIfNull As Integer) As Integer
         If reader.IsDBNull(columnIndex) Then
             Return valueIfNull
         Else
@@ -174,7 +174,7 @@ Public Class DMSInfoCache
         End If
     End Function
 
-    Private Function GetValue(reader As SqlDataReader, columnIndex As Integer, valueIfNull As String) As String
+    Private Function GetValue(reader As IDataRecord, columnIndex As Integer, valueIfNull As String) As String
         If reader.IsDBNull(columnIndex) Then
             Return valueIfNull
         Else
@@ -191,7 +191,7 @@ Public Class DMSInfoCache
             LoadErrorSolutionsFromDMS(dbConnection)
             LoadInstrumentsFromDMS(dbConnection)
             LoadOperatorsFromDMS(dbConnection)
-        End Using        
+        End Using
     End Sub
 
     Private Sub LoadErrorSolutionsFromDMS(dbConnection As SqlConnection)
@@ -274,11 +274,12 @@ Public Class DMSInfoCache
 
                             Dim instrumentName = GetValue(reader, 0, String.Empty)
 
-                            Dim udtInstrumentInfo = New udtInstrumentInfoType
-                            udtInstrumentInfo.InstrumentClass = GetValue(reader, 1, String.Empty)
-                            udtInstrumentInfo.RawDataType = GetValue(reader, 2, String.Empty)
-                            udtInstrumentInfo.CaptureType = GetValue(reader, 3, String.Empty)
-                            udtInstrumentInfo.SourcePath = GetValue(reader, 4, String.Empty)
+                            Dim udtInstrumentInfo = New udtInstrumentInfoType With {
+                                .InstrumentClass = GetValue(reader, 1, String.Empty),
+                                .RawDataType = GetValue(reader, 2, String.Empty),
+                                .CaptureType = GetValue(reader, 3, String.Empty),
+                                .SourcePath = GetValue(reader, 4, String.Empty)
+                            }
 
                             If Not mInstruments.ContainsKey(instrumentName) Then
                                 mInstruments.Add(instrumentName, udtInstrumentInfo)
@@ -331,12 +332,12 @@ Public Class DMSInfoCache
                     Using reader = cmd.ExecuteReader()
                         While reader.Read()
 
-                            Dim udtOperator = New udtOperatorInfoType
-
-                            udtOperator.Name = GetValue(reader, 0, String.Empty)
-                            udtOperator.Email = GetValue(reader, 1, String.Empty)
-                            udtOperator.Username = GetValue(reader, 2, String.Empty)
-                            udtOperator.ID = GetValue(reader, 3, 0)
+                            Dim udtOperator = New udtOperatorInfoType With {
+                                .Name = GetValue(reader, 0, String.Empty),
+                                .Email = GetValue(reader, 1, String.Empty),
+                                .Username = GetValue(reader, 2, String.Empty),
+                                .ID = GetValue(reader, 3, 0)
+                            }
 
                             If Not String.IsNullOrWhiteSpace(udtOperator.Username) AndAlso Not mOperators.ContainsKey(udtOperator.Username) Then
                                 mOperators.Add(udtOperator.Username, udtOperator)
@@ -371,14 +372,14 @@ Public Class DMSInfoCache
     ''' Lookup the operator information given operatorPrnToFind
     ''' </summary>
     ''' <param name="operatorPrnToFind">Typically username, but could be a person's real name</param>
-    ''' <param name="operatorInfo">Output: Matching operator info</param>    
+    ''' <param name="operatorInfo">Output: Matching operator info</param>
     ''' <param name="userCountMatched">Output: Number of users matched by operatorPrnToFind</param>
     ''' <returns>True if success, otherwise false</returns>
     ''' <remarks></remarks>
     Private Function LookupOperatorName(
         operatorPrnToFind As String,
-        <Out()> ByRef operatorInfo As udtOperatorInfoType,
-        <Out()> ByRef userCountMatched As Integer) As Boolean
+        <Out> ByRef operatorInfo As udtOperatorInfoType,
+        <Out> ByRef userCountMatched As Integer) As Boolean
 
         ' Get a list of all operators (hopefully just one) matching the user PRN
 
@@ -393,9 +394,9 @@ Public Class DMSInfoCache
         End If
 
         Dim query1 = (From item In mOperators
-                     Order By item.Value.ID Descending
-                     Where item.Value.Username.ToLower().StartsWith(operatorPrnToFind.ToLower())
-                     Select item.Value()).ToList()
+                      Order By item.Value.ID Descending
+                      Where item.Value.Username.ToLower().StartsWith(operatorPrnToFind.ToLower())
+                      Select item.Value()).ToList()
 
         If query1.Count = 1 Then
             operatorInfo = query1.First
@@ -419,9 +420,9 @@ Public Class DMSInfoCache
         End If
 
         Dim query2 = (From item In mOperators
-                     Order By item.Value.ID Descending
-                     Where item.Value.Name.ToLower().StartsWith(strQueryName.ToLower())
-                     Select item.Value()).ToList()
+                      Order By item.Value.ID Descending
+                      Where item.Value.Name.ToLower().StartsWith(strQueryName.ToLower())
+                      Select item.Value()).ToList()
 
         userCountMatched = query2.Count
 

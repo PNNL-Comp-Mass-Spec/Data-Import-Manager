@@ -3,11 +3,10 @@ Imports System.Runtime.CompilerServices
 
 Module modExtensionMethods
 
-    ' ReSharper disable once ClassNeverInstantiated.Global
     ''' <summary>
     ''' This class is used by xmlFilesToImport.Shuffle()
     ''' in DoDataImportTask
-    ''' </summary>    
+    ''' </summary>
     Public NotInheritable Class ThreadSafeRandom
 
         Private Sub New()
@@ -15,7 +14,7 @@ Module modExtensionMethods
 
         <ThreadStatic> Private Shared mRandGenerator As New Random
 
-        Public Shared ReadOnly Property ThisThreadsRandom() As Random
+        Public Shared ReadOnly Property ThisThreadsRandom As Random
             Get
                 Return If(mRandGenerator, (InlineAssignHelper(mRandGenerator, New Random(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId))))
             End Get
@@ -26,7 +25,7 @@ Module modExtensionMethods
             Return value
         End Function
     End Class
-    
+
     <Extension>
     Public Sub Shuffle(Of T)(list As IList(Of T))
         Dim n As Integer = list.Count
@@ -40,5 +39,5 @@ Module modExtensionMethods
             list(n) = value
         End While
     End Sub
-    
+
 End Module

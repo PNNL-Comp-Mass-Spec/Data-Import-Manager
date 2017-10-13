@@ -41,13 +41,13 @@ Public Class clsMgrSettings
 #End Region
 
 #Region "Properties"
-    Public ReadOnly Property ErrMsg() As String
+    Public ReadOnly Property ErrMsg As String
         Get
             Return m_ErrMsg
         End Get
     End Property
 
-    Public ReadOnly Property ManagerDeactivated() As Boolean
+    Public ReadOnly Property ManagerDeactivated As Boolean
         Get
             Return m_ManagerDeactivated
         End Get

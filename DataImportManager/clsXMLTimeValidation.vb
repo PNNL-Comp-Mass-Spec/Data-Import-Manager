@@ -49,7 +49,7 @@ Public Class clsXMLTimeValidation
         End Get
     End Property
 
-    Public ReadOnly Property DatasetName() As String
+    Public ReadOnly Property DatasetName As String
         Get
             Return FixNull(mDatasetName)
         End Get
@@ -61,13 +61,13 @@ Public Class clsXMLTimeValidation
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Public ReadOnly Property DatasetPath() As String
+    Public ReadOnly Property DatasetPath As String
         Get
             Return FixNull(mDatasetPath)
         End Get
     End Property
 
-    Public ReadOnly Property InstrumentName() As String
+    Public ReadOnly Property InstrumentName As String
         Get
             Return mInstrumentName
         End Get
@@ -79,20 +79,20 @@ Public Class clsXMLTimeValidation
         End Get
     End Property
 
-    Public ReadOnly Property OperatorEMail() As String
+    Public ReadOnly Property OperatorEMail As String
         Get
             Return FixNull(mOperatorEmail)
         End Get
     End Property
 
-    Public ReadOnly Property OperatorName() As String
+    Public ReadOnly Property OperatorName As String
         Get
             Return FixNull(mOperatorName)
         End Get
     End Property
 
     ' ReSharper disable once UnusedMember.Global
-    Public ReadOnly Property OperatorPRN() As String
+    Public ReadOnly Property OperatorPRN As String
         Get
             Return FixNull(mOperatorPRN)
         End Get
@@ -104,7 +104,7 @@ Public Class clsXMLTimeValidation
     ''' <value></value>
     ''' <returns></returns>
     ''' <remarks></remarks>
-    Public ReadOnly Property SourcePath() As String
+    Public ReadOnly Property SourcePath As String
         Get
             Return FixNull(mSourcePath)
         End Get
@@ -679,7 +679,7 @@ Public Class clsXMLTimeValidation
       captureSubFolderName As String,
       currentDataset As String,
       ignoreInstrumentSourceErrors As Boolean,
-      <Out()> ByRef instrumentFileOrFolderName As String) As RawDSTypes
+      <Out> ByRef instrumentFileOrFolderName As String) As RawDSTypes
 
         ' Determines if raw dataset exists as a single file, folder with same name as dataset, or
         '	folder with dataset name + extension. Returns enum specifying what was found and instrumentFileOrFolderName
@@ -818,7 +818,7 @@ Public Class clsXMLTimeValidation
     Private Function VerifyConstantFileSize(
       filePath As String,
       sleepIntervalSeconds As Integer,
-      <Out()> ByRef logonFailure As Boolean) As Boolean
+      <Out> ByRef logonFailure As Boolean) As Boolean
 
         ' Sleep interval should be no more than 15 minutes (900 seconds)
         If sleepIntervalSeconds > 900 Then sleepIntervalSeconds = 900
