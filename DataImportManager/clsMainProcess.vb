@@ -114,14 +114,6 @@ Public Class clsMainProcess
             Throw New Exception("InitMgr, " & ex.Message, ex)
         End Try
 
-        ' Setup the logger
-        Dim LogFileName As String = Path.Combine(exeFile.DirectoryName, m_MgrSettings.GetParam("logfilename"))
-        Dim DbLogger As New clsDBLogger
-        DbLogger.LogFilePath = LogFileName
-        DbLogger.ConnectionString = m_MgrSettings.GetParam("connectionstring")
-        DbLogger.ModuleName = m_MgrSettings.GetParam("modulename")
-        m_Logger = New clsQueLogger(DbLogger)
-
         ' Set up the FileWatcher to detect setup file changes
         m_FileWatcher = New FileSystemWatcher()
         With m_FileWatcher
