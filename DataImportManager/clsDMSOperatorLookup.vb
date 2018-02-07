@@ -88,8 +88,8 @@ Public Class DMSInfoCache
             Catch ex As SqlException
                 retryCount -= 1
 
-                Thread.Sleep(300)
                 LogTools.LogError("Connection problem: ", ex)
+                clsProgRunner.SleepMilliseconds(300)
             End Try
         End While
 
@@ -237,8 +237,8 @@ Public Class DMSInfoCache
                 LogTools.LogError(errorMessage)
 
                 If retryCount > 0 Then
-                    ' Delay for 5 second before trying again
-                    Thread.Sleep(5000)
+                    ' Delay for 5 seconds before trying again
+                    clsProgRunner.SleepMilliseconds(5000)
                 End If
 
             End Try
@@ -297,8 +297,8 @@ Public Class DMSInfoCache
                 LogTools.LogError(errorMessage)
 
                 If retryCount > 0 Then
-                    ' Delay for 5 second before trying again
-                    Thread.Sleep(5000)
+                    ' Delay for 5 seconds before trying again
+                    clsProgRunner.SleepMilliseconds(5000)
                 End If
 
             End Try
@@ -355,8 +355,8 @@ Public Class DMSInfoCache
                 LogTools.LogError(errorMessage)
 
                 If retryCount > 0 Then
-                    ' Delay for 5 second before trying again
-                    Thread.Sleep(5000)
+                    ' Delay for 5 seconds before trying again
+                    clsProgRunner.SleepMilliseconds(5000)
                 End If
 
             End Try

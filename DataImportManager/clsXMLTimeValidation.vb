@@ -765,7 +765,7 @@ Public Class clsXMLTimeValidation
         End If
 
         ' Wait for specified sleep interval
-        Thread.Sleep(sleepIntervalMsec)
+        clsProgRunner.SleepMilliseconds(sleepIntervalMsec)
 
         ' Get the final size of the folder and compare
         Dim finalFolderSize = m_FileTools.GetDirectorySize(folderPath)
@@ -812,7 +812,7 @@ Public Class clsXMLTimeValidation
             End If
 
             ' Wait for specified sleep interval
-            Thread.Sleep(sleepIntervalMsec)
+            clsProgRunner.SleepMilliseconds(sleepIntervalMsec)
 
             ' Get the final size of the file and compare
             fiDatasetFile.Refresh()

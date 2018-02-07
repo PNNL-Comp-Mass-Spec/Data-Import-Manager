@@ -232,7 +232,7 @@ Public Class clsProcessXmlTriggerFile
 
                 sc.Start()
 
-                Threading.Thread.Sleep(3000)
+                clsProgRunner.SleepMilliseconds(3000)
 
                 statusMsg = "Successfully started the Secondary Logon service (normally should be running, but found to be stopped)"
                 LogTools.LogWarning(statusMsg, True)

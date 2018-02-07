@@ -256,7 +256,7 @@ Public Class clsMainProcess
                 End If
 
                 If TraceMode Then ShowTraceMessage("ImportDelay, sleep for " & importDelay & " seconds")
-                Thread.Sleep(importDelay * 1000)
+                clsProgRunner.SleepMilliseconds(importDelay * 1000)
 
                 ' Load information from DMS
                 infoCache.LoadDMSInfo()
@@ -369,7 +369,7 @@ Public Class clsMainProcess
         Dim waitSeconds = objRand.Next(1, 15)
         Dim dtStartTime = DateTime.UtcNow
         While DateTime.UtcNow.Subtract(dtStartTime).TotalSeconds < waitSeconds
-            Thread.Sleep(100)
+            clsProgRunner.SleepMilliseconds(100)
         End While
 
         ' Validate the xml file
