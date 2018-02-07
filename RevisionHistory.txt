@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6612; February 7, 2018
+	- Use new logging methods in PRISM.dll
+
 Version 1.2.6495; October 13, 2017
 	- Updated PRISM.dll that auto-archives old log files
 
