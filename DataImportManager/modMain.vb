@@ -6,7 +6,7 @@ Imports PRISM
 Imports PRISM.Logging
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "November 1, 2017"
+    Public Const PROGRAM_DATE As String = "February 7, 2018"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
@@ -174,8 +174,8 @@ Module modMain
             Console.WriteLine("Version: " & GetAppVersion(PROGRAM_DATE))
             Console.WriteLine()
 
-            Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or matt@alchemistmatt.com")
-            Console.WriteLine("Website: http://omics.pnl.gov/ or http://panomics.pnnl.gov/")
+            Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov")
+            Console.WriteLine("Website: httsp://omics.pnl.gov/ or https://panomics.pnnl.gov/")
             Console.WriteLine()
 
             Console.WriteLine("Licensed under the Apache License, Version 2.0; you may not use this file except in compliance with the License.  " & _
@@ -183,7 +183,7 @@ Module modMain
             Console.WriteLine()
 
             ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
-            Threading.Thread.Sleep(750)
+            clsParseCommandLine.PauseAtConsole(750)
 
         Catch ex As Exception
             ShowErrorMessage("Error displaying the program syntax: " & ex.Message)
