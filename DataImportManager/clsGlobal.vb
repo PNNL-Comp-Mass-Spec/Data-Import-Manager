@@ -74,17 +74,15 @@ Public Class clsGlobal
     Public Shared Function GetExceptionStackTrace(ex As Exception, multiLineOutput As Boolean) As String
 
         If multiLineOutput Then
-            Return Utilities.GetExceptionStackTraceMultiLine(ex)
+            Return clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex)
         End If
 
-        Return Utilities.GetExceptionStackTrace(ex)
+        Return clsStackTraceFormatter.GetExceptionStackTrace(ex)
 
     End Function
 
     Public Shared Function GetExePath() As String
-        ' Could use Application.ExecutablePath
-        ' Instead, use reflection
-        Return Assembly.GetExecutingAssembly().Location
+        Return FileProcessor.ProcessFilesOrFoldersBase.GetAppPath()
     End Function
 
     Public Shared Function GetHostName() As String
