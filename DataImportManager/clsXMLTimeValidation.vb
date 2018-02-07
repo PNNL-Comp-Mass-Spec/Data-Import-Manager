@@ -155,7 +155,7 @@ Public Class clsXMLTimeValidation
         mErrorMessage = String.Empty
 
         Try
-            If TraceMode Then clsMainProcess.ShowTraceMessage("Reading " & triggerFile.FullName)
+            If TraceMode Then ShowTraceMessage("Reading " & triggerFile.FullName)
             rslt = GetXMLParameters(triggerFile)
         Catch ex As Exception
             mErrorMessage = "Error reading the XML file " & triggerFile.Name
@@ -518,7 +518,7 @@ Public Class clsXMLTimeValidation
 
                         If m_Connected Then
                             currentTask = "Dataset size changed; disconnecting from " & mSourcePath
-                            If TraceMode Then ShowTraceMessage(statusMsg)
+                            If TraceMode Then ShowTraceMessage(currentTask)
                             DisconnectShare(mShareConnector, m_Connected)
                         End If
 
@@ -531,14 +531,15 @@ Public Class clsXMLTimeValidation
                     End If
 
                     currentTask = "Dataset found at " & datasetSourcePath & " and is unchanged"
-                    If TraceMode Then ShowTraceMessage(statusMsg)
+                    If TraceMode Then ShowTraceMessage(currentTask)
 
                     If GetHostName().ToLower().StartsWith("monroe") Then
                         Console.WriteLine("Skipping date validation because host name starts with Monroe")
 
                     ElseIf mRunFinishUTC <> New DateTime(1960, 1, 1) Then
-                        currentTask &= "; validating file date vs. Run_Finish listed in XML trigger file (" & CStr(mRunFinishUTC) & ")"
-                        If TraceMode Then ShowTraceMessage(currentTask)
+                        Dim taskAddon = "validating file Date vs. Run_Finish listed In XML trigger file (" & CStr(mRunFinishUTC) & ")"
+                        currentTask &= "; " & taskAddon
+                        If TraceMode Then ShowTraceMessage(taskAddon)
 
                         dtFileModDate = File.GetLastWriteTimeUtc(mDatasetPath)
 
@@ -562,7 +563,7 @@ Public Class clsXMLTimeValidation
                 Case RawDSTypes.FolderExt, RawDSTypes.FolderNoExt
                     ' Dataset found in a folder with an extension
                     ' Verify the folder size is constant
-                    currentTask = "Dataset folder found at " & datasetSourcePath & "; verifying folder size is constant for "
+                    currentTask = "Dataset folder found at " & datasetSourcePath & "; verifying folder size Is constant for "
 
                     ' Update the dataset path to include the instrument file or folder name
                     mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrFolderName)
@@ -664,7 +665,7 @@ Public Class clsXMLTimeValidation
         If Not diSourceFolder.Exists Then
 
             Dim msg = "Source folder not found for dataset " & currentDataset & ": " & diSourceFolder.FullName
-            If TraceMode Then clsMainProcess.ShowTraceMessage(msg)
+            If TraceMode Then ShowTraceMessage(msg)
 
             If ignoreInstrumentSourceErrors Then
                 ' Simply assume it's a Thermo .raw file
@@ -734,6 +735,10 @@ Public Class clsXMLTimeValidation
         MyConn.Disconnect()
         ConnState = False
 
+    End Sub
+
+    Private Sub ShowTraceMessage(message As String)
+        clsMainProcess.ShowTraceMessage(message)
     End Sub
 
     ''' <summary>

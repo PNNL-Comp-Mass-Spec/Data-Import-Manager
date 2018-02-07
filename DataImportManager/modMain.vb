@@ -176,7 +176,7 @@ Module modMain
 
     End Sub
 
-    Public Sub ShowTraceMessage(message As String)
+    Private Sub ShowTraceMessage(message As String)
         clsMainProcess.ShowTraceMessage(message)
     End Sub
 

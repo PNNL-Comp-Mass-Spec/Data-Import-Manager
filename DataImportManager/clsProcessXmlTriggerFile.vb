@@ -563,5 +563,10 @@ Public Class clsProcessXmlTriggerFile
         Return True
 
     End Function
+
+    Private Sub ShowTraceMessage(message As String)
+        clsMainProcess.ShowTraceMessage(message)
+    End Sub
+
 End Class
 

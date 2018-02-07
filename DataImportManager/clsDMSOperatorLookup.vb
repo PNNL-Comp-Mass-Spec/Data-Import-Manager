@@ -77,7 +77,7 @@ Public Class DMSInfoCache
         Dim retryCount = 3
         While retryCount > 0
             Try
-                If mTraceMode Then clsMainProcess.ShowTraceMessage("Opening database connection using " & mConnectionString)
+                If mTraceMode Then ShowTraceMessage("Opening database connection using " & mConnectionString)
                 Dim newDbConnection = New SqlConnection(mConnectionString)
                 AddHandler newDbConnection.InfoMessage, New SqlInfoMessageEventHandler(AddressOf OnInfoMessage)
 
@@ -469,6 +469,10 @@ Public Class DMSInfoCache
                 ", Server: " & err.Server
             RaiseEvent DBErrorEvent(s)
         Next
+    End Sub
+
+    Private Sub ShowTraceMessage(message As String)
+        clsMainProcess.ShowTraceMessage(message)
     End Sub
 
 End Class
