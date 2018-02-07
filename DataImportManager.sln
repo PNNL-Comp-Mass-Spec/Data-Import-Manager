@@ -1,25 +1,30 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2027
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CC9260CC-7E76-4508-A5DE-6635DBE233BE}"
 EndProject
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "DataImportManager", "DataImportManager\DataImportManager.vbproj", "{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
-		Release|x86 = Release|x86
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Debug|x86.ActiveCfg = Debug|x86
-		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Debug|x86.Build.0 = Debug|x86
-		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Release|x86.ActiveCfg = Release|x86
-		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Release|x86.Build.0 = Release|x86
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3C64DBF2-2102-4FD2-9EEF-AD1E21215A66} = {CC9260CC-7E76-4508-A5DE-6635DBE233BE}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5123AB9A-32C1-495D-BE1C-B428F1DB2BD4}
 	EndGlobalSection
 EndGlobal
