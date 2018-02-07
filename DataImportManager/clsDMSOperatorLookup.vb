@@ -1,7 +1,7 @@
 ﻿Imports System.Data.SqlClient
 Imports System.Runtime.InteropServices
-Imports System.Threading
 Imports PRISM
+Imports PRISM.Logging
 
 Public Class DMSInfoCache
 
@@ -34,7 +34,6 @@ Public Class DMSInfoCache
 
 #Region "Member variables"
     Private ReadOnly mConnectionString As String
-    Private ReadOnly m_logger As ILogger
     Private ReadOnly mTraceMode As Boolean
 
     ''' <summary>
@@ -62,9 +61,8 @@ Public Class DMSInfoCache
     ''' Constructor
     ''' </summary>
     ''' <remarks></remarks>
-    Public Sub New(connectionString As String, logger As ILogger, traceMode As Boolean)
+    Public Sub New(connectionString As String, traceMode As Boolean)
         mConnectionString = connectionString
-        m_logger = logger
         mTraceMode = traceMode
 
         mErrorSolutions = New Dictionary(Of String, String)(StringComparison.OrdinalIgnoreCase)
@@ -87,11 +85,11 @@ Public Class DMSInfoCache
 
                 Return newDbConnection
 
-            Catch e As SqlException
+            Catch ex As SqlException
                 retryCount -= 1
 
-                m_logger.PostError("Connection problem: ", e, clsGlobal.LOG_LOCAL_ONLY)
                 Thread.Sleep(300)
+                LogTools.LogError("Connection problem: ", ex)
             End Try
         End While
 
@@ -236,7 +234,7 @@ Public Class DMSInfoCache
                 retryCount -= 1S
                 Dim errorMessage = "Exception querying database in LoadErrorSolutionsFromDMS: " + ex.Message
 
-                m_logger.PostEntry(errorMessage, logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
+                LogTools.LogError(errorMessage)
 
                 If retryCount > 0 Then
                     ' Delay for 5 second before trying again
@@ -296,7 +294,7 @@ Public Class DMSInfoCache
                 retryCount -= 1S
                 Dim errorMessage = "Exception querying database in LoadErrorSolutionsFromDMS: " + ex.Message
 
-                m_logger.PostEntry(errorMessage, logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
+                LogTools.LogError(errorMessage)
 
                 If retryCount > 0 Then
                     ' Delay for 5 second before trying again
@@ -354,7 +352,7 @@ Public Class DMSInfoCache
                 retryCount -= 1S
                 Dim errorMessage = "Exception querying database in LoadOperatorsFromDMS: " + ex.Message
 
-                m_logger.PostEntry(errorMessage, logMsgType.logError, clsGlobal.LOG_LOCAL_ONLY)
+                LogTools.LogError(errorMessage)
 
                 If retryCount > 0 Then
                     ' Delay for 5 second before trying again
@@ -401,7 +399,7 @@ Public Class DMSInfoCache
         If query1.Count = 1 Then
             operatorInfo = query1.First
             Dim strLogMsg = "Matched " & operatorInfo.Username & " using LINQ (the lookup with .TryGetValue(" & operatorPrnToFind & ") failed)"
-            m_logger.PostEntry(strLogMsg, logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            LogTools.LogWarning(strLogMsg)
             If mTraceMode Then ShowTraceMessage(strLogMsg)
 
             userCountMatched = 1
@@ -434,7 +432,7 @@ Public Class DMSInfoCache
         ElseIf userCountMatched > 1 Then
             operatorInfo = query2.FirstOrDefault()
             Dim strLogMsg = "LookupOperatorName: Ambiguous match found for '" & strQueryName & "' in T_Users; will e-mail '" & operatorInfo.Email & "'"
-            m_logger.PostEntry(strLogMsg, logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            LogTools.LogWarning(strLogMsg)
 
             operatorInfo.Name = "Ambiguous match found for operator (" + strQueryName + "); use network login instead, e.g. D3E154"
 
@@ -443,7 +441,7 @@ Public Class DMSInfoCache
         Else
             ' No match
             Dim strLogMsg = "LookupOperatorName: Operator not found in T_Users.U_PRN: " & operatorPrnToFind
-            m_logger.PostEntry(strLogMsg, logMsgType.logWarning, clsGlobal.LOG_LOCAL_ONLY)
+            LogTools.LogWarning(strLogMsg)
 
             operatorInfo.Name = "Operator [" + operatorPrnToFind + "] not found in T_Users; should be network login name (D3E154) or full name (Moore, Ronald J)"
             Return False

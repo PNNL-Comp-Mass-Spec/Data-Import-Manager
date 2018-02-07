@@ -3,6 +3,7 @@
 Imports System.Reflection
 Imports System.IO
 Imports PRISM
+Imports PRISM.Logging
 
 Module modMain
     Public Const PROGRAM_DATE As String = "November 1, 2017"
@@ -61,13 +62,14 @@ Module modMain
                 returnCode = 0
 
             End If
+            LogTools.FlushPendingMessages()
+            Return 0
 
         Catch ex As Exception
             ShowErrorMessage("Error occurred in modMain->Main: " & Environment.NewLine & ex.Message)
-            returnCode = -1
+            LogTools.FlushPendingMessages()
+            Return -1
         End Try
-
-        Return returnCode
 
     End Function
 

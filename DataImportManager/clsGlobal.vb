@@ -3,14 +3,12 @@ Imports System.IO
 Imports System.Text
 Imports System.Reflection
 Imports PRISM
+Imports PRISM.Logging
 
 ' ReSharper disable once ClassNeverInstantiated.Global
 Public Class clsGlobal
 
-    'Constants
-    Public Const LOG_LOCAL_ONLY As Boolean = True
-    Public Const LOG_DATABASE As Boolean = False
-
+    ' Constants
     Private Const FLAG_FILE_NAME As String = "FlagFile.txt"
 
     Public Shared Sub CreateStatusFlagFile()
@@ -26,7 +24,7 @@ Public Class clsGlobal
 
     End Sub
 
-    Public Shared Sub DeleteStatusFlagFile(myLogger As ILogger)
+    Public Shared Sub DeleteStatusFlagFile()
 
         'Deletes the task request control flag file
         Dim fiAppProgram As New FileInfo(GetExePath())
@@ -37,7 +35,7 @@ Public Class clsGlobal
                 File.Delete(flagFilePath)
             End If
         Catch ex As Exception
-            myLogger.PostEntry("DeleteStatusFlagFile, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
+            LogTools.LogError("Error in DeleteStatusFlagFile", ex)
         End Try
 
     End Sub
@@ -51,6 +49,10 @@ Public Class clsGlobal
         Return File.Exists(flagFilePath)
 
     End Function
+
+    Public Shared Sub ErrorWritingToLog(logMessage As String, ex As Exception)
+        ConsoleMsgUtils.ShowError("Error logging errors; log message: " & logMessage, ex)
+    End Sub
 
     ''' <summary>
     ''' Parses the .StackTrace text of the given exception to return a compact description of the current stack
@@ -96,11 +98,11 @@ Public Class clsGlobal
 
     End Function
 
-    Public Shared Function LoadXmlFileContentsIntoString(triggerFile As FileInfo, myLogger As ILogger) As String
+    Public Shared Function LoadXmlFileContentsIntoString(triggerFile As FileInfo) As String
         Try
             ' Read the contents of the xml file into a string which will be passed into a stored procedure.
             If Not triggerFile.Exists Then
-                myLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.", logMsgType.logError, LOG_LOCAL_ONLY)
+                LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.")
                 Return String.Empty
             End If
             Dim xmlFileContents = New StringBuilder
@@ -113,7 +115,7 @@ Public Class clsGlobal
             End Using
             Return xmlFileContents.ToString()
         Catch ex As Exception
-            myLogger.PostEntry("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
+            LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file", ex)
             Return String.Empty
         End Try
 

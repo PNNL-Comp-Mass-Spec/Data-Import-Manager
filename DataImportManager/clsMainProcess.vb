@@ -5,10 +5,10 @@ Imports System.Net.Mail
 Imports System.Runtime.InteropServices
 Imports System.Text
 Imports System.Windows.Forms
-Imports System.Threading
 Imports System.Threading.Tasks
 Imports PRISM
 Imports DataImportManager.clsValidationErrorSummary
+Imports PRISM.Logging
 
 Public Class clsMainProcess
 
@@ -19,11 +19,6 @@ Public Class clsMainProcess
 
 #Region "Member Variables"
     Private m_MgrSettings As clsMgrSettings
-
-    ''' <summary>
-    ''' Log messages using clsQueLogger in PRISM.dll
-    ''' </summary>
-    Private m_Logger As ILogger
 
     Private m_ConfigChanged As Boolean = False
 
@@ -81,30 +76,18 @@ Public Class clsMainProcess
                 Return False
             End If
         Catch ex As Exception
-            If TraceMode Then ShowTraceMessage("Exception instantiating m_MgrSettings: " & ex.Message)
             Throw New Exception("InitMgr, " & ex.Message, ex)
             ' Failures are logged by clsMgrSettings to local emergency log file
         End Try
 
         Dim connectionString = m_MgrSettings.GetParam("connectionstring")
 
-        Dim exeFile = New FileInfo(GetExePath())
-        Dim logFileBaseName As String = Path.Combine(exeFile.DirectoryName, m_MgrSettings.GetParam("logfilename"))
+        Dim logFileBaseName As String = m_MgrSettings.GetParam("logfilename")
 
         Try
             ' Load initial settings
             m_MgrActive = CBool(m_MgrSettings.GetParam("mgractive"))
             m_DebugLevel = CInt(m_MgrSettings.GetParam("debuglevel"))
-
-            ' Make sure the log folder exists
-            Try
-                Dim fiLogFile = New FileInfo(logFileBaseName)
-                If Not Directory.Exists(fiLogFile.DirectoryName) Then
-                    Directory.CreateDirectory(fiLogFile.DirectoryName)
-                End If
-            Catch ex2 As Exception
-                Console.WriteLine("Error checking for valid directory for logging: " & logFileBaseName)
-            End Try
 
             ' Create the object that will manage the logging
 
@@ -113,15 +96,18 @@ Public Class clsMainProcess
                 moduleName = "DataImportManager: " & GetHostName()
             End If
 
-            m_Logger = New clsQueLogger(New clsDBLogger(moduleName, connectionString, logFileBaseName))
+            LogTools.CreateFileLogger(logFileBaseName)
+
+            LogTools.CreateDbLogger(connectionString, moduleName)
 
             ' Write the initial log and status entries
-            m_Logger.PostEntry("===== Started Data Import Manager V" & Application.ProductVersion & " =====", logMsgType.logNormal, LOG_LOCAL_ONLY)
+            LogTools.WriteLog(LogTools.LoggerTypes.LogFile, BaseLogger.LogLevels.INFO, "===== Started Data Import Manager V" & Application.ProductVersion & " =====")
 
         Catch ex As Exception
-            If TraceMode Then ShowTraceMessage("Exception loading initial settings: " & ex.Message)
             Throw New Exception("InitMgr, " & ex.Message, ex)
         End Try
+
+        Dim exeFile = New FileInfo(GetExePath())
 
         ' Set up the FileWatcher to detect setup file changes
         m_FileWatcher = New FileSystemWatcher()
@@ -156,10 +142,8 @@ Public Class clsMainProcess
 
             ' Verify an error hasn't left the the system in an odd state
             If DetectStatusFlagFile() Then
-                Const statusMsg = "Flag file exists - auto-deleting it, then closing program"
-                If TraceMode Then ShowTraceMessage(statusMsg)
-                m_Logger.PostEntry(statusMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
-                DeleteStatusFlagFile(m_Logger)
+                LogTools.LogWarning("Flag file exists - auto-deleting it, then closing program")
+                DeleteStatusFlagFile()
 
                 If Not GetHostName().ToLower.StartsWith("monroe") Then
                     Return True
@@ -187,13 +171,10 @@ Public Class clsMainProcess
                 If Not m_MgrSettings.LoadSettings(True) Then
                     If Not String.IsNullOrEmpty(m_MgrSettings.ErrMsg) Then
                         ' Manager has been deactivated, so report this
-                        If TraceMode Then ShowTraceMessage(m_MgrSettings.ErrMsg)
-                        m_Logger.PostEntry(m_MgrSettings.ErrMsg, logMsgType.logWarning, LOG_LOCAL_ONLY)
+                        LogTools.LogWarning(m_MgrSettings.ErrMsg)
                     Else
                         ' Unknown problem reading config file
-                        Const errMsg = "Unknown error re-reading config file"
-                        If TraceMode Then ShowTraceMessage(errMsg)
-                        m_Logger.PostEntry(errMsg, logMsgType.logError, LOG_LOCAL_ONLY)
+                        LogTools.LogError("Unknown error re-reading config file")
                     End If
 
                     Exit Function
@@ -204,16 +185,13 @@ Public Class clsMainProcess
             ' Check to see if excessive consecutive failures have occurred
             If mFailureCount > MAX_ERROR_COUNT Then
                 ' More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
-                Const errMsg = "Excessive task failures, disabling manager"
-                If TraceMode Then ShowTraceMessage(errMsg)
-                m_Logger.PostEntry(errMsg, logMsgType.logError, LOG_LOCAL_ONLY)
+                LogTools.LogError("Excessive task failures, disabling manager")
                 DisableManagerLocally()
             End If
 
             ' Check to see if the manager is still active
             If Not m_MgrActive Then
-                If TraceMode Then ShowTraceMessage("Manager is inactive")
-                m_Logger.PostEntry("Manager inactive", logMsgType.logNormal, LOG_LOCAL_ONLY)
+                LogTools.LogMessage("Manager inactive")
                 Exit Function
             End If
 
@@ -221,11 +199,9 @@ Public Class clsMainProcess
             Dim infoCache As DMSInfoCache
 
             Try
-                infoCache = New DMSInfoCache(connectionString, m_Logger, TraceMode)
+                infoCache = New DMSInfoCache(connectionString, TraceMode)
             Catch ex As Exception
-                Dim errMsg = "Unable to connect to the database using " & connectionString
-                If TraceMode Then ShowTraceMessage(errMsg)
-                m_Logger.PostError(errMsg, ex, LOG_LOCAL_ONLY)
+                LogTools.LogError("Unable to connect to the database using " & connectionString, ex)
                 Return False
             End Try
 
@@ -234,14 +210,12 @@ Public Class clsMainProcess
             ' Check to see if there are any data import files ready
             DoDataImportTask(infoCache)
 
-            Thread.Sleep(250)
+            clsProgRunner.SleepMilliseconds(250)
 
             Return True
 
         Catch ex As Exception
-            Dim errMsg As String = "Exception in clsMainProcess.DoImport(), " & ex.Message
-            If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostEntry(errMsg & "; " & GetExceptionStackTrace(ex), logMsgType.logError, LOG_DATABASE)
+            LogErrorToDatabase("Exception in clsMainProcess.DoImport()", ex)
             Return False
         End Try
 
@@ -269,8 +243,7 @@ Public Class clsMainProcess
                 Dim importDelay As Integer
                 If Not Integer.TryParse(importDelayText, importDelay) Then
                     Dim statusMsg = "Manager parameter ImportDelay was not numeric: " & importDelayText
-                    If TraceMode Then ShowTraceMessage(statusMsg)
-                    m_Logger.PostEntry(statusMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
+                    LogTools.LogMessage(statusMsg)
                     importDelay = 2
                 End If
 
@@ -299,7 +272,7 @@ Public Class clsMainProcess
                     Dim currentChunk As IEnumerable(Of FileInfo) = GetNextChunk(xmlFilesToImport, 50)
 
                     If currentChunk.Count > 1 Then
-                        m_Logger.PostEntry("Processing " & currentChunk.Count & " XML files in parallel", logMsgType.logNormal, LOG_LOCAL_ONLY)
+                        LogTools.LogMessage("Processing " & currentChunk.Count & " XML files in parallel")
                     End If
 
                     Parallel.ForEach(currentChunk, Sub(currentFile)
@@ -310,9 +283,7 @@ Public Class clsMainProcess
 
             Else
                 If m_DebugLevel > 4 Or TraceMode Then
-                    Dim statusMsg = "No data files to import"
-                    ShowTraceMessage(statusMsg)
-                    m_Logger.PostEntry(statusMsg, logMsgType.logDebug, LOG_LOCAL_ONLY)
+                    LogTools.LogDebug("No data files to import")
                 End If
                 Exit Sub
             End If
@@ -326,7 +297,7 @@ Public Class clsMainProcess
                 Dim strMessage As String = "Skipped " & kvItem.Value & " dataset"
                 If kvItem.Value <> 1 Then strMessage &= "s"
                 strMessage &= " for instrument " & kvItem.Key & " due to network errors"
-                m_Logger.PostEntry(strMessage, logMsgType.logNormal, LOG_LOCAL_ONLY)
+                LogTools.LogMessage(strMessage)
             Next
 
             ' Remove successful XML files older than x days
@@ -337,20 +308,15 @@ Public Class clsMainProcess
 
             ' If we got to here, then closeout the task as a success
             '
-            DeleteStatusFlagFile(m_Logger)
+            DeleteStatusFlagFile()
             mFailureCount = 0
 
-            Dim completionMsg = "Completed task"
-            If TraceMode Then ShowTraceMessage(completionMsg)
-            m_Logger.PostEntry(completionMsg, logMsgType.logNormal, LOG_LOCAL_ONLY)
+            LogTools.LogMessage("Completed task")
 
         Catch ex As Exception
             mFailureCount += 1
 
-            Dim errMsg = "Exception in clsMainProcess.DoDataImportTask(), " & ex.Message
-            If TraceMode Then ShowTraceMessage(errMsg)
-
-            m_Logger.PostEntry(errMsg & "; " & GetExceptionStackTrace(ex), logMsgType.logError, LOG_LOCAL_ONLY)
+            LogTools.LogError("Exception in clsMainProcess.DoDataImportTask", ex)
         End Try
 
     End Sub
@@ -391,6 +357,10 @@ Public Class clsMainProcess
 
     End Function
 
+    Public Shared Sub LogErrorToDatabase(message As String, Optional ex As Exception = Nothing)
+        LogTools.LogError(message, ex, True)
+    End Sub
+
     Private Sub ProcessOneFile(currentFile As FileInfo, successfolder As String, failureFolder As String, infoCache As DMSInfoCache)
 
         Dim objRand As New Random()
@@ -414,7 +384,7 @@ Public Class clsMainProcess
             .SuccessFolder = successfolder
         End With
 
-        Dim triggerProcessor = New clsProcessXmlTriggerFile(m_MgrSettings, mInstrumentsToSkip, infoCache, m_Logger, udtSettings)
+        Dim triggerProcessor = New clsProcessXmlTriggerFile(m_MgrSettings, mInstrumentsToSkip, infoCache, udtSettings)
         triggerProcessor.ProcessFile(currentFile)
 
         If triggerProcessor.QueuedMail.Count > 0 Then
@@ -459,7 +429,7 @@ Public Class clsMainProcess
         Dim serverXferDir As String = m_MgrSettings.GetParam("xferdir")
 
         If String.IsNullOrWhiteSpace(serverXferDir) Then
-            m_Logger.PostEntry("Manager parameter xferdir is empty (" + GetHostName() + ")", logMsgType.logError, LOG_DATABASE)
+            LogErrorToDatabase("Manager parameter xferdir is empty (" + GetHostName() + ")")
             xmlFilesToImport = New List(Of FileInfo)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End If
@@ -469,10 +439,8 @@ Public Class clsMainProcess
         ' Verify transfer directory exists
         If Not diXferDirectory.Exists Then
             ' There's a serious problem if the xfer directory can't be found!!!
-            Dim statusMsg As String = "Xml transfer folder not found: " & serverXferDir
-            If TraceMode Then ShowTraceMessage(statusMsg)
 
-            m_Logger.PostEntry(statusMsg, logMsgType.logError, LOG_DATABASE)
+            LogErrorToDatabase("Xml transfer folder not found: " & serverXferDir)
             xmlFilesToImport = New List(Of FileInfo)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End If
@@ -484,9 +452,7 @@ Public Class clsMainProcess
             xmlFilesToImport = diXferDirectory.GetFiles("*.xml").ToList()
 
         Catch ex As Exception
-            Dim errMsg = "Error loading Xml Data files from " & serverXferDir
-            If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostError(errMsg, ex, LOG_DATABASE)
+            LogErrorToDatabase("Error loading Xml Data files from " & serverXferDir, ex)
             xmlFilesToImport = New List(Of FileInfo)
             Return ITaskParams.CloseOutType.CLOSEOUT_FAILED
         End Try
@@ -505,16 +471,13 @@ Public Class clsMainProcess
     Private Sub SendQueuedMail()
 
         Dim currentTask = "Initializing"
-        Dim msg As String
 
         Try
 
             currentTask = "Get smptserver param"
             Dim mailServer = m_MgrSettings.GetParam("smtpserver")
             If String.IsNullOrEmpty(mailServer) Then
-                msg = "Manager parameter smtpserver is empty; cannot send mail"
-                If TraceMode Then ShowTraceMessage(msg)
-                m_Logger.PostEntry(msg, logMsgType.logError, LOG_LOCAL_ONLY)
+                LogTools.LogError("Manager parameter smtpserver is empty; cannot send mail")
                 Return
             End If
 
@@ -523,12 +486,12 @@ Public Class clsMainProcess
             Dim logFileName = "MailLog_" & DateTime.Now.ToString("yyyy-MM") & ".txt"
             Dim mailLogFile As FileInfo
 
-            If String.IsNullOrWhiteSpace(m_Logger.CurrentLogFilePath) Then
+            If String.IsNullOrWhiteSpace(LogTools.CurrentLogFilePath) Then
                 Dim exeFile = New FileInfo(GetExePath())
                 mailLogFile = New FileInfo(Path.Combine(exeFile.DirectoryName, "Logs", logFileName))
             Else
                 currentTask = "Get current log file path"
-                Dim currentLogFile = New FileInfo(m_Logger.CurrentLogFilePath)
+                Dim currentLogFile = New FileInfo(LogTools.CurrentLogFilePath)
 
                 currentTask = "Get new log file path"
                 mailLogFile = New FileInfo(Path.Combine(currentLogFile.Directory.FullName, logFileName))
@@ -558,7 +521,7 @@ Public Class clsMainProcess
 
                     If messageCount < 1 Then
                         If TraceMode Then ShowTraceMessage("Empty clsQueuedMail list; this should never happen")
-                        m_Logger.PostEntry("Empty mail queue for recipients " & recipients & "; nothing to do", logMsgType.logWarning, LOG_DATABASE)
+                        LogTools.LogWarning("Empty mail queue for recipients " & recipients & "; nothing to do", True)
                         Continue For
                     End If
 
@@ -566,9 +529,7 @@ Public Class clsMainProcess
                     Dim firstQueuedMail As clsQueuedMail = queuedMailContainer.Value(0)
 
                     If firstQueuedMail Is Nothing Then
-                        msg = "firstQueuedMail item is null in SendQueuedMail"
-                        If TraceMode Then ShowTraceMessage(msg)
-                        m_Logger.PostEntry(msg, logMsgType.logError, LOG_DATABASE)
+                        LogErrorToDatabase("firstQueuedMail item is null in SendQueuedMail")
 
                         Dim defaultRecipients = m_MgrSettings.GetParam("to")
                         firstQueuedMail = New clsQueuedMail("Unknown Operator", defaultRecipients, "Exception", New List(Of clsValidationError))
@@ -595,13 +556,9 @@ Public Class clsMainProcess
 
                     Dim statusMsg As String
                     If messageCount = 1 Then
-                        statusMsg = "E-mailing " & recipients & " regarding " & firstQueuedMail.InstrumentDatasetPath
-                        If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_Logger.PostEntry(statusMsg, logMsgType.logDebug, LOG_LOCAL_ONLY)
+                        LogTools.LogDebug("E-mailing " & recipients & " regarding " & firstQueuedMail.InstrumentDatasetPath)
                     Else
-                        statusMsg = "E-mailing " & recipients & " regarding " & messageCount & " errors"
-                        If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_Logger.PostEntry(statusMsg, logMsgType.logDebug, LOG_LOCAL_ONLY)
+                        LogTools.LogDebug("E-mailing " & recipients & " regarding " & messageCount & " errors")
                     End If
 
                     If Not String.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator) Then
@@ -620,9 +577,7 @@ Public Class clsMainProcess
                     For Each queuedMailItem In queuedMailContainer.Value
 
                         If queuedMailItem Is Nothing Then
-                            msg = "queuedMailItem is nothing for " & queuedMailContainer.Key
-                            If TraceMode Then ShowTraceMessage(msg)
-                            m_Logger.PostEntry(msg, logMsgType.logError, LOG_DATABASE)
+                            LogErrorToDatabase("queuedMailItem is nothing for " & queuedMailContainer.Key)
                             Continue For
                         End If
 
@@ -637,8 +592,7 @@ Public Class clsMainProcess
                             End If
                         End If
 
-                        If TraceMode Then ShowTraceMessage(statusMsg)
-                        m_Logger.PostEntry(statusMsg, logMsgType.logDebug, LOG_LOCAL_ONLY)
+                        LogTools.LogDebug(statusMsg)
 
                         currentTask = "Iterate over queuedMailItem.ValidationErrors, message " & messageNumber
                         For Each validationError In queuedMailItem.ValidationErrors
@@ -764,7 +718,7 @@ Public Class clsMainProcess
                         Dim smtp As New SmtpClient(mailServer)
                         smtp.Send(mailToSend)
 
-                        Thread.Sleep(100)
+                        clsProgRunner.SleepMilliseconds(100)
                     End If
 
                     If newLogFile Then
@@ -792,10 +746,8 @@ Public Class clsMainProcess
 
             End Using
         Catch ex As Exception
-            msg = "Error in SendQueuedMail, task " & currentTask & ": " & ex.Message
-            If TraceMode Then ShowTraceMessage(msg)
-            m_Logger.PostEntry(msg & "; " & GetExceptionStackTrace(ex), logMsgType.logError, LOG_DATABASE)
-
+            Dim msg = "Error in SendQueuedMail, task " & currentTask
+            LogErrorToDatabase(msg, ex)
             Throw New Exception(msg, ex)
         End Try
 
@@ -804,14 +756,14 @@ Public Class clsMainProcess
     Private Sub FileWatcher_Changed(sender As Object, e As FileSystemEventArgs)
         m_ConfigChanged = True
         If m_DebugLevel > 3 Then
-            m_Logger.PostEntry("Config file changed", logMsgType.logDebug, LOG_LOCAL_ONLY)
+            LogTools.LogDebug("Config file changed")
         End If
         m_FileWatcher.EnableRaisingEvents = False  'Turn off change detection until current change has been acted upon
     End Sub
 
     Private Sub OnDbErrorEvent(message As String)
         If TraceMode Then ShowTraceMessage("Database error message: " & message)
-        m_Logger.PostEntry(message, logMsgType.logError, LOG_LOCAL_ONLY)
+        LogTools.LogError(message)
     End Sub
 
     Private Sub DeleteXmlFiles(folderPath As String, fileAgeDays As Integer)
@@ -822,10 +774,7 @@ Public Class clsMainProcess
         If Not workingDirectory.Exists Then
             ' There's a serious problem if the success/failure directory can't be found!!!
 
-            Dim statusMsg As String = "Xml success/failure folder not found: " & folderPath
-            If TraceMode Then ShowTraceMessage(statusMsg)
-
-            m_Logger.PostEntry(statusMsg, logMsgType.logError, LOG_DATABASE)
+            LogErrorToDatabase("Xml success/failure folder not found: " & folderPath)
             Return
         End If
 
@@ -845,9 +794,7 @@ Public Class clsMainProcess
                         Try
                             xmlFile.Delete()
                         Catch ex As Exception
-                            Dim errMsg = "Error deleting old Xml Data file " & xmlFile.FullName & ": " & ex.Message
-                            If TraceMode Then ShowTraceMessage(errMsg)
-                            m_Logger.PostError(errMsg, ex, LOG_LOCAL_ONLY)
+                            LogTools.LogError("Error deleting old Xml Data file " & xmlFile.FullName, ex)
                             deleteFailureCount += 1
                         End Try
 
@@ -857,8 +804,7 @@ Public Class clsMainProcess
             Next
         Catch ex As Exception
             Dim errMsg = "Error deleting old Xml Data files at " & folderPath
-            If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostError(errMsg, ex, LOG_DATABASE)
+            LogErrorToDatabase(errMsg, ex)
             Return
         End Try
 
@@ -867,8 +813,7 @@ Public Class clsMainProcess
                 "Error deleting " & deleteFailureCount & " XML files at " & folderPath &
                 " -- for a detailed list, see log file " & GetLogFileSharePath()
 
-            If TraceMode Then ShowTraceMessage(errMsg)
-            m_Logger.PostEntry(errMsg, logMsgType.logError, LOG_DATABASE)
+            LogErrorToDatabase(errMsg)
         End If
 
         ' Everything must be OK if we got to here
@@ -878,10 +823,7 @@ Public Class clsMainProcess
     Private Sub DisableManagerLocally()
 
         If Not m_MgrSettings.WriteConfigSetting("MgrActive_Local", "False") Then
-
-            Dim statusMsg As String = "Error while disabling manager: " & m_MgrSettings.ErrMsg
-            If TraceMode Then ShowTraceMessage(statusMsg)
-            m_Logger.PostEntry(statusMsg, logMsgType.logError, LOG_LOCAL_ONLY)
+            LogTools.LogError("Error while disabling manager: " & m_MgrSettings.ErrMsg)
         End If
 
     End Sub

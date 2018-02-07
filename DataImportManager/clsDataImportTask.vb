@@ -1,7 +1,7 @@
 Imports System.Data.SqlClient
 Imports System.IO
 Imports DataImportManager.clsGlobal
-Imports PRISM
+Imports PRISM.Logging
 
 Public Class clsDataImportTask
     Inherits clsDBTask
@@ -44,11 +44,10 @@ Public Class clsDataImportTask
     ''' Constructor
     ''' </summary>
     ''' <param name="mgrParams"></param>
-    ''' <param name="logger"></param>
     ''' <param name="dbConnection"></param>
     ''' <remarks></remarks>
-    Public Sub New(mgrParams As IMgrParams, logger As ILogger, dbConnection As SqlConnection)
-        MyBase.New(mgrParams, logger, dbConnection)
+    Public Sub New(mgrParams As IMgrParams, dbConnection As SqlConnection)
+        MyBase.New(mgrParams, dbConnection)
     End Sub
 
     Public Function PostTask(triggerFile As FileInfo) As Boolean
@@ -60,7 +59,7 @@ Public Class clsDataImportTask
 
         Try
             ' Load the XML file into memory
-            mp_xmlContents = LoadXmlFileContentsIntoString(triggerFile, m_logger)
+            mp_xmlContents = LoadXmlFileContentsIntoString(triggerFile)
             If String.IsNullOrEmpty(mp_xmlContents) Then
                 Return False
             End If
@@ -69,7 +68,7 @@ Public Class clsDataImportTask
             fileImported = ImportDataTask()
 
         Catch ex As Exception
-            m_logger.PostEntry("clsDatasetImportTask.PostTask(), Error running PostTask, " & ex.Message, logMsgType.logError, LOG_LOCAL_ONLY)
+            LogTools.LogError("clsDatasetImportTask.PostTask(), Error running PostTask", ex)
             Return False
         End Try
 
@@ -108,11 +107,13 @@ Public Class clsDataImportTask
             sc.Parameters.Add("@message", SqlDbType.VarChar, 512).Direction = ParameterDirection.Output
 
             If PreviewMode Then
-                ShowTraceMessage("Preview: call stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
+                clsMainProcess.ShowTraceMessage("Preview: call stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
                 Return True
             End If
 
-            If TraceMode Then ShowTraceMessage("Calling stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
+            If TraceMode Then
+                clsMainProcess.ShowTraceMessage("Calling stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
+            End If
 
             ' execute the stored procedure
             '
@@ -128,12 +129,12 @@ Public Class clsDataImportTask
                 Outcome = True
             Else
                 mPostTaskErrorMessage = CStr(sc.Parameters("@message").Value)
-                m_logger.PostEntry("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage, logMsgType.logError, LOG_LOCAL_ONLY)
+                LogTools.LogError("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage)
                 Outcome = False
             End If
 
         Catch ex As Exception
-            m_logger.PostError("clsDataImportTask.ImportDataTask(), Error posting dataset: ", ex, True)
+            LogTools.LogError("clsDataImportTask.ImportDataTask(), Error posting dataset", ex, True)
             mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & ex.Message
             Outcome = False
         End Try
