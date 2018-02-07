@@ -13,11 +13,13 @@ Module modMain
     Private mPreviewMode As Boolean
     Private mIgnoreInstrumentSourceErrors As Boolean
 
+    ''' <summary>
+    ''' Entry method
+    ''' </summary>
+    ''' <returns>0 if no error, error code if an error</returns>
     Public Function Main() As Integer
-        ' Returns 0 if no error, error code if an error
 
-        Dim returnCode As Integer
-        Dim objParseCommandLine As New clsParseCommandLine()
+        Dim commandLineParser As New clsParseCommandLine()
 
         mMailDisabled = False
         mTraceMode = False
@@ -26,27 +28,42 @@ Module modMain
 
         Try
 
+            Dim validArgs As Boolean
+
             ' Parse the command line options
             '
-            If objParseCommandLine.ParseCommandLine Then
-                SetOptionsUsingCommandLineParameters(objParseCommandLine)
+            If commandLineParser.ParseCommandLine Then
+                validArgs = SetOptionsUsingCommandLineParameters(commandLineParser)
+            Else
+                If (commandLineParser.NoParameters) Then
+                    validArgs = True
+                Else
+                    If (commandLineParser.NeedToShowHelp) Then
+                        ShowProgramHelp()
+                    Else
+                        ConsoleMsgUtils.ShowWarning("Error parsing the command line arguments")
+                        clsParseCommandLine.PauseAtConsole(750)
+                    End If
+                    Return -1
+                End If
             End If
 
-            If objParseCommandLine.NeedToShowHelp Then
+            If commandLineParser.NeedToShowHelp OrElse Not validArgs Then
                 ShowProgramHelp()
-                returnCode = -1
-            Else
-                If mTraceMode Then ShowTraceMessage("Command line arguments parsed")
+                Return -1
+            End If
+
+            If mTraceMode Then ShowTraceMessage("Command line arguments parsed")
 
                 ' Initiate automated analysis
                 If mTraceMode Then ShowTraceMessage("Instantiating clsMainProcess")
 
                 Dim oMainProcess = New clsMainProcess(mTraceMode)
                 oMainProcess.MailDisabled = mMailDisabled
-                oMainProcess.PreviewMode = mPreviewMode
-                oMainProcess.IgnoreInstrumentSourceErrors = mIgnoreInstrumentSourceErrors
+            oMainProcess.PreviewMode = mPreviewMode
+            oMainProcess.IgnoreInstrumentSourceErrors = mIgnoreInstrumentSourceErrors
 
-                Try
+            Try
                     If Not oMainProcess.InitMgr() Then
                         If mTraceMode Then ShowTraceMessage("InitMgr returned false")
                         Return -2
@@ -58,10 +75,8 @@ Module modMain
                     ShowErrorMessage("Exception thrown by InitMgr: " & Environment.NewLine & ex.Message)
                 End Try
 
-                oMainProcess.DoImport()
-                returnCode = 0
+            oMainProcess.DoImport()
 
-            End If
             LogTools.FlushPendingMessages()
             Return 0
 
@@ -87,25 +102,25 @@ Module modMain
         Return Assembly.GetExecutingAssembly().GetName().Version.ToString() & " (" & strProgramDate & ")"
     End Function
 
-    Private Function SetOptionsUsingCommandLineParameters(objParseCommandLine As clsParseCommandLine) As Boolean
+    Private Function SetOptionsUsingCommandLineParameters(commandLineParser As clsParseCommandLine) As Boolean
         ' Returns True if no problems; otherwise, returns false
 
         Dim validParameters = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
 
         Try
             ' Make sure no invalid parameters are present
-            If objParseCommandLine.InvalidParametersPresent(validParameters) Then
+            If commandLineParser.InvalidParametersPresent(validParameters) Then
                 ShowErrorMessage("Invalid commmand line parameters",
-                  (From item In objParseCommandLine.InvalidParameters(validParameters) Select "/" + item).ToList())
+                  (From item In commandLineParser.InvalidParameters(validParameters) Select "/" + item).ToList())
                 Return False
             Else
 
-                ' Query objParseCommandLine to see if various parameters are present
+                ' Query commandLineParser to see if various parameters are present
 
-                If objParseCommandLine.IsParameterPresent("NoMail") Then mMailDisabled = True
-                If objParseCommandLine.IsParameterPresent("Trace") Then mTraceMode = True
-                If objParseCommandLine.IsParameterPresent("Preview") Then mPreviewMode = True
-                If objParseCommandLine.IsParameterPresent("ISE") Then mIgnoreInstrumentSourceErrors = True
+                If commandLineParser.IsParameterPresent("NoMail") Then mMailDisabled = True
+                If commandLineParser.IsParameterPresent("Trace") Then mTraceMode = True
+                If commandLineParser.IsParameterPresent("Preview") Then mPreviewMode = True
+                If commandLineParser.IsParameterPresent("ISE") Then mIgnoreInstrumentSourceErrors = True
 
                 If mPreviewMode Then
                     mMailDisabled = True
