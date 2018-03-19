@@ -583,6 +583,27 @@ Public Class clsXMLTimeValidation
                         Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
                     End If
 
+                    If mDatasetPath.EndsWith(".d", StringComparison.OrdinalIgnoreCase) Then
+                        ' Agilent .D dataset
+                        ' If the AcqData directory has zero-byte .bin files created within the last 60 minutes,
+                        ' assume the dataset is still being acquired
+                        ' Example filenames: IMSFrame.bin, MSPeak.bin, MSProfile.bin, and MSScan.bin
+
+                        Dim acqDataPath = Path.Combine(mDatasetPath, "AcqData")
+                        Dim extensionsToCheck = New List(Of String) From {".bin"}
+
+                        currentTask = "Checking for zero byte .bin files in " & acqDataPath
+                        If DirectoryHasRecentZeroByteFiles(acqDataPath, extensionsToCheck, 60) Then
+                            LogTools.LogWarning("Dataset '" & mDatasetName & "' not ready (recent zero-byte .bin files)")
+
+                            If m_Connected Then
+                                currentTask = "Dataset folder size changed; disconnecting from " & mSourcePath
+                                DisconnectShare(mShareConnector, m_Connected)
+                            End If
+
+                            Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED
+                        End If
+                    End If
                 Case Else
                     clsMainProcess.LogErrorToDatabase("Invalid dataset type for " & mDatasetName & ": " & resType.ToString)
                     If m_Connected Then
@@ -617,6 +638,43 @@ Public Class clsXMLTimeValidation
             End If
 
         End Try
+
+    End Function
+
+    ''' <summary>
+    ''' Check for zero byte files in the given directory, optionally filtering by file extension
+    ''' </summary>
+    ''' <param name="directoryPath">Directory to check</param>
+    ''' <param name="extensionsToCheck">List of extensions to check; empty list means check all files</param>
+    ''' <param name="recentTimeMinutes">Time, in minutes, that is considered "recent" for a zero-byte file</param>
+    ''' <returns>True if a recent, zero-byte file is found</returns>
+    Private Function DirectoryHasRecentZeroByteFiles(
+      directoryPath As String,
+      extensionsToCheck As IReadOnlyCollection(Of String),
+      recentTimeMinutes As Integer) As Boolean
+
+        Dim dataFolder = New DirectoryInfo(directoryPath)
+        If Not dataFolder.Exists Then
+            Return False
+        End If
+
+        For Each dataFile In dataFolder.GetFiles("*", SearchOption.TopDirectoryOnly)
+            ' If extensionsToCheck is empty; check all files
+            ' Otherwise, only check the file if the file extension is in extensionsToCheck
+
+            Dim checkFile = extensionsToCheck.Any(Function(fileExtension) String.Equals(dataFile.Extension, fileExtension, StringComparison.OrdinalIgnoreCase))
+            If extensionsToCheck.Count > 0 And Not checkFile Then Continue For
+
+            If dataFile.Length > 0 Then Continue For
+
+            If DateTime.UtcNow.Subtract(dataFile.LastWriteTimeUtc).TotalMinutes > recentTimeMinutes Then Continue For
+
+            LogTools.LogDebug("Found a recent, zero-byte file: " & dataFile.FullName)
+
+            Return True
+        Next
+
+        Return False
 
     End Function
 
