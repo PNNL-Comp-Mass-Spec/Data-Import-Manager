@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.2.6652; March 19, 2018
+	- Check for recent, zero-byte .bin files in the AcqData directory below agilent .D folders
+
 Version 1.2.6612; February 7, 2018
 	- Use new logging methods in PRISM.dll
 

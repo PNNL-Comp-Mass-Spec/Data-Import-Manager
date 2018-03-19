@@ -6,7 +6,7 @@ Imports PRISM
 Imports PRISM.Logging
 
 Module modMain
-    Public Const PROGRAM_DATE As String = "February 7, 2018"
+    Public Const PROGRAM_DATE As String = "March 19, 2018"
 
     Private mMailDisabled As Boolean
     Private mTraceMode As Boolean
