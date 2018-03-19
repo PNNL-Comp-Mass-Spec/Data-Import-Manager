@@ -347,7 +347,7 @@ Public Class clsXMLTimeValidation
                 Return IXMLValidateStatus.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR
             End If
 
-            If mCaptureType = "secfso" Then
+            If String.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase) Then
                 ' Make sure mSourcePath is not of the form \\proto-2 because if that is the case, then mCaptureType should be "fso"
                 Dim reProtoServer = New Text.RegularExpressions.Regex("\\\\proto-\d+\\", Text.RegularExpressions.RegexOptions.Compiled Or Text.RegularExpressions.RegexOptions.IgnoreCase)
 
@@ -379,7 +379,7 @@ Public Class clsXMLTimeValidation
             ' It will later be updated to have the actual instrument file or folder name
             mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName)
 
-            If mCaptureType = "secfso" AndAlso Not GetHostName().ToLower().StartsWith("monroe") Then
+            If String.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase) AndAlso Not GetHostName().ToLower().StartsWith("monroe") Then
                 ' Source folder is on bionet; establish a connection
 
                 Dim m_UserName = m_mgrParams.GetParam("bionetuser")
@@ -758,7 +758,7 @@ Public Class clsXMLTimeValidation
 
         ' Check for a file with specified name
         For Each fiFile In diSourceFolder.GetFiles()
-            If Path.GetFileNameWithoutExtension(fiFile.Name).ToLower() = currentDataset.ToLower() Then
+            If String.Equals(Path.GetFileNameWithoutExtension(fiFile.Name), currentDataset, StringComparison.OrdinalIgnoreCase) Then
                 instrumentFileOrFolderName = fiFile.Name
                 Return RawDSTypes.File
             End If
@@ -766,7 +766,7 @@ Public Class clsXMLTimeValidation
 
         ' Check for a folder with specified name
         For Each diFolder In diSourceFolder.GetDirectories()
-            If Path.GetFileNameWithoutExtension(diFolder.Name).ToLower() = currentDataset.ToLower() Then
+            If String.Equals(Path.GetFileNameWithoutExtension(diFolder.Name), currentDataset, StringComparison.OrdinalIgnoreCase) Then
                 If diFolder.Extension.Length = 0 Then
                     ' Found a directory that has no extension
                     instrumentFileOrFolderName = diFolder.Name
