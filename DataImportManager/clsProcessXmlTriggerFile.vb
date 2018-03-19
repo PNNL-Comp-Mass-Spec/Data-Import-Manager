@@ -424,7 +424,10 @@ Public Class clsProcessXmlTriggerFile
     ''' </summary>
     ''' <param name="triggerFile">XML file to process</param>
     ''' <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
-    ''' <remarks></remarks>
+    ''' <remarks>
+    ''' PerformValidation in clsXMLTimeValidation will monitor the dataset file (or dataset folder)
+    ''' to make sure the file size (folder size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantFolderSize)
+    ''' </remarks>
     Private Function ValidateXMLFileMain(triggerFile As FileInfo) As Boolean
 
         Try

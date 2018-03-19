@@ -705,6 +705,15 @@ Public Class clsXMLTimeValidation
 
     End Function
 
+    ''' <summary>
+    ''' Determines if raw dataset exists as a single file, folder with same name as dataset, or folder with dataset name + extension
+    ''' </summary>
+    ''' <param name="instrumentSourcePath"></param>
+    ''' <param name="captureSubFolderName"></param>
+    ''' <param name="currentDataset"></param>
+    ''' <param name="ignoreInstrumentSourceErrors"></param>
+    ''' <param name="instrumentFileOrFolderName">Output: full name of the dataset file or dataset folder</param>
+    ''' <returns>Enum specifying what was found</returns>
     Private Function GetRawDSType(
       instrumentSourcePath As String,
       captureSubFolderName As String,
@@ -712,11 +721,7 @@ Public Class clsXMLTimeValidation
       ignoreInstrumentSourceErrors As Boolean,
       <Out> ByRef instrumentFileOrFolderName As String) As RawDSTypes
 
-        ' Determines if raw dataset exists as a single file, folder with same name as dataset, or
-        '	folder with dataset name + extension. Returns enum specifying what was found and instrumentFileOrFolderName
-        ' containing full name of the file or folder
-
-        ' Verify instrument transfer folder exists
+        ' Verify instrument source folder exists
         Dim diSourceFolder = New DirectoryInfo(instrumentSourcePath)
         If TraceMode Then ShowTraceMessage("Instantiated diSourceFolder with " & instrumentSourcePath)
 
