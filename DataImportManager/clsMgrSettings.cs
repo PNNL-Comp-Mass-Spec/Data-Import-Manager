@@ -112,13 +112,12 @@ namespace DataImportManager
                 ShowDictionaryTrace(mParamDictionary);
             }
 
-            if (!success)
-            {
-                if (string.Equals(ErrMsg, DEACTIVATED_LOCALLY))
-                    throw new ApplicationException(DEACTIVATED_LOCALLY);
+            if (success) return;
 
-                throw new ApplicationException("Unable to initialize manager settings class: " + ErrMsg);
-            }
+            if (string.Equals(ErrMsg, DEACTIVATED_LOCALLY))
+                throw new ApplicationException(DEACTIVATED_LOCALLY);
+
+            throw new ApplicationException("Unable to initialize manager settings class: " + ErrMsg);
 
         }
 
@@ -252,7 +251,6 @@ namespace DataImportManager
 
             if (TraceMode)
             {
-
                 var configFilePath = clsGlobal.GetExePath() + ".config";
                 ShowTraceMessage("Settings loaded from " + clsPathUtils.CompactPathString(configFilePath, 60));
                 ShowDictionaryTrace(mgrSettingsFromFile);

@@ -179,10 +179,8 @@ namespace DataImportManager
             {
                 return valueIfNull;
             }
-            else
-            {
-                return reader.GetInt32(columnIndex);
-            }
+
+            return reader.GetInt32(columnIndex);
 
         }
 
@@ -192,10 +190,8 @@ namespace DataImportManager
             {
                 return valueIfNull;
             }
-            else
-            {
-                return reader.GetString(columnIndex);
-            }
+
+            return reader.GetString(columnIndex);
 
         }
 
@@ -486,7 +482,8 @@ namespace DataImportManager
                 operatorInfo = query2.FirstOrDefault();
                 return true;
             }
-            else if (userCountMatched > 1)
+
+            if (userCountMatched > 1)
             {
                 operatorInfo = query2.FirstOrDefault();
                 var logMsg = "LookupOperatorName: Ambiguous match found for '" + strQueryName + "' in T_Users; will e-mail '" + operatorInfo.Email + "'";

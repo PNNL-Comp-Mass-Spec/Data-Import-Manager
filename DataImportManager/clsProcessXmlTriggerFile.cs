@@ -146,13 +146,12 @@ namespace DataImportManager
                         messageToQueue
                     };
 
-                    if (!mQueuedMail.TryAdd(mailRecipients, newQueuedMessages))
-                    {
-                        if (mQueuedMail.TryGetValue(mailRecipients, out existingQueuedMessages))
-                        {
-                            existingQueuedMessages.Add(messageToQueue);
-                        }
+                    if (mQueuedMail.TryAdd(mailRecipients, newQueuedMessages))
+                        return;
 
+                    if (mQueuedMail.TryGetValue(mailRecipients, out existingQueuedMessages))
+                    {
+                        existingQueuedMessages.Add(messageToQueue);
                     }
 
                 }
@@ -480,13 +479,13 @@ namespace DataImportManager
             }
 
             // Instrument not found; add it
-            if (!mInstrumentsToSkip.TryAdd(instrumentName, 1))
+            if (mInstrumentsToSkip.TryAdd(instrumentName, 1))
+                return;
+
+            // Instrument add failed; try again to get the datasets skipped value
+            if (mInstrumentsToSkip.TryGetValue(instrumentName, out var datasetsSkippedRetry))
             {
-                // Instrument add failed; try again to get the datasets skipped value
-                if (mInstrumentsToSkip.TryGetValue(instrumentName, out var datasetsSkippedRetry))
-                {
-                    mInstrumentsToSkip[instrumentName] = datasetsSkippedRetry + 1;
-                }
+                mInstrumentsToSkip[instrumentName] = datasetsSkippedRetry + 1;
             }
 
         }
@@ -553,7 +552,8 @@ namespace DataImportManager
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Operator not defined.");
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, timeValFolder);
 
@@ -567,7 +567,8 @@ namespace DataImportManager
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Time validation error.");
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureFolder);
 
@@ -580,34 +581,40 @@ namespace DataImportManager
                     CacheMail(validationErrors, mXmlOperatorEmail, " - XML validation error.");
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
                 {
                     // Logon failure; Do not move the XML file
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
                 {
                     // Network error; Do not move the XML file
                     // Furthermore, do not process any more .XML files for this instrument
                     UpdateInstrumentsToSkip(mXmlInstrumentName);
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT)
                 {
                     LogMessage(" ... skipped since m_InstrumentsToSkip contains " + mXmlInstrumentName);
                     UpdateInstrumentsToSkip(mXmlInstrumentName);
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_WAIT_FOR_FILES)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_WAIT_FOR_FILES)
                 {
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
                 {
                     // Size changed; Do not move the XML file
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureFolder);
 
@@ -642,29 +649,26 @@ namespace DataImportManager
 
                     return false;
                 }
-                else if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING)
+
+                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING)
                 {
                     // The file is now missing; silently move on
                     return false;
                 }
-                else
-                {
-                    // xmlRslt is one of the following:
-                    // We'll return "True" below
-                    // XML_VALIDATE_SUCCESS
-                    // XML_VALIDATE_NO_CHECK
-                    // XML_VALIDATE_CONTINUE
-                    // XML_VALIDATE_SKIP_INSTRUMENT
-                }
 
+                // xmlRslt is one of the following:
+                // XML_VALIDATE_SUCCESS
+                // XML_VALIDATE_NO_CHECK
+                // XML_VALIDATE_CONTINUE
+                // XML_VALIDATE_SKIP_INSTRUMENT
+
+                return true;
             }
             catch (Exception ex)
             {
                 clsMainProcess.LogErrorToDatabase("Error validating Xml Data file, file " + triggerFile.FullName, ex);
                 return false;
             }
-
-            return true;
         }
 
         private void ShowTraceMessage(string message)

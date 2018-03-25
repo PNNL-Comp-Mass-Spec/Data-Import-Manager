@@ -27,10 +27,8 @@ namespace DataImportManager
                 {
                     return string.Empty;
                 }
-                else
-                {
-                    return mPostTaskErrorMessage;
-                }
+
+                return mPostTaskErrorMessage;
             }
         }
 

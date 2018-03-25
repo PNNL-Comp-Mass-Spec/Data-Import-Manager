@@ -142,11 +142,8 @@ namespace DataImportManager
             {
                 return string.Empty;
             }
-            else
-            {
-                return strText;
-            }
 
+            return strText;
         }
 
         public XmlValidateStatus ValidateXmlFile(FileInfo triggerFile)
@@ -282,10 +279,8 @@ namespace DataImportManager
                 {
                     return rslt;
                 }
-                else
-                {
-                    return XmlValidateStatus.XML_VALIDATE_CONTINUE;
-                }
+
+                return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
             }
             catch (Exception ex)
@@ -305,13 +300,12 @@ namespace DataImportManager
                 var fileModDateDelay = fileModDate.AddMinutes(delayValue);
                 var dateNow = DateTime.UtcNow;
 
-                if (dateNow < fileModDateDelay)
-                {
-                    LogWarning("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name);
-                    return XmlValidateStatus.XML_WAIT_FOR_FILES;
-                }
+                if (dateNow >= fileModDateDelay)
+                    return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-                return XmlValidateStatus.XML_VALIDATE_CONTINUE;
+                LogWarning("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name);
+                return XmlValidateStatus.XML_WAIT_FOR_FILES;
+
             }
             catch (Exception ex)
             {
@@ -352,15 +346,15 @@ namespace DataImportManager
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                 }
 
-                if (string.IsNullOrWhiteSpace(mSourcePath))
-                {
-                    clsMainProcess.LogErrorToDatabase(
-                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
-                        insName + " has an empty value for SourcePath in V_Instrument_List_Export");
-                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-                }
+                if (!string.IsNullOrWhiteSpace(mSourcePath))
+                    return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-                return XmlValidateStatus.XML_VALIDATE_CONTINUE;
+                clsMainProcess.LogErrorToDatabase(
+                    "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " + insName +
+                    " has an empty value for SourcePath in V_Instrument_List_Export");
+
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+
             }
             catch (Exception ex)
             {
@@ -478,38 +472,40 @@ namespace DataImportManager
 
                         LogError(ErrorMessage);
 
-                        if (mShareConnector.ErrorMessage == "1326")
+                        switch (mShareConnector.ErrorMessage)
                         {
-                            LogError("You likely need to change the Capture_Method from secfso to fso; use the following query: ");
-                        }
-                        else if (mShareConnector.ErrorMessage == "53")
-                        {
-                            LogError("The password may need to be reset; diagnose things further using the following query: ");
-                        }
-                        else if (mShareConnector.ErrorMessage == "1219" || mShareConnector.ErrorMessage == "1203")
-                        {
-                            var statusMsg = "Likely had error 'An unexpected network error occurred' while validating the Dataset " +
-                                "specified by the XML file (ErrorMessage=" + mShareConnector.ErrorMessage + ")";
-                            if (TraceMode)
-                            {
-                                ShowTraceMessage(statusMsg);
-                            }
+                            case "1326":
+                                LogError("You likely need to change the Capture_Method from secfso to fso; use the following query: ");
+                                break;
 
-                            // Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
-                            // Need to completely exit the manager
-                            if (mProcSettings.IgnoreInstrumentSourceErrors)
-                            {
-                                ignoreInstrumentSourceErrors = true;
-                            }
-                            else
-                            {
-                                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR;
-                            }
+                            case "53":
+                                LogError("The password may need to be reset; diagnose things further using the following query: ");
+                                break;
 
-                        }
-                        else
-                        {
-                            LogError("You can diagnose the problem using this query: ");
+                            case "1219":
+                            case "1203":
+                                var statusMsg = "Likely had error 'An unexpected network error occurred' while validating the Dataset " +
+                                                "specified by the XML file (ErrorMessage=" + mShareConnector.ErrorMessage + ")";
+                                if (TraceMode)
+                                {
+                                    ShowTraceMessage(statusMsg);
+                                }
+
+                                // Likely had error "An unexpected network error occurred" while validating the Dataset specified by the XML file
+                                // Need to completely exit the manager
+                                if (mProcSettings.IgnoreInstrumentSourceErrors)
+                                {
+                                    ignoreInstrumentSourceErrors = true;
+                                }
+                                else
+                                {
+                                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR;
+                                }
+                                break;
+
+                            default:
+                                LogError("You can diagnose the problem using this query: ");
+                                break;
                         }
 
                         if (!ignoreInstrumentSourceErrors)
@@ -524,7 +520,7 @@ namespace DataImportManager
                                     "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, " +
                                     "       SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method " +
                                     "FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst " +
-                                    "      ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID " +
+                                    "       ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID " +
                                     "WHERE IN_Name = '" + InstrumentName + "'";
 
                                 LogError(sqlQuery);
@@ -633,17 +629,9 @@ namespace DataImportManager
                                 }
 
                                 DisconnectShare(mShareConnector);
-
                             }
 
-                            if (logonFailure)
-                            {
-                                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
-                            }
-                            else
-                            {
-                                return XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED;
-                            }
+                            return logonFailure ? XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE : XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED;
 
                         }
 
@@ -683,16 +671,14 @@ namespace DataImportManager
                             {
                                 return XmlValidateStatus.XML_VALIDATE_SUCCESS;
                             }
-                            else
-                            {
-                                var errMsg = "Time validation Error For " + mDatasetName +
-                                    " File modification date (UTC): " + dtFileModDate.ToString(CultureInfo.InvariantCulture) +
-                                    " vs. Run Finish UTC date " + dtRunFinishWithTolerance.ToString(CultureInfo.InvariantCulture) +
-                                    " (includes " + intTimeValToleranceMinutes + " minute tolerance)";
 
-                                clsMainProcess.LogErrorToDatabase(errMsg);
-                                return XmlValidateStatus.XML_VALIDATE_FAILED;
-                            }
+                            var errMsg = "Time validation Error For " + mDatasetName +
+                                         " File modification date (UTC): " + dtFileModDate.ToString(CultureInfo.InvariantCulture) +
+                                         " vs. Run Finish UTC date " + dtRunFinishWithTolerance.ToString(CultureInfo.InvariantCulture) +
+                                         " (includes " + intTimeValToleranceMinutes + " minute tolerance)";
+
+                            clsMainProcess.LogErrorToDatabase(errMsg);
+                            return XmlValidateStatus.XML_VALIDATE_FAILED;
 
                         }
                         break;
@@ -776,24 +762,25 @@ namespace DataImportManager
                     // Example message: Error accessing '\\VOrbi05.bionet\ProteomicsData\QC_Shew_11_02_pt5_d2_1Apr12_Earth_12-03-14.raw': Logon failure: unknown user name or bad password
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
                 }
-                else if (ContainsIgnoreCase(ex.Message, "Access to the path") && ContainsIgnoreCase(ex.Message, "is denied"))
+
+                if (ContainsIgnoreCase(ex.Message, "Access to the path") && ContainsIgnoreCase(ex.Message, "is denied"))
                 {
                     // Example message: Access to the path '\\exact01.bionet\ProteomicsData\Alz_Cap_Test_14_31Mar12_Roc_12-03-16.raw' is denied.
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
                 }
-                else if (ContainsIgnoreCase(ex.Message, "network path was not found"))
+
+                if (ContainsIgnoreCase(ex.Message, "network path was not found"))
                 {
                     // Example message: The network path was not found.
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR;
                 }
-                else if (ContainsIgnoreCase(ex.Message, "The handle is invalid"))
+
+                if (ContainsIgnoreCase(ex.Message, "The handle is invalid"))
                 {
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR;
                 }
-                else
-                {
-                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-                }
+
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
 
             }
 
@@ -919,28 +906,24 @@ namespace DataImportManager
                     instrumentFileOrFolderName = fiFile.Name;
                     return RawDsTypes.File;
                 }
-
             }
 
             // Check for a folder with specified name
             foreach (var diFolder in diSourceFolder.GetDirectories())
             {
-                if (string.Equals(Path.GetFileNameWithoutExtension(diFolder.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (diFolder.Extension.Length == 0)
-                    {
-                        // Found a directory that has no extension
-                        instrumentFileOrFolderName = diFolder.Name;
-                        return RawDsTypes.FolderNoExt;
-                    }
-                    else
-                    {
-                        // Directory name has an extension
-                        instrumentFileOrFolderName = diFolder.Name;
-                        return RawDsTypes.FolderExt;
-                    }
+                if (!string.Equals(Path.GetFileNameWithoutExtension(diFolder.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
+                    continue;
 
+                if (diFolder.Extension.Length == 0)
+                {
+                    // Found a directory that has no extension
+                    instrumentFileOrFolderName = diFolder.Name;
+                    return RawDsTypes.FolderNoExt;
                 }
+
+                // Directory name has an extension
+                instrumentFileOrFolderName = diFolder.Name;
+                return RawDsTypes.FolderExt;
 
             }
 
@@ -996,10 +979,8 @@ namespace DataImportManager
             {
                 return true;
             }
-            else
-            {
-                return false;
-            }
+
+            return false;
 
         }
 
@@ -1040,10 +1021,8 @@ namespace DataImportManager
                 {
                     return true;
                 }
-                else
-                {
-                    return false;
-                }
+
+                return false;
 
             }
             catch (Exception ex)
@@ -1092,8 +1071,7 @@ namespace DataImportManager
             {
                 if (string.IsNullOrWhiteSpace(mOperatorUsername))
                 {
-                    var logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154" +
-                    ")";
+                    var logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
                     LogWarning(logMsg);
                     mOperatorName = logMsg;
                     return false;
@@ -1111,12 +1089,10 @@ namespace DataImportManager
                     // We matched a single user using strQueryName
                     return true;
                 }
-                else
-                {
-                    // We matched 0 users, or more than one user
-                    // An error should have already been logged by mDMSInfoCache
-                    return false;
-                }
+
+                // We matched 0 users, or more than one user
+                // An error should have already been logged by mDMSInfoCache
+                return false;
 
             }
             catch (Exception ex)
