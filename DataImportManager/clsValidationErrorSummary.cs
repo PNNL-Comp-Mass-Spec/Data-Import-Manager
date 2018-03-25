@@ -1,32 +1,36 @@
-﻿Public Class clsValidationErrorSummary
+﻿using System.Collections.Generic;
 
-    Public Structure udtAffectedItem
-        Public IssueDetail As String
-        Public AdditionalInfo As String
-    End Structure
+namespace DataImportManager
+{
+    // ReSharper disable once InconsistentNaming
+    internal class clsValidationErrorSummary
+    {
+        public struct AffectedItemType
+        {
+            public string IssueDetail;
+            public string AdditionalInfo;
+        }
 
-    ' ReSharper disable once CollectionNeverUpdated.Global
-    ' This property is used clsMainProcess
-    Public ReadOnly Property AffectedItems As List(Of udtAffectedItem)
+        public List<AffectedItemType> AffectedItems { get; }
 
-    Public Property DatabaseErrorMsg As String
+        public string DatabaseErrorMsg { get; set;  }
 
-    Public ReadOnly Property IssueType As String
+        public string IssueType { get; }
 
-    Public ReadOnly Property SortWeight As Integer
+        public int SortWeight { get; }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="issueType"></param>
-    ''' <param name="sortWeight"></param>
-    ''' <remarks></remarks>
-    Public Sub New(issueType As String, sortWeight As Integer)
-        Me.IssueType = issueType
-        Me.SortWeight = sortWeight
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="issueType"></param>
+        /// <param name="sortWeight"></param>
+        public clsValidationErrorSummary(string issueType, int sortWeight)
+        {
+            IssueType = issueType;
+            SortWeight = sortWeight;
 
-        AffectedItems = New List(Of udtAffectedItem)
-        DatabaseErrorMsg = String.Empty
-    End Sub
-
-End Class
+            AffectedItems = new List<AffectedItemType>();
+            DatabaseErrorMsg = string.Empty;
+        }
+    }
+}

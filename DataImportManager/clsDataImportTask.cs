@@ -1,146 +1,162 @@
-Imports System.Data.SqlClient
-Imports System.IO
-Imports DataImportManager.clsGlobal
-Imports PRISM.Logging
+﻿using System;
+using System.Data;
+using System.Data.SqlClient;
+using System.IO;
 
-Public Class clsDataImportTask
-    Inherits clsDBTask
+namespace DataImportManager
+{
+    // ReSharper disable once InconsistentNaming
+    internal class clsDataImportTask : clsDBTask
+    {
+        #region "Member Variables"
 
-#Region "Member Variables"
-    Private mPostTaskErrorMessage As String = String.Empty
-    Private mDBErrorMessage As String
+        private string mPostTaskErrorMessage = string.Empty;
+        private string mDatabaseErrorMessage;
+        private string mStoredProc;
+        private string mXmlContents;
 
-    Private mp_stored_proc As String
-    Private mp_xmlContents As String
-#End Region
+        #endregion
 
-#Region "Properties"
+        #region "Properties"
 
-    Public ReadOnly Property PostTaskErrorMessage As String
-        Get
-            If String.IsNullOrEmpty(mPostTaskErrorMessage) Then
-                Return String.Empty
-            Else
-                Return mPostTaskErrorMessage
-            End If
-        End Get
-    End Property
+        public string PostTaskErrorMessage
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(mPostTaskErrorMessage))
+                {
+                    return string.Empty;
+                }
+                else
+                {
+                    return mPostTaskErrorMessage;
+                }
+            }
+        }
 
-    Public ReadOnly Property DBErrorMessage As String
-        Get
-            If String.IsNullOrEmpty(mDBErrorMessage) Then
-                Return String.Empty
-            Else
-                Return mDBErrorMessage
-            End If
-        End Get
-    End Property
+        public string DatabaseErrorMessage
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(mDatabaseErrorMessage))
+                {
+                    return string.Empty;
+                }
 
-    Public Property PreviewMode As Boolean
+                return mDatabaseErrorMessage;
+            }
+        }
 
-#End Region
+        /// <summary>
+        /// When true, preview the datasets that would be added to DMS
+        /// Also preview any e-mails that would be sent regarding errors
+        /// </summary>
+        public bool PreviewMode { get; set; }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="mgrParams"></param>
-    ''' <param name="dbConnection"></param>
-    ''' <remarks></remarks>
-    Public Sub New(mgrParams As IMgrParams, dbConnection As SqlConnection)
-        MyBase.New(mgrParams, dbConnection)
-    End Sub
+        #endregion
 
-    Public Function PostTask(triggerFile As FileInfo) As Boolean
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="mgrParams"></param>
+        /// <param name="dbConnection"></param>
+        public clsDataImportTask(clsMgrSettings mgrParams, SqlConnection dbConnection) : base(mgrParams, dbConnection)
+        {
+        }
 
-        mPostTaskErrorMessage = String.Empty
-        mDBErrorMessage = String.Empty
+        /// <summary>
+        /// Send the contents of an XML trigger file to the database to create a new dataset
+        /// </summary>
+        /// <param name="triggerFile"></param>
+        /// <returns></returns>
+        public bool PostTask(FileInfo triggerFile)
+        {
+            mPostTaskErrorMessage = string.Empty;
+            mDatabaseErrorMessage = string.Empty;
 
-        Dim fileImported As Boolean
+            bool fileImported;
+            try
+            {
+                // Load the XML file into memory
+                mXmlContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFile);
+                if (string.IsNullOrEmpty(mXmlContents))
+                {
+                    return false;
+                }
 
-        Try
-            ' Load the XML file into memory
-            mp_xmlContents = LoadXmlFileContentsIntoString(triggerFile)
-            If String.IsNullOrEmpty(mp_xmlContents) Then
-                Return False
-            End If
+                // Call the stored procedure (typically AddNewDataset)
+                fileImported = ImportDataTask();
+            }
+            catch (Exception ex)
+            {
+                LogError("clsDatasetImportTask.PostTask(), Error running PostTask", ex);
+                return false;
+            }
 
-            ' Call the stored procedure (typically AddNewDataset)
-            fileImported = ImportDataTask()
+            return fileImported;
+        }
 
-        Catch ex As Exception
-            LogTools.LogError("clsDatasetImportTask.PostTask(), Error running PostTask", ex)
-            Return False
-        End Try
+        /// <summary>
+        /// Posts the given XML to DMS5 using stored procedure AddNewDataset
+        /// </summary>
+        /// <returns>True if success, false if an error</returns>
+        /// <remarks></remarks>
+        private bool ImportDataTask()
+        {
+            try
+            {
+                // Initialize database error message
+                mDatabaseErrorMessage = string.Empty;
 
-        Return fileImported
+                // Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
+                mStoredProc = MgrParams.GetParam("storedprocedure");
 
-    End Function
+                var spCmd = new SqlCommand(mStoredProc, DatabaseConnection)
+                {
+                    CommandType = CommandType.StoredProcedure,
+                    CommandTimeout = 45
+                };
 
-    ''' <summary>
-    ''' Posts the given XML to DMS5 using stored procedure AddNewDataset
-    ''' </summary>
-    ''' <returns>True if success, false if an error</returns>
-    ''' <remarks></remarks>
-    Private Function ImportDataTask() As Boolean
+                // Define parameter for stored procedure's return value
+                spCmd.Parameters.Add("@Return", SqlDbType.Int).Direction = ParameterDirection.ReturnValue;
+                spCmd.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000).Value = mXmlContents;
+                spCmd.Parameters.Add("@mode", SqlDbType.VarChar, 24).Value = "add";
+                spCmd.Parameters.Add("@message", SqlDbType.VarChar, 512).Direction = ParameterDirection.Output;
 
-        Dim Outcome As Boolean
+                if (PreviewMode)
+                {
+                    clsMainProcess.ShowTraceMessage("Preview: call stored procedure " + mStoredProc + " in database " + DatabaseConnection.Database);
+                    return true;
+                }
 
-        Try
+                if (TraceMode)
+                {
+                    clsMainProcess.ShowTraceMessage("Calling stored procedure " + mStoredProc + " in database " + DatabaseConnection.Database);
+                }
 
-            ' Initialize database error message
-            mDBErrorMessage = String.Empty
+                // Execute the stored procedure
+                spCmd.ExecuteNonQuery();
 
-            ' Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
-            '
-            mp_stored_proc = m_mgrParams.GetParam("storedprocedure")
+                // Get return value
+                var ret = Convert.ToInt32(spCmd.Parameters["@Return"].Value);
+                if (ret == 0)
+                {
+                    // Get values for output parameters
+                    return true;
+                }
 
-            Dim sc = New SqlCommand(mp_stored_proc, m_DBCn)
-            sc.CommandType = CommandType.StoredProcedure
-            sc.CommandTimeout = 45
+                mPostTaskErrorMessage = spCmd.Parameters["@message"].Value.ToString();
+                LogError("clsDataImportTask.ImportDataTask(), Problem posting dataset: " + mPostTaskErrorMessage);
+                return false;
 
-            '
-            ' define parameter for stored procedure's return value
-            '
-            sc.Parameters.Add("@Return", SqlDbType.Int).Direction = ParameterDirection.ReturnValue
-            sc.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000).Value = mp_xmlContents
-            sc.Parameters.Add("@mode", SqlDbType.VarChar, 24).Value = "add"
-            sc.Parameters.Add("@message", SqlDbType.VarChar, 512).Direction = ParameterDirection.Output
+            }
+            catch (Exception ex)
+            {
+                LogError("clsDataImportTask.ImportDataTask(), Error posting dataset", ex, true);
+                mDatabaseErrorMessage = Environment.NewLine + ("Database Error Message:" + ex.Message);
+                return false;
+            }
 
-            If PreviewMode Then
-                clsMainProcess.ShowTraceMessage("Preview: call stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
-                Return True
-            End If
-
-            If TraceMode Then
-                clsMainProcess.ShowTraceMessage("Calling stored procedure " & mp_stored_proc & " in database " & m_DBCn.Database)
-            End If
-
-            ' execute the stored procedure
-            '
-            sc.ExecuteNonQuery()
-
-            ' get return value
-            '
-            Dim ret = CInt(sc.Parameters("@Return").Value)
-
-            If ret = 0 Then
-                ' get values for output parameters
-                '
-                Outcome = True
-            Else
-                mPostTaskErrorMessage = CStr(sc.Parameters("@message").Value)
-                LogTools.LogError("clsDataImportTask.ImportDataTask(), Problem posting dataset: " & mPostTaskErrorMessage)
-                Outcome = False
-            End If
-
-        Catch ex As Exception
-            LogTools.LogError("clsDataImportTask.ImportDataTask(), Error posting dataset", ex, True)
-            mDBErrorMessage = ControlChars.NewLine & "Database Error Message:" & ex.Message
-            Outcome = False
-        End Try
-
-        Return Outcome
-
-    End Function
-
-End Class
+        }
+    }
+}

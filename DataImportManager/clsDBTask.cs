@@ -1,31 +1,34 @@
-Imports System.Data.SqlClient
+﻿using System.Data.SqlClient;
 
-Public MustInherit Class clsDBTask
+namespace DataImportManager
+{
+    // ReSharper disable once InconsistentNaming
+    internal abstract class clsDBTask : clsLoggerBase
+    {
+        /// <summary>
+        /// Manager parameters
+        /// </summary>
+        protected clsMgrSettings MgrParams { get; }
 
-#Region "Member Variables"
+        /// <summary>
+        /// Database connection object
+        /// </summary>
+        protected SqlConnection DatabaseConnection { get; }
 
-    ' access to mgr parameters
-    Protected ReadOnly m_mgrParams As IMgrParams
+        /// <summary>
+        /// When true, show additional debug messages as the console
+        /// </summary>
+        public bool TraceMode { get; set; }
 
-    ' DB access
-    Protected ReadOnly m_DBCn As SqlConnection
-
-#End Region
-
-#Region "Auto-properties"
-    Public Property TraceMode As Boolean
-#End Region
-
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="mgrParams"></param>
-    ''' <param name="dbConnection">Database connection object (connection should already be open)</param>
-    ''' <remarks></remarks>
-    Public Sub New(mgrParams As IMgrParams, dbConnection As SqlConnection)
-        m_mgrParams = mgrParams
-        m_DBCn = dbConnection
-    End Sub
-
-End Class
-
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="mgrParams">Manager parameters</param>
+        /// <param name="dbConnection">Database connection object (connection should already be open)</param>
+        protected clsDBTask(clsMgrSettings mgrParams, SqlConnection dbConnection)
+        {
+            MgrParams = mgrParams;
+            DatabaseConnection = dbConnection;
+        }
+    }
+}

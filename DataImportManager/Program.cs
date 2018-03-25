@@ -1,198 +1,249 @@
-﻿Option Strict On
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using PRISM;
+using PRISM.Logging;
+using PRISM.FileProcessor;
 
-Imports System.Reflection
-Imports System.IO
-Imports PRISM
-Imports PRISM.Logging
+namespace DataImportManager
+{
+    internal class Program
+    {
+        public const string PROGRAM_DATE = "March 25, 2018";
 
-Module modMain
-    Public Const PROGRAM_DATE As String = "March 19, 2018"
+        private static bool mMailDisabled;
 
-    Private mMailDisabled As Boolean
-    Private mTraceMode As Boolean
-    Private mPreviewMode As Boolean
-    Private mIgnoreInstrumentSourceErrors As Boolean
+        private static bool mTraceMode;
 
-    ''' <summary>
-    ''' Entry method
-    ''' </summary>
-    ''' <returns>0 if no error, error code if an error</returns>
-    Public Function Main() As Integer
+        private static bool mPreviewMode;
 
-        Dim commandLineParser As New clsParseCommandLine()
+        private static bool mIgnoreInstrumentSourceErrors;
 
-        mMailDisabled = False
-        mTraceMode = False
-        mPreviewMode = False
-        mIgnoreInstrumentSourceErrors = False
+        /// <summary>
+        /// Entry method
+        /// </summary>
+        /// <returns>0 if no error, error code if an error</returns>
+        public static int Main(string[] args)
+        {
+            var commandLineParser = new clsParseCommandLine();
 
-        Try
+            mMailDisabled = false;
+            mTraceMode = false;
+            mPreviewMode = false;
+            mIgnoreInstrumentSourceErrors = false;
+            try
+            {
+                bool validArgs;
 
-            Dim validArgs As Boolean
+                // Parse the command line options
+                if (commandLineParser.ParseCommandLine())
+                {
+                    validArgs = SetOptionsUsingCommandLineParameters(commandLineParser);
+                }
+                else if (commandLineParser.NoParameters)
+                {
+                    validArgs = true;
+                }
+                else
+                {
+                    if (commandLineParser.NeedToShowHelp)
+                    {
+                        ShowProgramHelp();
+                    }
+                    else
+                    {
+                        ConsoleMsgUtils.ShowWarning("Error parsing the command line arguments");
+                        clsParseCommandLine.PauseAtConsole(750);
+                    }
 
-            ' Parse the command line options
-            '
-            If commandLineParser.ParseCommandLine Then
-                validArgs = SetOptionsUsingCommandLineParameters(commandLineParser)
-            Else
-                If (commandLineParser.NoParameters) Then
-                    validArgs = True
-                Else
-                    If (commandLineParser.NeedToShowHelp) Then
-                        ShowProgramHelp()
-                    Else
-                        ConsoleMsgUtils.ShowWarning("Error parsing the command line arguments")
-                        clsParseCommandLine.PauseAtConsole(750)
-                    End If
-                    Return -1
-                End If
-            End If
+                    return -1;
+                }
 
-            If commandLineParser.NeedToShowHelp OrElse Not validArgs Then
-                ShowProgramHelp()
-                Return -1
-            End If
+                if (commandLineParser.NeedToShowHelp || !validArgs)
+                {
+                    ShowProgramHelp();
+                    return -1;
+                }
 
-            If mTraceMode Then ShowTraceMessage("Command line arguments parsed")
+                if (mTraceMode)
+                {
+                    ShowTraceMessage("Command line arguments parsed");
+                }
 
-                ' Initiate automated analysis
-                If mTraceMode Then ShowTraceMessage("Instantiating clsMainProcess")
+                // Initiate automated analysis
+                if (mTraceMode)
+                {
+                    ShowTraceMessage("Instantiating clsMainProcess");
+                }
 
-                Dim oMainProcess = New clsMainProcess(mTraceMode)
-                oMainProcess.MailDisabled = mMailDisabled
-            oMainProcess.PreviewMode = mPreviewMode
-            oMainProcess.IgnoreInstrumentSourceErrors = mIgnoreInstrumentSourceErrors
+                var mainProcess = new clsMainProcess(mTraceMode)
+                {
+                    MailDisabled = mMailDisabled,
+                    PreviewMode = mPreviewMode,
+                    IgnoreInstrumentSourceErrors = mIgnoreInstrumentSourceErrors
+                };
 
-            Try
-                    If Not oMainProcess.InitMgr() Then
-                        If mTraceMode Then ShowTraceMessage("InitMgr returned false")
-                        Return -2
-                    End If
+                try
+                {
+                    if (!mainProcess.InitMgr())
+                    {
+                        if (mTraceMode)
+                        {
+                            ShowTraceMessage("InitMgr returned false");
+                        }
 
-                    If mTraceMode Then ShowTraceMessage("Manager initialized")
+                        return -2;
+                    }
 
-                Catch ex As Exception
-                    ShowErrorMessage("Exception thrown by InitMgr: " & Environment.NewLine & ex.Message)
-                End Try
+                    if (mTraceMode)
+                    {
+                        ShowTraceMessage("Manager initialized");
+                    }
 
-            oMainProcess.DoImport()
+                }
+                catch (Exception ex)
+                {
+                    ShowErrorMessage("Exception thrown by InitMgr: ", ex);
+                }
 
-            LogTools.FlushPendingMessages()
-            Return 0
+                mainProcess.DoImport();
+                LogTools.FlushPendingMessages();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Error occurred in modMain->Main", ex);
+                LogTools.FlushPendingMessages();
+                return -1;
+            }
 
-        Catch ex As Exception
-            ShowErrorMessage("Error occurred in modMain->Main: " & Environment.NewLine & ex.Message)
-            LogTools.FlushPendingMessages()
-            Return -1
-        End Try
+        }
 
-    End Function
 
-    Private Function GetAppPath() As String
-        Return Assembly.GetExecutingAssembly().Location
-    End Function
+        private static bool SetOptionsUsingCommandLineParameters(clsParseCommandLine commandLineParser)
+        {
+            // Returns True if no problems; otherwise, returns false
+            var validParameters = new List<string>
+            {
+                "NoMail",
+                "Trace",
+                "Preview",
+                "ISE"
+            };
 
-    ''' <summary>
-    ''' Returns the .NET assembly version followed by the program date
-    ''' </summary>
-    ''' <param name="strProgramDate"></param>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Private Function GetAppVersion(strProgramDate As String) As String
-        Return Assembly.GetExecutingAssembly().GetName().Version.ToString() & " (" & strProgramDate & ")"
-    End Function
+            try
+            {
+                // Make sure no invalid parameters are present
+                if (commandLineParser.InvalidParametersPresent(validParameters))
+                {
+                    ShowErrorMessage("Invalid commmand line parameters",
+                        (from item in commandLineParser.InvalidParameters(validParameters) select "/" + item).ToList());
 
-    Private Function SetOptionsUsingCommandLineParameters(commandLineParser As clsParseCommandLine) As Boolean
-        ' Returns True if no problems; otherwise, returns false
+                    return false;
+                }
+                else
+                {
+                    // Query commandLineParser to see if various parameters are present
+                    if (commandLineParser.IsParameterPresent("NoMail"))
+                    {
+                        mMailDisabled = true;
+                    }
 
-        Dim validParameters = New List(Of String) From {"NoMail", "Trace", "Preview", "ISE"}
+                    if (commandLineParser.IsParameterPresent("Trace"))
+                    {
+                        mTraceMode = true;
+                    }
 
-        Try
-            ' Make sure no invalid parameters are present
-            If commandLineParser.InvalidParametersPresent(validParameters) Then
-                ShowErrorMessage("Invalid commmand line parameters",
-                  (From item In commandLineParser.InvalidParameters(validParameters) Select "/" + item).ToList())
-                Return False
-            Else
+                    if (commandLineParser.IsParameterPresent("Preview"))
+                    {
+                        mPreviewMode = true;
+                    }
 
-                ' Query commandLineParser to see if various parameters are present
+                    if (commandLineParser.IsParameterPresent("ISE"))
+                    {
+                        mIgnoreInstrumentSourceErrors = true;
+                    }
 
-                If commandLineParser.IsParameterPresent("NoMail") Then mMailDisabled = True
-                If commandLineParser.IsParameterPresent("Trace") Then mTraceMode = True
-                If commandLineParser.IsParameterPresent("Preview") Then mPreviewMode = True
-                If commandLineParser.IsParameterPresent("ISE") Then mIgnoreInstrumentSourceErrors = True
+                    if (mPreviewMode)
+                    {
+                        mMailDisabled = true;
+                        mTraceMode = true;
+                    }
 
-                If mPreviewMode Then
-                    mMailDisabled = True
-                    mTraceMode = True
-                End If
+                    return true;
+                }
 
-                Return True
-            End If
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Error parsing the command line parameters: ", ex);
+            }
 
-        Catch ex As Exception
-            ShowErrorMessage("Error parsing the command line parameters: " & Environment.NewLine & ex.Message)
-        End Try
+            return false;
+        }
 
-        Return False
+        private static void ShowErrorMessage(string message, Exception ex)
+        {
+            ConsoleMsgUtils.ShowError(message, ex);
+        }
 
-    End Function
+        private static void ShowErrorMessage(string title, IEnumerable<string> errorMessages)
+        {
+            ConsoleMsgUtils.ShowErrors(title, errorMessages);
+        }
 
-    Private Sub ShowErrorMessage(message As String)
-        ConsoleMsgUtils.ShowError(message)
-    End Sub
+        private static void ShowProgramHelp()
+        {
+            try
+            {
+                var exePath = clsGlobal.GetExePath();
 
-    Private Sub ShowErrorMessage(title As String, errorMessages As IEnumerable(Of String))
-        ConsoleMsgUtils.ShowErrors(title, errorMessages)
-    End Sub
+                Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                    "This program parses the instrument trigger files used for adding datasets to DMS. " +
+                    "Normal operation is to run the program without any command line switches."));
+                Console.WriteLine();
+                Console.WriteLine("Program syntax:");
+                Console.WriteLine(exePath + " [/NoMail] [/Trace] [/Preview] [/ISE]");
+                Console.WriteLine();
+                Console.WriteLine("Use /NoMail to disable sending e-mail when errors are encountered");
+                Console.WriteLine();
+                Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                    "Use /Trace to enable trace mode, where debug messages are written to the command prompt"));
+                Console.WriteLine();
+                Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                    "Use /Preview to enable preview mode, where we report any trigger files found, " +
+                    "but do not post them to DMS and do not move them to the failure folder if there is an error. " +
+                    "Using /Preview forces /NoMail and /Trace to both be enabled"));
+                Console.WriteLine();
+                Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                    "Use /ISE to ignore instrument source check errors (e.g. cannot access bionet)"));
+                Console.WriteLine();
+                Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                    "Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)"));
+                Console.WriteLine();
+                Console.WriteLine("Version: " + ProcessFilesOrFoldersBase.GetAppVersion(PROGRAM_DATE));
+                Console.WriteLine();
+                Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov");
+                Console.WriteLine("Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/");
+                Console.WriteLine();
+                Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
+                    "Licensed under the Apache License, Version 2.0; you may not use this file except in compliance with the License. " +
+                    "You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0"));
+                Console.WriteLine();
 
-    Private Sub ShowProgramHelp()
+                // Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
+                clsParseCommandLine.PauseAtConsole(750);
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Error displaying the program syntax", ex);
+            }
 
-        Try
+        }
 
-            Console.WriteLine("This program parses the instrument trigger files used for adding datasets to DMS. Normal operation is to run the program without any command line switches.")
-            Console.WriteLine()
-            Console.WriteLine("Program syntax:" & ControlChars.NewLine & Path.GetFileName(GetAppPath()) & " [/NoMail] [/Trace] [/Preview] [/ISE]")
-            Console.WriteLine()
-
-            Console.WriteLine("Use /NoMail to disable sending e-mail when errors are encountered")
-            Console.WriteLine()
-
-            Console.WriteLine("Use /Trace to enable trace mode, where debug messages are written to the command prompt")
-            Console.WriteLine()
-
-            Console.WriteLine("Use /Preview to enable preview mode, where we report any trigger files found, but do not " +
-                              "post them to DMS and do not move them to the failure folder if there is an error. " +
-                              "Using /Preview forces /NoMail and /Trace to both be enabled")
-            Console.WriteLine()
-            Console.WriteLine("Use /ISE to ignore instrument source check errors (e.g. cannot access bionet)")
-            Console.WriteLine()
-
-            Console.WriteLine("Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)")
-            Console.WriteLine()
-
-            Console.WriteLine("Version: " & GetAppVersion(PROGRAM_DATE))
-            Console.WriteLine()
-
-            Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov")
-            Console.WriteLine("Website: httsp://omics.pnl.gov/ or https://panomics.pnnl.gov/")
-            Console.WriteLine()
-
-            Console.WriteLine("Licensed under the Apache License, Version 2.0; you may not use this file except in compliance with the License.  " & _
-                  "You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0")
-            Console.WriteLine()
-
-            ' Delay for 750 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
-            clsParseCommandLine.PauseAtConsole(750)
-
-        Catch ex As Exception
-            ShowErrorMessage("Error displaying the program syntax: " & ex.Message)
-        End Try
-
-    End Sub
-
-    Private Sub ShowTraceMessage(message As String)
-        clsMainProcess.ShowTraceMessage(message)
-    End Sub
-
-End Module
+        private static void ShowTraceMessage(string message)
+        {
+            clsMainProcess.ShowTraceMessage(message);
+        }
+    }
+}

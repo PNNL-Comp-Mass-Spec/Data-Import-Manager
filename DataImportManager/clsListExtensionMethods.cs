@@ -1,43 +1,49 @@
-﻿Imports System.Threading
-Imports System.Runtime.CompilerServices
+﻿using System;
+using System.Threading;
+using System.Collections.Generic;
 
-Module modExtensionMethods
+namespace DataImportManager
+{
+    /// <summary>
+    /// This class instantiates a thread safe random number generator
+    /// </summary>
+    /// <remarks>
+    /// From https://stackoverflow.com/questions/273313/randomize-a-listt
+    /// </remarks>
+    public static class ThreadSafeRandom
+    {
+        [ThreadStatic] private static Random mRandGenerator;
 
-    ''' <summary>
-    ''' This class is used by xmlFilesToImport.Shuffle()
-    ''' in DoDataImportTask
-    ''' </summary>
-    Public NotInheritable Class ThreadSafeRandom
+        /// <summary>
+        /// Returns a random number generator
+        /// </summary>
+        public static Random ThisThreadsRandom => mRandGenerator ??
+                                                  (mRandGenerator = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
+    }
 
-        Private Sub New()
-        End Sub
+    /// <summary>
+    /// The Shuffle extension method is used by xmlFilesToImport.Shuffle() in DoDataImportTask
+    /// </summary>
+    internal static class ListExtensionMethods
+    {
+        /// <summary>
+        /// Shuffle the items in a list
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        public static void Shuffle<T>(this IList<T> list)
+        {
+            var n = list.Count;
+            while (n > 1)
+            {
+                n--;
+                var k = ThreadSafeRandom.ThisThreadsRandom.Next(n + 1);
+                //  Swap items
+                var value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+        }
 
-        <ThreadStatic> Private Shared mRandGenerator As New Random
-
-        Public Shared ReadOnly Property ThisThreadsRandom As Random
-            Get
-                Return If(mRandGenerator, (InlineAssignHelper(mRandGenerator, New Random(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId))))
-            End Get
-        End Property
-
-        Private Shared Function InlineAssignHelper(Of T)(ByRef target As T, value As T) As T
-            target = value
-            Return value
-        End Function
-    End Class
-
-    <Extension>
-    Public Sub Shuffle(Of T)(list As IList(Of T))
-        Dim n As Integer = list.Count
-        While n > 1
-            n -= 1
-            Dim k As Integer = ThreadSafeRandom.ThisThreadsRandom.Next(n + 1)
-
-            ' Swap items
-            Dim value As T = list(k)
-            list(k) = list(n)
-            list(n) = value
-        End While
-    End Sub
-
-End Module
+    }
+}

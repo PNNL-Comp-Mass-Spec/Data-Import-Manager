@@ -1,55 +1,60 @@
-﻿
-Public Class clsQueuedMail
+﻿using System.Collections.Generic;
 
-#Region "Properties"
+namespace DataImportManager
+{
+    // ReSharper disable once InconsistentNaming
+    internal class clsQueuedMail
+    {
 
-    Public ReadOnly Property InstrumentOperator As String
+        #region "Properties"
 
-    ''' <summary>
-    ''' Semi-colon separated list of e-mail addresses
-    ''' </summary>
-    ''' <remarks></remarks>
-    Public ReadOnly Property Recipients As String
+        public string InstrumentOperator { get; }
 
-    Public ReadOnly Property Subject As String
+        /// <summary>
+        /// Semi-colon separated list of e-mail addresses
+        /// </summary>
+        /// <remarks></remarks>
+        public string Recipients { get; }
 
-    ''' <summary>
-    ''' Tracks any database message errors
-    ''' Also used to track suggested solutions
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public Property DatabaseErrorMsg As String
+        public string Subject { get; }
 
-    Public ReadOnly Property ValidationErrors As List(Of clsValidationError)
+        /// <summary>
+        /// Tracks any database message errors
+        /// Also used to track suggested solutions
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public string DatabaseErrorMsg { get; set; }
 
-    ''' <summary>
-    ''' Tracks the path to the dataset on the instrument
-    ''' </summary>
-    ''' <value></value>
-    ''' <returns></returns>
-    ''' <remarks></remarks>
-    Public Property InstrumentDatasetPath As String
+        public List<clsValidationError> ValidationErrors { get; }
 
-#End Region
+        /// <summary>
+        /// Tracks the path to the dataset on the instrument
+        /// </summary>
+        /// <value></value>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        public string InstrumentDatasetPath { get; set; }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <param name="operatorName"></param>
-    ''' <param name="recipientList"></param>
-    ''' <param name="mailSubject"></param>
-    ''' <param name="lstValidationErrors"></param>
-    ''' <remarks></remarks>
-    Public Sub New(operatorName As String, recipientList As String, mailSubject As String, lstValidationErrors As List(Of clsValidationError))
+        #endregion
 
-        InstrumentOperator = operatorName
-        Recipients = recipientList
-        Subject = mailSubject
-        ValidationErrors = lstValidationErrors
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="operatorName"></param>
+        /// <param name="recipientList"></param>
+        /// <param name="mailSubject"></param>
+        /// <param name="lstValidationErrors"></param>
+        public clsQueuedMail(string operatorName, string recipientList, string mailSubject, List<clsValidationError> lstValidationErrors)
+        {
+            InstrumentOperator = operatorName;
+            Recipients = recipientList;
+            Subject = mailSubject;
+            ValidationErrors = lstValidationErrors;
 
-        DatabaseErrorMsg = String.Empty
-        InstrumentDatasetPath = String.Empty
-    End Sub
-End Class
+            DatabaseErrorMsg = string.Empty;
+            InstrumentDatasetPath = string.Empty;
+        }
+    }
+}

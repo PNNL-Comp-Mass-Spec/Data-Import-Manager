@@ -1,122 +1,189 @@
-'Contains functions/variables common to all parts of the Analysis Manager
-Imports System.IO
-Imports System.Text
-Imports System.Reflection
-Imports PRISM
-Imports PRISM.Logging
+﻿using System;
+using System.Globalization;
+using System.IO;
+using System.Text;
+using PRISM;
+using PRISM.Logging;
 
-' ReSharper disable once ClassNeverInstantiated.Global
-Public Class clsGlobal
+namespace DataImportManager
+{
+    /// <summary>
+    /// Global methods used by other classes
+    /// </summary>
+    // ReSharper disable once InconsistentNaming
+    public static class clsGlobal
+    {
 
-    ' Constants
-    Private Const FLAG_FILE_NAME As String = "FlagFile.txt"
+        //  Constants
+        private const string FLAG_FILE_NAME = "FlagFile.txt";
 
-    Public Shared Sub CreateStatusFlagFile()
+        /// <summary>
+        /// Creates a dummy file in the application directory to be used for controlling task request bypass
+        /// </summary>
+        public static void CreateStatusFlagFile()
+        {
+            var exeDirectoryPath = GetExeDirectoryPath();
+            var fiFlagFile = new FileInfo(Path.Combine(exeDirectoryPath, FLAG_FILE_NAME));
+            using (var swFlagFile = fiFlagFile.AppendText())
+            {
+                swFlagFile.WriteLine(DateTime.Now.ToString(CultureInfo.InvariantCulture));
+            }
+        }
 
-        'Creates a dummy file in the application directory to be used for controlling task request
-        '	bypass
+        /// <summary>
+        /// Deletes the flag file
+        /// </summary>
+        public static void DeleteStatusFlagFile()
+        {
 
-        Dim fiAppProgram As New FileInfo(GetExePath())
-        Dim fiFlagFile As New FileInfo(Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME))
-        Using swFlagFile As StreamWriter = fiFlagFile.AppendText()
-            swFlagFile.WriteLine(DateTime.Now().ToString)
-        End Using
+            var exeDirectoryPath = GetExeDirectoryPath();
+            var flagFilePath = Path.Combine(exeDirectoryPath, FLAG_FILE_NAME);
+            try
+            {
+                if (File.Exists(flagFilePath))
+                {
+                    File.Delete(flagFilePath);
+                }
 
-    End Sub
+            }
+            catch (Exception ex)
+            {
+                LogTools.LogError("Error in DeleteStatusFlagFile", ex);
+            }
 
-    Public Shared Sub DeleteStatusFlagFile()
+        }
 
-        'Deletes the task request control flag file
-        Dim fiAppProgram As New FileInfo(GetExePath())
-        Dim flagFilePath As String = Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME)
+        /// <summary>
+        /// Looks for the flag file
+        /// </summary>
+        /// <returns>True if flag file exists</returns>
+        public static bool DetectStatusFlagFile()
+        {
+            var exeDirectoryPath = GetExeDirectoryPath();
+            var flagFilePath = Path.Combine(exeDirectoryPath, FLAG_FILE_NAME);
+            return File.Exists(flagFilePath);
+        }
 
-        Try
-            If File.Exists(flagFilePath) Then
-                File.Delete(flagFilePath)
-            End If
-        Catch ex As Exception
-            LogTools.LogError("Error in DeleteStatusFlagFile", ex)
-        End Try
+        /// <summary>
+        /// Show an error at the console when unable to write to the log file
+        /// </summary>
+        /// <param name="logMessage"></param>
+        /// <param name="ex"></param>
+        public static void ErrorWritingToLog(string logMessage, Exception ex)
+        {
+            ConsoleMsgUtils.ShowError("Error logging errors; log message: " + logMessage, ex);
+        }
 
-    End Sub
+        /// <summary>
+        /// Parses the .StackTrace text of the given exception to return a compact description of the current stack
+        /// </summary>
+        /// <param name="ex"></param>
+        /// <returns>String similar to "Stack trace: clsCodeTest.Test-:-clsCodeTest.TestException-:-clsCodeTest.InnerTestException in clsCodeTest.vb:line 86"</returns>
+        /// <remarks></remarks>
+        public static string GetExceptionStackTrace(Exception ex)
+        {
+            return GetExceptionStackTrace(ex, false);
+        }
 
-    Public Shared Function DetectStatusFlagFile() As Boolean
+        /// <summary>
+        /// Parses the .StackTrace text of the given exception to return a compact description of the current stack
+        /// </summary>
+        /// <param name="ex"></param>
+        /// <param name="multiLineOutput">When true, format the stack trace using newline characters instead of -:-</param>
+        /// <returns>String similar to "Stack trace: clsCodeTest.Test-:-clsCodeTest.TestException-:-clsCodeTest.InnerTestException in clsCodeTest.vb:line 86"</returns>
+        /// <remarks></remarks>
+        public static string GetExceptionStackTrace(Exception ex, bool multiLineOutput)
+        {
+            if (multiLineOutput)
+            {
+                return clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex);
+            }
 
-        ' Returns True if task request control flag file exists
-        Dim fiAppProgram As New FileInfo(GetExePath())
-        Dim flagFilePath As String = Path.Combine(fiAppProgram.DirectoryName, FLAG_FILE_NAME)
+            return clsStackTraceFormatter.GetExceptionStackTrace(ex);
+        }
 
-        Return File.Exists(flagFilePath)
+        /// <summary>
+        /// Returns the full path to the directory with the executable
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>Returns an empty string if unable to determine the parent directory</remarks>
+        public static string GetExeDirectoryPath()
+        {
+            var exeFile = new FileInfo(GetExePath());
+            if (exeFile.Directory == null)
+                return "";
 
-    End Function
+            return exeFile.DirectoryName;
 
-    Public Shared Sub ErrorWritingToLog(logMessage As String, ex As Exception)
-        ConsoleMsgUtils.ShowError("Error logging errors; log message: " & logMessage, ex)
-    End Sub
+        }
 
-    ''' <summary>
-    ''' Parses the .StackTrace text of the given exception to return a compact description of the current stack
-    ''' </summary>
-    ''' <param name="ex"></param>
-    ''' <returns>String similar to "Stack trace: clsCodeTest.Test-:-clsCodeTest.TestException-:-clsCodeTest.InnerTestException in clsCodeTest.vb:line 86"</returns>
-    ''' <remarks></remarks>
-    Public Shared Function GetExceptionStackTrace(ex As Exception) As String
-        Return GetExceptionStackTrace(ex, False)
-    End Function
+        /// <summary>
+        /// Returns the full path to this application's executable
+        /// </summary>
+        /// <returns></returns>
+        public static string GetExePath()
+        {
+            return PRISM.FileProcessor.ProcessFilesOrFoldersBase.GetAppPath();
+        }
 
-    ''' <summary>
-    ''' Parses the .StackTrace text of the given exception to return a compact description of the current stack
-    ''' </summary>
-    ''' <param name="ex"></param>
-    ''' <param name="multiLineOutput">When true, format the stack trace using newline characters instead of -:-</param>
-    ''' <returns>String similar to "Stack trace: clsCodeTest.Test-:-clsCodeTest.TestException-:-clsCodeTest.InnerTestException in clsCodeTest.vb:line 86"</returns>
-    ''' <remarks></remarks>
-    Public Shared Function GetExceptionStackTrace(ex As Exception, multiLineOutput As Boolean) As String
+        /// <summary>
+        /// Current host name
+        /// </summary>
+        /// <returns></returns>
+        public static string GetHostName()
+        {
+            var hostName = System.Net.Dns.GetHostName();
+            if (string.IsNullOrWhiteSpace(hostName))
+            {
+                hostName = Environment.MachineName;
+            }
 
-        If multiLineOutput Then
-            Return clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex)
-        End If
+            return hostName;
+        }
 
-        Return clsStackTraceFormatter.GetExceptionStackTrace(ex)
+        /// <summary>
+        /// Load an XML file into mememory and return as a string
+        /// </summary>
+        /// <param name="xmlFile"></param>
+        /// <returns></returns>
+        /// <remarks>Replaces the ambersand character with &#38;</remarks>
+        public static string LoadXmlFileContentsIntoString(FileInfo xmlFile)
+        {
+            try
+            {
+                if (!xmlFile.Exists)
+                {
+                    LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), File: " + xmlFile.FullName + " does not exist.");
+                    return string.Empty;
+                }
 
-    End Function
+                var xmlFileContents = new StringBuilder();
+                using (var sr = new StreamReader(new FileStream(xmlFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    while (!sr.EndOfStream)
+                    {
+                        var input = sr.ReadLine();
+                        if (string.IsNullOrWhiteSpace(input))
+                            continue;
 
-    Public Shared Function GetExePath() As String
-        Return FileProcessor.ProcessFilesOrFoldersBase.GetAppPath()
-    End Function
+                        if (xmlFileContents.Length > 0)
+                        {
+                            xmlFileContents.Append(Environment.NewLine);
+                        }
 
-    Public Shared Function GetHostName() As String
+                        xmlFileContents.Append(input.Replace("&", "&#38;"));
+                    }
+                }
 
-        Dim hostName = Net.Dns.GetHostName()
-        If String.IsNullOrWhiteSpace(hostName) Then
-            hostName = Environment.MachineName
-        End If
+                return xmlFileContents.ToString();
+            }
+            catch (Exception ex)
+            {
+                LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file", ex);
+                return string.Empty;
+            }
 
-        Return hostName
+        }
+    }
 
-    End Function
-
-    Public Shared Function LoadXmlFileContentsIntoString(triggerFile As FileInfo) As String
-        Try
-            ' Read the contents of the xml file into a string which will be passed into a stored procedure.
-            If Not triggerFile.Exists Then
-                LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), File: " & triggerFile.FullName & " does not exist.")
-                Return String.Empty
-            End If
-            Dim xmlFileContents = New StringBuilder
-            Using sr = New StreamReader(New FileStream(triggerFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                Do While Not sr.EndOfStream
-                    Dim input = sr.ReadLine()
-                    If xmlFileContents.Length > 0 Then xmlFileContents.Append(Environment.NewLine)
-                    xmlFileContents.Append(input.Replace("&", "&#38;"))
-                Loop
-            End Using
-            Return xmlFileContents.ToString()
-        Catch ex As Exception
-            LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file", ex)
-            Return String.Empty
-        End Try
-
-    End Function
-
-End Class
+}

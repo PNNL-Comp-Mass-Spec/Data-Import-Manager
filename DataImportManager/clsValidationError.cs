@@ -1,17 +1,24 @@
-﻿Public Class clsValidationError
-    Public ReadOnly Property IssueType As String
+﻿
+namespace DataImportManager
+{
+    // ReSharper disable once InconsistentNaming
+    internal class clsValidationError
+    {
+        public string IssueType { get; }
 
-    Public ReadOnly Property IssueDetail As String
+        public string IssueDetail { get; }
 
-    Public Property AdditionalInfo As String
+        public string AdditionalInfo { get; set; }
 
-    ''' <summary>
-    ''' Constructor
-    ''' </summary>
-    ''' <remarks></remarks>
-    Public Sub New(issueType As String, issueDetail As String)
-        Me.IssueType = issueType
-        Me.IssueDetail = issueDetail
-        AdditionalInfo = String.Empty
-    End Sub
-End Class
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <remarks></remarks>
+        public clsValidationError(string issueType, string issueDetail)
+        {
+            IssueType = issueType;
+            IssueDetail = issueDetail;
+            AdditionalInfo = string.Empty;
+        }
+    }
+}
