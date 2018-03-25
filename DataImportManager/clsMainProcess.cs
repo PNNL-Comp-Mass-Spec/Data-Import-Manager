@@ -579,13 +579,13 @@ namespace DataImportManager
 
                 var mailContentPreview = new StringBuilder();
 
-                if (newLogFile)
+                if (TraceMode)
                 {
-                    if (TraceMode)
-                    {
+                    if (newLogFile)
                         ShowTraceMessage("Creating new mail log file " + mailLogFile.FullName);
-                    }
                     else
+                        ShowTraceMessage("Appending to mail log file " + mailLogFile.FullName);
+                }
 
                 currentTask = "Create the mail logger";
                 using (var mailLogger = new StreamWriter(new FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)))
