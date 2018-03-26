@@ -54,9 +54,9 @@ namespace DataImportManager
         public const string MGR_PARAM_USING_DEFAULTS = "UsingDefaults";
 
         /// <summary>
-        /// Connection string to DMS5
+        /// Connection string to the Manager Control database
         /// </summary>
-        public const string MGR_PARAM_DEFAULT_DMS_CONN_STRING = "DefaultDMSConnString";
+        public const string MGR_PARAM_DEFAULT_DMS_CONN_STRING = "MgrCnfgDbConnectStr";
 
         #endregion
 
