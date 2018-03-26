@@ -126,11 +126,7 @@ namespace DataImportManager
                 mMgrSettings = new clsMgrSettings(TraceMode);
                 if (mMgrSettings.ManagerDeactivated)
                 {
-                    if (TraceMode)
-                    {
-                        ShowTraceMessage("m_MgrSettings.ManagerDeactivated = True");
-                    }
-
+                    ShowTrace("m_MgrSettings.ManagerDeactivated = True");
                     return false;
                 }
 
@@ -226,10 +222,7 @@ namespace DataImportManager
                 // Check to see if machine settings have changed
                 if (mConfigChanged)
                 {
-                    if (TraceMode)
-                    {
-                        ShowTraceMessage("Loading manager settings from the database");
-                    }
+                    ShowTrace("Loading manager settings from the database");
 
                     mConfigChanged = false;
                     if (!mMgrSettings.LoadSettings())
@@ -331,11 +324,7 @@ namespace DataImportManager
                         importDelay = 1;
                     }
 
-                    if (TraceMode)
-                    {
-                        ShowTraceMessage("ImportDelay, sleep for " + importDelay + " seconds");
-                    }
-
+                    ShowTrace("ImportDelay, sleep for " + importDelay + " seconds");
                     ConsoleMsgUtils.SleepSeconds(importDelay);
 
                     // Load information from DMS
@@ -343,10 +332,7 @@ namespace DataImportManager
 
                     // Randomize order of files in m_XmlFilesToLoad
                     xmlFilesToImport.Shuffle();
-                    if (TraceMode)
-                    {
-                        ShowTraceMessage("Processing " + xmlFilesToImport.Count + " XML files");
-                    }
+                    ShowTrace("Processing " + xmlFilesToImport.Count + " XML files");
 
                     // Process the files in parallel, in groups of 50 at a time
                     //
@@ -613,10 +599,7 @@ namespace DataImportManager
             // Load all the Xml File names and dates in the transfer directory into a string dictionary
             try
             {
-                if (TraceMode)
-                {
-                    ShowTraceMessage("Finding XML files at " + serverXferDir);
-                }
+                ShowTrace("Finding XML files at " + serverXferDir);
 
                 xmlFilesToImport = diXferDirectory.GetFiles("*.xml").ToList();
             }
@@ -678,13 +661,10 @@ namespace DataImportManager
 
                 var mailContentPreview = new StringBuilder();
 
-                if (TraceMode)
-                {
-                    if (newLogFile)
-                        ShowTraceMessage("Creating new mail log file " + mailLogFile.FullName);
-                    else
-                        ShowTraceMessage("Appending to mail log file " + mailLogFile.FullName);
-                }
+                if (newLogFile)
+                    ShowTrace("Creating new mail log file " + mailLogFile.FullName);
+                else
+                    ShowTrace("Appending to mail log file " + mailLogFile.FullName);
 
                 currentTask = "Create the mail logger";
                 using (var mailLogger = new StreamWriter(new FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)))
@@ -699,10 +679,7 @@ namespace DataImportManager
 
                         if (messageCount < 1)
                         {
-                            if (TraceMode)
-                            {
-                                ShowTraceMessage("Empty clsQueuedMail list; this should never happen");
-                            }
+                            ShowTrace("Empty clsQueuedMail list; this should never happen");
 
                             LogWarning("Empty mail queue for recipients " + recipients + "; nothing to do", true);
                             continue;
@@ -957,7 +934,7 @@ namespace DataImportManager
                     } // foreach queuedMailContainer
 
                     currentTask = "Preview cached messages";
-                    if (mailContentPreview.Length > 0)
+                    if (MailDisabled && mailContentPreview.Length > 0)
                     {
                         ShowTraceMessage("Mail content preview" + Environment.NewLine + mailContentPreview);
                     }
@@ -985,10 +962,7 @@ namespace DataImportManager
 
         private void OnDatabaseErrorEvent(string message)
         {
-            if (TraceMode)
-            {
-                ShowTraceMessage("Database error message: " + message);
-            }
+            ShowTrace("Database error message: " + message);
 
             LogError(message);
         }
@@ -1055,6 +1029,18 @@ namespace DataImportManager
                 LogError("Error while disabling manager: " + mMgrSettings.ErrMsg);
             }
 
+        }
+
+        /// <summary>
+        /// Show a message at the console, preceded by a time stamp
+        /// </summary>
+        /// <param name="message"></param>
+        private void ShowTrace(string message)
+        {
+            if (!TraceMode)
+                return;
+
+            ShowTraceMessage(message);
         }
 
         public static void ShowTraceMessage(string message)
