@@ -1043,9 +1043,13 @@ namespace DataImportManager
             ShowTraceMessage(message);
         }
 
+        /// <summary>
+        /// Show a message at the console, preceded with a timestamp
+        /// </summary>
+        /// <param name="message"></param>
         public static void ShowTraceMessage(string message)
         {
-            Console.WriteLine(DateTime.Now.ToString("hh:mm:ss.fff tt") + ": " + message);
+            ConsoleMsgUtils.ShowDebug(DateTime.Now.ToString("hh:mm:ss.fff tt") + ": " + message);
         }
     }
 }
