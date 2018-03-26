@@ -53,11 +53,6 @@ namespace DataImportManager
         /// </summary>
         public const string MGR_PARAM_USING_DEFAULTS = "UsingDefaults";
 
-        /// <summary>
-        /// Connection string to the Manager Control database
-        /// </summary>
-        public const string MGR_PARAM_DEFAULT_DMS_CONN_STRING = "MgrCnfgDbConnectStr";
-
         #endregion
 
         #region "Class variables"
@@ -247,13 +242,6 @@ namespace DataImportManager
             // Default settings in use flag
             var usingDefaults = Properties.Settings.Default.UsingDefaults.ToString();
             mgrSettingsFromFile.Add(MGR_PARAM_USING_DEFAULTS, usingDefaults);
-
-            // Default connection string for logging errors to the database
-            // Will get updated later when manager settings are loaded from the manager control database
-
-            // ReSharper disable once InconsistentNaming
-            var defaultDMSConnectionString = Properties.Settings.Default.MgrCnfgDbConnectStr;
-            mgrSettingsFromFile.Add(MGR_PARAM_DEFAULT_DMS_CONN_STRING, defaultDMSConnectionString);
 
             if (TraceMode)
             {
