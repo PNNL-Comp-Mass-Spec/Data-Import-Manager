@@ -1,5 +1,8 @@
 Data Import Manager History
 
+Version 1.3.6659; March 26, 2018
+	- Convert to C#
+
 Version 1.2.6652; March 19, 2018
 	- Check for recent, zero-byte .bin files in the AcqData directory below agilent .D folders
 

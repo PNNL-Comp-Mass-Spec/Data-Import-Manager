@@ -9,7 +9,7 @@ namespace DataImportManager
 {
     internal class Program
     {
-        public const string PROGRAM_DATE = "March 25, 2018";
+        public const string PROGRAM_DATE = "March 26, 2018";
 
         private static bool mMailDisabled;
 
@@ -31,6 +31,7 @@ namespace DataImportManager
             mTraceMode = false;
             mPreviewMode = false;
             mIgnoreInstrumentSourceErrors = false;
+
             try
             {
                 bool validArgs;
