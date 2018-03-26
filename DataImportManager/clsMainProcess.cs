@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using PRISM;
 using PRISM.Logging;
@@ -16,6 +17,8 @@ namespace DataImportManager
     internal class clsMainProcess : clsLoggerBase
     {
         #region "Constants and enums"
+
+        private const string DEFAULT_BASE_LOGFILE_NAME = @"Logs\DataImportManager";
 
         private const int MAX_ERROR_COUNT = 4;
 
@@ -87,16 +90,38 @@ namespace DataImportManager
         /// <returns></returns>
         public bool InitMgr()
         {
-            const string DEFAULT_BASE_LOGFILE_NAME = @"Logs\DataImportManager";
-            const string DEFAULT_CONNECTION_STRING = "Data Source=proteinseqs;Initial Catalog=Manager_Control;Integrated Security=SSPI;";
 
             var defaultModuleName = "DataImportManager: " + clsGlobal.GetHostName();
 
             try
             {
                 // Define the default logging info
+                // This will get updated below
                 LogTools.CreateFileLogger(DEFAULT_BASE_LOGFILE_NAME);
-                LogTools.CreateDbLogger(DEFAULT_CONNECTION_STRING, defaultModuleName);
+
+                // Create a database logger connected to the Manager_Control database
+                // Once the initial parameters have been successfully read,
+                // we update the dbLogger to use the connection string read from the Manager Control DB
+                string dmsConnectionString;
+
+                // Open DataImportManager.exe.config to look for setting MgrCnfgDbConnectStr, so we know which server to log to by default
+                var dmsConnectionStringFromConfig = GetXmlConfigDefaultConnectionString();
+
+                if (string.IsNullOrWhiteSpace(dmsConnectionStringFromConfig))
+                {
+                    // Use the hard-coded default that points to Proteinseqs
+                    dmsConnectionString = Properties.Settings.Default.MgrCnfgDbConnectStr;
+                }
+                else
+                {
+                    // Use the connection string from DataImportManager.exe.config
+                    dmsConnectionString = dmsConnectionStringFromConfig;
+                }
+
+                ShowTrace("Instantiate a DbLogger using " + dmsConnectionString);
+
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+                LogTools.CreateDbLogger(dmsConnectionString, "Analysis Tool Manager: " + clsGlobal.GetHostName(), false);
 
                 mMgrSettings = new clsMgrSettings(TraceMode);
                 if (mMgrSettings.ManagerDeactivated)
@@ -427,6 +452,73 @@ namespace DataImportManager
             }
 
             return nextChunk;
+        }
+
+        /// <summary>
+        /// Extract the value MgrCnfgDbConnectStr fromDataImportManager.exe.config
+        /// </summary>
+        /// <returns></returns>
+        private string GetXmlConfigDefaultConnectionString()
+        {
+            return GetXmlConfigFileSetting("MgrCnfgDbConnectStr");
+        }
+
+        /// <summary>
+        /// Extract the value for the given setting from DataImportManager.exe.config
+        /// </summary>
+        /// <returns>Setting value if found, otherwise an empty string</returns>
+        /// <remarks>Uses a simple text reader in case the file has malformed XML</remarks>
+        private string GetXmlConfigFileSetting(string settingName)
+        {
+
+            if (string.IsNullOrWhiteSpace(settingName))
+                throw new ArgumentException("Setting name cannot be blank", nameof(settingName));
+
+            try
+            {
+                var configFilePath = clsGlobal.GetExePath() + ".config";
+                var configfile = new FileInfo(configFilePath);
+
+                if (!configfile.Exists)
+                {
+                    LogError("File not found: " + configFilePath);
+                    return string.Empty;
+                }
+
+                var configXml = new StringBuilder();
+
+                // Open DataImportManager.exe.config using a simple text reader in case the file has malformed XML
+
+                ShowTrace(string.Format("Extracting setting {0} from {1}", settingName, configfile.FullName));
+
+                using (var reader = new StreamReader(new FileStream(configfile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        var dataLine = reader.ReadLine();
+                        if (string.IsNullOrWhiteSpace(dataLine))
+                            continue;
+
+                        configXml.Append(dataLine);
+                    }
+                }
+
+                var matcher = new Regex(settingName + ".+?<value>(?<ConnString>.+?)</value>", RegexOptions.IgnoreCase);
+
+                var match = matcher.Match(configXml.ToString());
+
+                if (match.Success)
+                    return match.Groups["ConnString"].Value;
+
+                LogError(settingName + " setting not found in " + configFilePath);
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                LogError("Exception reading setting " + settingName + " in DataImportManager.exe.config", ex);
+                return string.Empty;
+            }
+
         }
 
         public static void LogErrorToDatabase(string message, Exception ex = null)
