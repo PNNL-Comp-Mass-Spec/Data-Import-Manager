@@ -141,37 +141,35 @@ namespace DataImportManager
 
                     return false;
                 }
-                else
+
+                // Query commandLineParser to see if various parameters are present
+                if (commandLineParser.IsParameterPresent("NoMail"))
                 {
-                    // Query commandLineParser to see if various parameters are present
-                    if (commandLineParser.IsParameterPresent("NoMail"))
-                    {
-                        mMailDisabled = true;
-                    }
-
-                    if (commandLineParser.IsParameterPresent("Trace"))
-                    {
-                        mTraceMode = true;
-                    }
-
-                    if (commandLineParser.IsParameterPresent("Preview"))
-                    {
-                        mPreviewMode = true;
-                    }
-
-                    if (commandLineParser.IsParameterPresent("ISE"))
-                    {
-                        mIgnoreInstrumentSourceErrors = true;
-                    }
-
-                    if (mPreviewMode)
-                    {
-                        mMailDisabled = true;
-                        mTraceMode = true;
-                    }
-
-                    return true;
+                    mMailDisabled = true;
                 }
+
+                if (commandLineParser.IsParameterPresent("Trace"))
+                {
+                    mTraceMode = true;
+                }
+
+                if (commandLineParser.IsParameterPresent("Preview"))
+                {
+                    mPreviewMode = true;
+                }
+
+                if (commandLineParser.IsParameterPresent("ISE"))
+                {
+                    mIgnoreInstrumentSourceErrors = true;
+                }
+
+                if (mPreviewMode)
+                {
+                    mMailDisabled = true;
+                    mTraceMode = true;
+                }
+
+                return true;
 
             }
             catch (Exception ex)
