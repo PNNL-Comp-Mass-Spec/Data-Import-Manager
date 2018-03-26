@@ -112,8 +112,10 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
+                if (ex.Message.StartsWith(clsMgrSettings.ERROR_INITIALIZING_MANAGER_SETTINGS))
+                    throw;
+
                 throw new Exception("InitMgr, " + ex.Message, ex);
-                // Failures are logged by clsMgrSettings to local emergency log file
             }
 
             var connectionString = mMgrSettings.GetParam("connectionstring");
@@ -126,11 +128,7 @@ namespace DataImportManager
                 mDebugLevel = int.Parse(mMgrSettings.GetParam("debuglevel"));
 
                 // Create the object that will manage the logging
-                var moduleName = mMgrSettings.GetParam("modulename");
-                if (string.IsNullOrWhiteSpace(moduleName))
-                {
-                    moduleName = "DataImportManager: " + clsGlobal.GetHostName();
-                }
+                var moduleName = mMgrSettings.GetParam("modulename", defaultModuleName);
 
                 LogTools.CreateFileLogger(logFileBaseName);
                 LogTools.CreateDbLogger(connectionString, moduleName);

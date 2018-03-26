@@ -27,6 +27,12 @@ namespace DataImportManager
         public const string DEACTIVATED_LOCALLY = "Manager deactivated locally";
 
         /// <summary>
+        /// Status message for when the settings could not be loaded
+        /// This includes if the manager name is not defined in the manager control database
+        /// </summary>
+        public const string ERROR_INITIALIZING_MANAGER_SETTINGS = "Unable to initialize manager settings class";
+
+        /// <summary>
         /// Manager parameter: config database connection string
         /// </summary>
         public const string MGR_PARAM_MGR_CFG_DB_CONN_STRING = "MgrCnfgDbConnectStr";
@@ -117,7 +123,7 @@ namespace DataImportManager
             if (string.Equals(ErrMsg, DEACTIVATED_LOCALLY))
                 throw new ApplicationException(DEACTIVATED_LOCALLY);
 
-            throw new ApplicationException("Unable to initialize manager settings class: " + ErrMsg);
+            throw new ApplicationException(ERROR_INITIALIZING_MANAGER_SETTINGS + ": " + ErrMsg);
 
         }
 
@@ -252,7 +258,7 @@ namespace DataImportManager
             if (TraceMode)
             {
                 var configFilePath = clsGlobal.GetExePath() + ".config";
-                ShowTraceMessage("Settings loaded from " + clsPathUtils.CompactPathString(configFilePath, 60));
+                ShowTraceMessage("Settings loaded from " + clsPathUtils.CompactPathString(configFilePath, 80));
                 ShowDictionaryTrace(mgrSettingsFromFile);
             }
 

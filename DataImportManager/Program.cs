@@ -103,7 +103,13 @@ namespace DataImportManager
                 }
                 catch (Exception ex)
                 {
-                    ShowErrorMessage("Exception thrown by InitMgr: ", ex);
+                    if (ex.Message.StartsWith(clsMgrSettings.ERROR_INITIALIZING_MANAGER_SETTINGS))
+                        ConsoleMsgUtils.ShowWarning(ex.Message);
+                    else
+                        ShowErrorMessage("Exception thrown by InitMgr: ", ex);
+
+                    LogTools.FlushPendingMessages();
+                    return -1;
                 }
 
                 mainProcess.DoImport();
