@@ -87,8 +87,17 @@ namespace DataImportManager
         /// <returns></returns>
         public bool InitMgr()
         {
+            const string DEFAULT_BASE_LOGFILE_NAME = @"Logs\DataImportManager";
+            const string DEFAULT_CONNECTION_STRING = "Data Source=proteinseqs;Initial Catalog=Manager_Control;Integrated Security=SSPI;";
+
+            var defaultModuleName = "DataImportManager: " + clsGlobal.GetHostName();
+
             try
             {
+                // Define the default logging info
+                LogTools.CreateFileLogger(DEFAULT_BASE_LOGFILE_NAME);
+                LogTools.CreateDbLogger(DEFAULT_CONNECTION_STRING, defaultModuleName);
+
                 mMgrSettings = new clsMgrSettings(TraceMode);
                 if (mMgrSettings.ManagerDeactivated)
                 {
