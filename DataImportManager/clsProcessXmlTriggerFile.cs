@@ -178,33 +178,28 @@ namespace DataImportManager
         /// <summary>
         /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
         /// </summary>
-        /// <param name="logFileName">Name of the current log file</param>
+        /// <param name="baseLogFileName">Base name of the current log file, e.g. Logs\DataImportManager</param>
         /// <returns></returns>
         /// <remarks></remarks>
-        public static string GetLogFileSharePath(string logFileName)
+        public static string GetLogFileSharePath(string baseLogFileName)
         {
-            string logDirPath;
-
             var exeDirectoryPath = clsGlobal.GetExeDirectoryPath();
 
-            if (string.IsNullOrEmpty(logFileName))
-            {
-                logDirPath = Path.Combine(exeDirectoryPath, "DataImportManager");
-            }
-            else
-            {
-                logDirPath = Path.Combine(exeDirectoryPath, logFileName);
-            }
+            var exeDirectoryName = Path.GetFileName(exeDirectoryPath);
+
+            var exeDirectoryNameToUse = string.IsNullOrWhiteSpace(exeDirectoryName) ? "DataImportManager" : exeDirectoryName;
+
+            var logFilePath = Path.Combine(exeDirectoryNameToUse, string.IsNullOrEmpty(baseLogFileName) ? @"Logs\DataImportManager" : baseLogFileName);
 
             // logFilePath should look like this:
             //    DataImportManager\Logs\DataImportManager
 
-            // Prepend the computer name and share name, giving a string similar to:
-            // \\proto-3\DMS_Programs\DataImportManager\Logs\DataImportManager
-            var logFilePath = @"\\" + clsGlobal.GetHostName() + @"\DMS_Programs\" + logDirPath +
+            // Prepend the computer name and share name then append the current date, giving a share path like:
+            // \\Proto-6\DMS_Programs\DataImportManager\Logs\DataImportManager_04-09-2018.txt
+            var logSharePath = @"\\" + clsGlobal.GetHostName() + @"\DMS_Programs\" + logFilePath +
                               "_" + DateTime.Now.ToString("MM-dd-yyyy") + ".txt";
 
-            return logFilePath;
+            return logSharePath;
         }
 
         /// <summary>
