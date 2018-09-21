@@ -31,7 +31,7 @@ namespace DataImportManager
 
         #region "Events"
 
-        public event clsEventNotifier.StatusEventEventHandler DatabaseErrorEvent;
+        public event EventNotifier.StatusEventEventHandler DatabaseErrorEvent;
 
         #endregion
 

@@ -203,7 +203,7 @@ namespace DataImportManager
 
                 }
 
-                if (clsWindowsUpdateStatus.ServerUpdatesArePending(DateTime.Now, out var pendingWindowsUpdateMessage))
+                if (WindowsUpdateStatus.ServerUpdatesArePending(DateTime.Now, out var pendingWindowsUpdateMessage))
                 {
                     var warnMessage = "Monthly windows updates are pending; aborting check for new XML trigger files: " + pendingWindowsUpdateMessage;
 
@@ -275,7 +275,7 @@ namespace DataImportManager
 
                 // Check to see if there are any data import files ready
                 DoDataImportTask(infoCache);
-                clsProgRunner.SleepMilliseconds(250);
+                ProgRunner.SleepMilliseconds(250);
 
                 return true;
             }
@@ -911,7 +911,7 @@ namespace DataImportManager
                             var smtp = new SmtpClient(mailServer);
                             smtp.Send(mailToSend);
 
-                            clsProgRunner.SleepMilliseconds(100);
+                            ProgRunner.SleepMilliseconds(100);
                         }
 
                         if (newLogFile)

@@ -45,7 +45,7 @@ namespace DataImportManager
 
         private readonly ConcurrentDictionary<string, int> mInstrumentsToSkip;
 
-        private readonly clsFileTools mFileTools;
+        private readonly FileTools mFileTools;
 
         private readonly clsMgrSettings mMgrParams;
 
@@ -130,7 +130,7 @@ namespace DataImportManager
             clsProcessXmlTriggerFile.XmlProcSettingsType udtProcSettings)
         {
             mMgrParams = mgrParams;
-            mFileTools = new clsFileTools();
+            mFileTools = new FileTools();
             mInstrumentsToSkip = dctInstrumentsToSkip;
             mDMSInfoCache = dmsCache;
             mProcSettings = udtProcSettings;

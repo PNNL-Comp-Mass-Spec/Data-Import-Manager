@@ -96,10 +96,10 @@ namespace DataImportManager
         {
             if (multiLineOutput)
             {
-                return clsStackTraceFormatter.GetExceptionStackTraceMultiLine(ex);
+                return StackTraceFormatter.GetExceptionStackTraceMultiLine(ex);
             }
 
-            return clsStackTraceFormatter.GetExceptionStackTrace(ex);
+            return StackTraceFormatter.GetExceptionStackTrace(ex);
         }
 
         /// <summary>

@@ -9,7 +9,7 @@ namespace DataImportManager
 {
     internal class Program
     {
-        public const string PROGRAM_DATE = "April 9, 2018";
+        public const string PROGRAM_DATE = "September 20, 2018";
 
         private static bool mMailDisabled;
 
@@ -143,7 +143,7 @@ namespace DataImportManager
                 // Make sure no invalid parameters are present
                 if (commandLineParser.InvalidParametersPresent(validParameters))
                 {
-                    ShowErrorMessage("Invalid commmand line parameters",
+                    ShowErrorMessage("Invalid command line parameters",
                         (from item in commandLineParser.InvalidParameters(validParameters) select "/" + item).ToList());
 
                     return false;

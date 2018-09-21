@@ -246,7 +246,7 @@ namespace DataImportManager
             if (TraceMode)
             {
                 var configFilePath = clsGlobal.GetExePath() + ".config";
-                ShowTraceMessage("Settings loaded from " + clsPathUtils.CompactPathString(configFilePath, 80));
+                ShowTraceMessage("Settings loaded from " + PathUtils.CompactPathString(configFilePath, 80));
                 ShowDictionaryTrace(mgrSettingsFromFile);
             }
 
@@ -355,7 +355,7 @@ namespace DataImportManager
 
             var sqlStr = "SELECT ParameterName, ParameterValue FROM V_MgrParams WHERE ManagerName = '" + managerName + "'";
 
-            var dbTools = new clsDBTools(connectionString);
+            var dbTools = new DBTools(connectionString);
 
             // Run the query
             var success = dbTools.GetQueryResults(sqlStr, out var lstResults, "LoadMgrSettingsFromDatabase", retryCount);
@@ -364,7 +364,7 @@ namespace DataImportManager
             if (!success)
             {
                 // Log the message to the DB if the monthly Windows updates are not pending
-                var allowLogToDb = !clsWindowsUpdateStatus.ServerUpdatesArePending();
+                var allowLogToDb = !WindowsUpdateStatus.ServerUpdatesArePending();
 
                 mErrMsg = "LoadMgrSettingsFromDatabase; Excessive failures attempting to retrieve manager settings from database " +
                           "for manager '" + managerName + "'";
