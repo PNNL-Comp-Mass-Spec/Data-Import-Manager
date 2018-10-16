@@ -408,14 +408,14 @@ namespace DataImportManager
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="sourceList">List of items to retrieve a chunk from; will be updated to remove the items in the returned list</param>
-        /// <param name="chunksize">Number of items to return</param>
+        /// <param name="chunkSize">Number of items to return</param>
         /// <returns></returns>
         /// <remarks></remarks>
-        private IEnumerable<T> GetNextChunk<T>(ref List<T> sourceList, int chunksize)
+        private IEnumerable<T> GetNextChunk<T>(ref List<T> sourceList, int chunkSize)
         {
-            if (chunksize < 1)
+            if (chunkSize < 1)
             {
-                chunksize = 1;
+                chunkSize = 1;
             }
 
             if (sourceList.Count < 1)
@@ -425,15 +425,15 @@ namespace DataImportManager
 
             IEnumerable<T> nextChunk;
 
-            if (chunksize >= sourceList.Count)
+            if (chunkSize >= sourceList.Count)
             {
                 nextChunk = sourceList.Take(sourceList.Count).ToList();
                 sourceList = new List<T>();
             }
             else
             {
-                nextChunk = sourceList.Take(chunksize).ToList();
-                var remainingItems = sourceList.Skip(chunksize);
+                nextChunk = sourceList.Take(chunkSize).ToList();
+                var remainingItems = sourceList.Skip(chunkSize);
                 sourceList = remainingItems.ToList();
             }
 
@@ -463,9 +463,9 @@ namespace DataImportManager
             try
             {
                 var configFilePath = clsGlobal.GetExePath() + ".config";
-                var configfile = new FileInfo(configFilePath);
+                var configFile = new FileInfo(configFilePath);
 
-                if (!configfile.Exists)
+                if (!configFile.Exists)
                 {
                     LogError("File not found: " + configFilePath);
                     return string.Empty;
@@ -475,9 +475,9 @@ namespace DataImportManager
 
                 // Open DataImportManager.exe.config using a simple text reader in case the file has malformed XML
 
-                ShowTrace(string.Format("Extracting setting {0} from {1}", settingName, configfile.FullName));
+                ShowTrace(string.Format("Extracting setting {0} from {1}", settingName, configFile.FullName));
 
-                using (var reader = new StreamReader(new FileStream(configfile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                using (var reader = new StreamReader(new FileStream(configFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                 {
                     while (!reader.EndOfStream)
                     {
@@ -512,7 +512,7 @@ namespace DataImportManager
             LogError(message, ex, true);
         }
 
-        private void ProcessOneFile(FileInfo currentFile, string successfolder, string failureFolder, DMSInfoCache infoCache)
+        private void ProcessOneFile(FileInfo currentFile, string successFolder, string failureFolder, DMSInfoCache infoCache)
         {
             var objRand = new Random();
 
@@ -528,7 +528,7 @@ namespace DataImportManager
                 PreviewMode = PreviewMode,
                 TraceMode = TraceMode,
                 FailureFolder = failureFolder,
-                SuccessFolder = successfolder
+                SuccessFolder = successFolder
             };
 
             var triggerProcessor = new clsProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
@@ -657,7 +657,7 @@ namespace DataImportManager
 
                 var newLogFile = !mailLogFile.Exists;
 
-                currentTask = "Initialize stringbuilder";
+                currentTask = "Initialize StringBuilder";
 
                 var mailContentPreview = new StringBuilder();
 
@@ -711,7 +711,7 @@ namespace DataImportManager
                         mailToSend.Subject = firstQueuedMail.Subject;
 
                         var subjectList = new SortedSet<string>();
-                        var databaseErrorMsgs = new SortedSet<string>();
+                        var databaseErrorMessages = new SortedSet<string>();
                         var instrumentFilePaths = new SortedSet<string>();
 
                         var mailBody = new StringBuilder();
@@ -786,10 +786,10 @@ namespace DataImportManager
                                 if (string.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg))
                                     continue;
 
-                                if (databaseErrorMsgs.Contains(queuedMailItem.DatabaseErrorMsg))
+                                if (databaseErrorMessages.Contains(queuedMailItem.DatabaseErrorMsg))
                                     continue;
 
-                                databaseErrorMsgs.Add(queuedMailItem.DatabaseErrorMsg);
+                                databaseErrorMessages.Add(queuedMailItem.DatabaseErrorMsg);
                                 errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
 
                             } // foreach validationError
@@ -986,8 +986,8 @@ namespace DataImportManager
 
                 foreach (var xmlFile in xmlFiles)
                 {
-                    var filedate = xmlFile.LastWriteTimeUtc;
-                    var daysDiff = DateTime.UtcNow.Subtract(filedate).Days;
+                    var fileDate = xmlFile.LastWriteTimeUtc;
+                    var daysDiff = DateTime.UtcNow.Subtract(fileDate).Days;
                     if (daysDiff <= fileAgeDays)
                         continue;
 
