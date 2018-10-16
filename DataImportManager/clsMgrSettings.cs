@@ -57,8 +57,6 @@ namespace DataImportManager
 
         #region "Class variables"
 
-        private readonly Dictionary<string, string> mParamDictionary;
-
         // ReSharper disable once InconsistentNaming
         private bool mMCParamsLoaded;
 
@@ -86,7 +84,7 @@ namespace DataImportManager
         /// <summary>
         /// Manager parameters dictionary
         /// </summary>
-        public Dictionary<string, string> TaskDictionary => mParamDictionary;
+        public Dictionary<string, string> TaskDictionary { get; }
 
         /// <summary>
         /// When true, show additional messages at the console
@@ -103,14 +101,14 @@ namespace DataImportManager
         {
             TraceMode = traceMode;
 
-            mParamDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            TaskDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var success = LoadSettings();
 
             if (TraceMode)
             {
                 ShowTraceMessage("Initialized clsMgrSettings");
-                ShowDictionaryTrace(mParamDictionary);
+                ShowDictionaryTrace(TaskDictionary);
             }
 
             if (success) return;
@@ -154,26 +152,26 @@ namespace DataImportManager
         {
             mErrMsg = string.Empty;
 
-            mParamDictionary.Clear();
+            TaskDictionary.Clear();
 
             foreach (var item in configFileSettings)
             {
-                mParamDictionary.Add(item.Key, item.Value);
+                TaskDictionary.Add(item.Key, item.Value);
             }
 
             // Get directory for main executable
             var exeDirectoryPath = clsGlobal.GetExeDirectoryPath();
-            mParamDictionary.Add("ApplicationPath", exeDirectoryPath);
+            TaskDictionary.Add("ApplicationPath", exeDirectoryPath);
 
             // Test the settings retrieved from the config file
-            if (!CheckInitialSettings(mParamDictionary))
+            if (!CheckInitialSettings(TaskDictionary))
             {
                 // Error logging handled by CheckInitialSettings
                 return false;
             }
 
             // Determine if manager is deactivated locally
-            if (!mParamDictionary.TryGetValue(MGR_PARAM_MGR_ACTIVE_LOCAL, out var activeLocalText))
+            if (!TaskDictionary.TryGetValue(MGR_PARAM_MGR_ACTIVE_LOCAL, out var activeLocalText))
             {
                 mErrMsg = "Manager parameter " + MGR_PARAM_MGR_ACTIVE_LOCAL + " is missing from file " + Path.GetFileName(GetConfigFilePath());
                 LogError(mErrMsg);
@@ -426,16 +424,16 @@ namespace DataImportManager
                         }
                     }
 
-                    if (mParamDictionary.ContainsKey(paramKey))
+                    if (TaskDictionary.ContainsKey(paramKey))
                     {
                         if (!skipExistingParameters)
                         {
-                            mParamDictionary[paramKey] = paramVal;
+                            TaskDictionary[paramKey] = paramVal;
                         }
                     }
                     else
                     {
-                        mParamDictionary.Add(paramKey, paramVal);
+                        TaskDictionary.Add(paramKey, paramVal);
                     }
                 }
                 success = true;
@@ -459,10 +457,10 @@ namespace DataImportManager
         /// <remarks>Returns Nothing if key isn't found</remarks>
         public string GetParam(string itemKey)
         {
-            if (mParamDictionary == null)
+            if (TaskDictionary == null)
                 return string.Empty;
 
-            if (!mParamDictionary.TryGetValue(itemKey, out var value))
+            if (!TaskDictionary.TryGetValue(itemKey, out var value))
                 return string.Empty;
 
             return string.IsNullOrWhiteSpace(value) ? string.Empty : value;
@@ -507,13 +505,13 @@ namespace DataImportManager
         /// <remarks></remarks>
         public void SetParam(string itemKey, string itemValue)
         {
-            if (mParamDictionary.ContainsKey(itemKey))
+            if (TaskDictionary.ContainsKey(itemKey))
             {
-                mParamDictionary[itemKey] = itemValue;
+                TaskDictionary[itemKey] = itemValue;
             }
             else
             {
-                mParamDictionary.Add(itemKey, itemValue);
+                TaskDictionary.Add(itemKey, itemValue);
             }
         }
 
