@@ -539,7 +539,7 @@ namespace DataImportManager
 
 
         /// <summary>
-        /// Writes specfied value to an application config file.
+        /// Writes specified value to an application config file.
         /// </summary>
         /// <param name="key">Name for parameter (case sensitive)</param>
         /// <param name="value">New value for parameter</param>

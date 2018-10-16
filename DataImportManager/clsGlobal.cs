@@ -142,11 +142,11 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Load an XML file into mememory and return as a string
+        /// Load an XML file into memory and return as a string
         /// </summary>
         /// <param name="xmlFile"></param>
         /// <returns></returns>
-        /// <remarks>Replaces the ambersand character with &#38;</remarks>
+        /// <remarks>Replaces the ampersand character with &#38;</remarks>
         public static string LoadXmlFileContentsIntoString(FileInfo xmlFile)
         {
             try
