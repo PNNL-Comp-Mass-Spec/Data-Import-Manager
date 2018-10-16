@@ -226,7 +226,7 @@ namespace DataImportManager
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
                     "Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)"));
                 Console.WriteLine();
-                Console.WriteLine("Version: " + ProcessFilesOrFoldersBase.GetAppVersion(PROGRAM_DATE));
+                Console.WriteLine("Version: " + ProcessFilesOrDirectoriesBase.GetAppVersion(PROGRAM_DATE));
                 Console.WriteLine();
                 Console.WriteLine("E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov");
                 Console.WriteLine("Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/");

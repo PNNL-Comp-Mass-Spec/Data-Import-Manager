@@ -123,7 +123,7 @@ namespace DataImportManager
         /// <returns></returns>
         public static string GetExePath()
         {
-            return PRISM.FileProcessor.ProcessFilesOrFoldersBase.GetAppPath();
+            return PRISM.FileProcessor.ProcessFilesOrDirectoriesBase.GetAppPath();
         }
 
         /// <summary>

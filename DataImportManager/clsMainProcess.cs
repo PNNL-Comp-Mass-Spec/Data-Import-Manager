@@ -155,7 +155,7 @@ namespace DataImportManager
                 LogTools.CreateDbLogger(connectionString, moduleName);
 
                 // Write the initial log and status entries
-                var appVersion = ProcessFilesOrFoldersBase.GetEntryOrExecutingAssembly().GetName().Version;
+                var appVersion = ProcessFilesOrDirectoriesBase.GetEntryOrExecutingAssembly().GetName().Version;
                 LogTools.WriteLog(LogTools.LoggerTypes.LogFile, BaseLogger.LogLevels.INFO,
                     "===== Started Data Import Manager V" + appVersion + " =====");
             }
