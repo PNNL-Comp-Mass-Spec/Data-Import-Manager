@@ -192,7 +192,7 @@ namespace DataImportManager
                 return false;
             }
 
-            var mgrActive = GetParam("mgractive", true);
+            var mgrActive = GetParam("MgrActive", true);
             ManagerDeactivated = !mgrActive;
 
             // Set flag indicating manager parameters have been loaded

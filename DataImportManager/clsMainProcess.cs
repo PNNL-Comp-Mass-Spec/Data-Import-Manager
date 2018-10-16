@@ -139,17 +139,17 @@ namespace DataImportManager
                 throw new Exception("InitMgr, " + ex.Message, ex);
             }
 
-            var connectionString = mMgrSettings.GetParam("connectionstring");
-            var logFileBaseName = mMgrSettings.GetParam("logfilename");
+            var connectionString = mMgrSettings.GetParam("ConnectionString");
+            var logFileBaseName = mMgrSettings.GetParam("LogFileName");
 
             try
             {
                 // Load initial settings
-                mMgrActive = bool.Parse(mMgrSettings.GetParam("mgractive"));
-                mDebugLevel = int.Parse(mMgrSettings.GetParam("debuglevel"));
+                mMgrActive = bool.Parse(mMgrSettings.GetParam("MgrActive"));
+                mDebugLevel = int.Parse(mMgrSettings.GetParam("DebugLevel"));
 
                 // Create the object that will manage the logging
-                var moduleName = mMgrSettings.GetParam("modulename", defaultModuleName);
+                var moduleName = mMgrSettings.GetParam("ModuleName", defaultModuleName);
 
                 LogTools.CreateFileLogger(logFileBaseName);
                 LogTools.CreateDbLogger(connectionString, moduleName);
@@ -171,14 +171,14 @@ namespace DataImportManager
             mFileWatcher.BeginInit();
             mFileWatcher.Path = exeFile.DirectoryName;
             mFileWatcher.IncludeSubdirectories = false;
-            mFileWatcher.Filter = mMgrSettings.GetParam("configfilename");
+            mFileWatcher.Filter = mMgrSettings.GetParam("ConfigFileName");
             mFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size;
             mFileWatcher.EndInit();
             mFileWatcher.EnableRaisingEvents = true;
             mFileWatcher.Changed += FileWatcher_Changed;
 
             // Get the debug level
-            mDebugLevel = int.Parse(mMgrSettings.GetParam("debuglevel"));
+            mDebugLevel = int.Parse(mMgrSettings.GetParam("DebugLevel"));
             return true;
         }
 
@@ -259,7 +259,7 @@ namespace DataImportManager
                     return false;
                 }
 
-                var connectionString = mMgrSettings.GetParam("connectionstring");
+                var connectionString = mMgrSettings.GetParam("ConnectionString");
                 DMSInfoCache infoCache;
                 try
                 {
@@ -289,10 +289,10 @@ namespace DataImportManager
 
         private void DoDataImportTask(DMSInfoCache infoCache)
         {
-            var delBadXmlFilesDays = int.Parse(mMgrSettings.GetParam("deletebadxmlfiles"));
-            var delGoodXmlFilesDays = int.Parse(mMgrSettings.GetParam("deletegoodxmlfiles"));
-            var successFolder = mMgrSettings.GetParam("successfolder");
-            var failureFolder = mMgrSettings.GetParam("failurefolder");
+            var delBadXmlFilesDays = int.Parse(mMgrSettings.GetParam("DeleteBadXmlFiles"));
+            var delGoodXmlFilesDays = int.Parse(mMgrSettings.GetParam("DeleteGoodXmlFiles"));
+            var successFolder = mMgrSettings.GetParam("SuccessFolder");
+            var failureFolder = mMgrSettings.GetParam("FailureFolder");
 
             try
             {
@@ -304,7 +304,7 @@ namespace DataImportManager
                     clsGlobal.CreateStatusFlagFile();
 
                     // Add a delay
-                    var importDelayText = mMgrSettings.GetParam("importdelay");
+                    var importDelayText = mMgrSettings.GetParam("ImportDelay");
 
                     if (!int.TryParse(importDelayText, out var importDelay))
                     {
@@ -399,7 +399,7 @@ namespace DataImportManager
 
         private string GetLogFileSharePath()
         {
-            var logFileName = mMgrSettings.GetParam("logfilename");
+            var logFileName = mMgrSettings.GetParam("LogFileName");
             return clsProcessXmlTriggerFile.GetLogFileSharePath(logFileName);
         }
 
@@ -577,10 +577,10 @@ namespace DataImportManager
         public CloseOutType ScanXferDirectory(out List<FileInfo> xmlFilesToImport)
         {
             // Copies the results to the transfer directory
-            var serverXferDir = mMgrSettings.GetParam("xferdir");
+            var serverXferDir = mMgrSettings.GetParam("xferDir");
             if (string.IsNullOrWhiteSpace(serverXferDir))
             {
-                LogErrorToDatabase("Manager parameter xferdir is empty (" + clsGlobal.GetHostName() + ")");
+                LogErrorToDatabase("Manager parameter xferDir is empty (" + clsGlobal.GetHostName() + ")");
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
             }
@@ -625,11 +625,11 @@ namespace DataImportManager
             var currentTask = "Initializing";
             try
             {
-                currentTask = "Get smptserver param";
-                var mailServer = mMgrSettings.GetParam("smtpserver");
+                currentTask = "Get SmtpServer param";
+                var mailServer = mMgrSettings.GetParam("SmtpServer");
                 if (string.IsNullOrEmpty(mailServer))
                 {
-                    LogError("Manager parameter smtpserver is empty; cannot send mail");
+                    LogError("Manager parameter SmtpServer is empty; cannot send mail");
                     return;
                 }
 
