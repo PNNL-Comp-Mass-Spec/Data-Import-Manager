@@ -27,11 +27,8 @@ namespace DataImportManager
 
         internal enum CloseOutType
         {
-            // ReSharper disable InconsistentNaming
             CLOSEOUT_SUCCESS = 0,
-            CLOSEOUT_FAILED = 1,
-            CLOSEOUT_NO_DATA = 10
-            // ReSharper restore InconsistentNaming
+            CLOSEOUT_FAILED = 1
         }
 
         #endregion
@@ -46,6 +43,9 @@ namespace DataImportManager
 
         private bool mMgrActive = true;
 
+        /// <summary>
+        /// Debug level
+        /// </summary>
         private int mDebugLevel;
 
         /// <summary>
