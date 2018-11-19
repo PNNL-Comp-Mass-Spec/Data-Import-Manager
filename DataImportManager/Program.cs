@@ -9,7 +9,7 @@ namespace DataImportManager
 {
     internal class Program
     {
-        public const string PROGRAM_DATE = "October 16, 2018";
+        public const string PROGRAM_DATE = "November 19, 2018";
 
         private static bool mMailDisabled;
 
@@ -104,10 +104,7 @@ namespace DataImportManager
                 }
                 catch (Exception ex)
                 {
-                    if (ex.Message.StartsWith(clsMgrSettings.ERROR_INITIALIZING_MANAGER_SETTINGS))
-                        ConsoleMsgUtils.ShowWarning(ex.Message);
-                    else
-                        ShowErrorMessage("Exception thrown by InitMgr: ", ex);
+                    ShowErrorMessage("Exception thrown by InitMgr: ", ex);
 
                     LogTools.FlushPendingMessages();
                     return -1;

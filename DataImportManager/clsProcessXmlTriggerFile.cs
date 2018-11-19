@@ -499,9 +499,9 @@ namespace DataImportManager
         {
             try
             {
-                var timeValFolder = mMgrSettings.GetParam("timevalidationfolder");
+                var timeValFolder = mMgrSettings.GetParam("TimeValidationFolder");
                 string moveLocPath;
-                var failureFolder = mMgrSettings.GetParam("failurefolder");
+                var failureFolder = mMgrSettings.GetParam("FailureFolder");
 
                 var myDataXmlValidation = new clsXMLTimeValidation(mMgrSettings, mInstrumentsToSkip, mDMSInfoCache, ProcSettings)
                 {
