@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using PRISM;
+using PRISM.AppSettings;
 
 namespace DataImportManager
 {
@@ -47,7 +48,7 @@ namespace DataImportManager
 
         private readonly FileTools mFileTools;
 
-        private readonly clsMgrSettings mMgrParams;
+        private readonly MgrSettings mMgrParams;
 
         #endregion
 
@@ -124,7 +125,7 @@ namespace DataImportManager
         /// <param name="udtProcSettings"></param>
         /// <remarks></remarks>
         public clsXMLTimeValidation(
-            clsMgrSettings mgrParams,
+            MgrSettings mgrParams,
             ConcurrentDictionary<string, int> dctInstrumentsToSkip,
             DMSInfoCache dmsCache,
             clsProcessXmlTriggerFile.XmlProcSettingsType udtProcSettings)

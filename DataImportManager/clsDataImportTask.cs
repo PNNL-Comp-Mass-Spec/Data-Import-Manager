@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
+using PRISM.AppSettings;
 
 namespace DataImportManager
 {
@@ -58,7 +59,7 @@ namespace DataImportManager
         /// </summary>
         /// <param name="mgrParams"></param>
         /// <param name="dbConnection"></param>
-        public clsDataImportTask(clsMgrSettings mgrParams, SqlConnection dbConnection) : base(mgrParams, dbConnection)
+        public clsDataImportTask(MgrSettings mgrParams, SqlConnection dbConnection) : base(mgrParams, dbConnection)
         {
         }
 

@@ -1,4 +1,5 @@
 ﻿using System.Data.SqlClient;
+using PRISM.AppSettings;
 
 namespace DataImportManager
 {
@@ -8,7 +9,7 @@ namespace DataImportManager
         /// <summary>
         /// Manager parameters
         /// </summary>
-        protected clsMgrSettings MgrParams { get; }
+        protected MgrSettings MgrParams { get; }
 
         /// <summary>
         /// Database connection object
@@ -25,7 +26,7 @@ namespace DataImportManager
         /// </summary>
         /// <param name="mgrParams">Manager parameters</param>
         /// <param name="dbConnection">Database connection object (connection should already be open)</param>
-        protected clsDBTask(clsMgrSettings mgrParams, SqlConnection dbConnection)
+        protected clsDBTask(MgrSettings mgrParams, SqlConnection dbConnection)
         {
             MgrParams = mgrParams;
             DatabaseConnection = dbConnection;

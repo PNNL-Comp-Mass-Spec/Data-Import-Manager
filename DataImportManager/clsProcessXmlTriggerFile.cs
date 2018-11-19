@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.ServiceProcess;
 using PRISM;
+using PRISM.AppSettings;
 using PRISM.Logging;
 
 namespace DataImportManager
@@ -42,7 +43,7 @@ namespace DataImportManager
 
         #region "Member Variables"
 
-        private readonly clsMgrSettings mMgrSettings;
+        private readonly MgrSettings mMgrSettings;
 
         private readonly ConcurrentDictionary<string, int> mInstrumentsToSkip;
 
@@ -79,7 +80,7 @@ namespace DataImportManager
         /// <param name="udtSettings"></param>
         /// <remarks></remarks>
         public clsProcessXmlTriggerFile(
-            clsMgrSettings mgrSettings,
+            MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
             DMSInfoCache infoCache,
             XmlProcSettingsType udtSettings)

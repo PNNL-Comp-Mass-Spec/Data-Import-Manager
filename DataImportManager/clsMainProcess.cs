@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using PRISM;
+using PRISM.AppSettings;
 using PRISM.Logging;
 using PRISM.FileProcessor;
 
@@ -22,6 +23,8 @@ namespace DataImportManager
 
         private const int MAX_ERROR_COUNT = 4;
 
+        private const string MGR_PARAM_MGR_ACTIVE = "MgrActive";
+
         internal enum CloseOutType
         {
             // ReSharper disable InconsistentNaming
@@ -35,7 +38,7 @@ namespace DataImportManager
 
         #region "Member Variables"
 
-        private clsMgrSettings mMgrSettings;
+        private MgrSettings mMgrSettings;
 
         private bool mConfigChanged;
 
@@ -123,19 +126,41 @@ namespace DataImportManager
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 LogTools.CreateDbLogger(dmsConnectionString, "Analysis Tool Manager: " + clsGlobal.GetHostName(), false);
 
-                mMgrSettings = new clsMgrSettings(TraceMode);
-                if (mMgrSettings.ManagerDeactivated)
+                var localSettings = GetLocalManagerSettings();
+
+                mMgrSettings = new MgrSettings {
+                    TraceMode = TraceMode
+                };
+                RegisterEvents(mMgrSettings);
+                mMgrSettings.CriticalErrorEvent += ErrorEventHandler;
+
+                var success = mMgrSettings.LoadSettings(localSettings, true);
+                if (!success)
                 {
-                    ShowTrace("m_MgrSettings.ManagerDeactivated = True");
+                    if (string.Equals(mMgrSettings.ErrMsg, MgrSettings.DEACTIVATED_LOCALLY))
+                        throw new ApplicationException(MgrSettings.DEACTIVATED_LOCALLY);
+
+                    throw new ApplicationException("Unable to initialize manager settings class: " + mMgrSettings.ErrMsg);
+                }
+
+                var mgrActiveLocal = mMgrSettings.GetParam(MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL, false);
+
+                if (!mgrActiveLocal)
+                {
+                    ShowTrace(MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL + " is false in the .exe.config file");
+                    return false;
+                }
+
+                var mgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
+                if (!mgrActive)
+                {
+                    ShowTrace("Manager parameter " + MGR_PARAM_MGR_ACTIVE + " is false");
                     return false;
                 }
 
             }
             catch (Exception ex)
             {
-                if (ex.Message.StartsWith(clsMgrSettings.ERROR_INITIALIZING_MANAGER_SETTINGS))
-                    throw;
-
                 throw new Exception("InitMgr, " + ex.Message, ex);
             }
 
@@ -145,8 +170,8 @@ namespace DataImportManager
             try
             {
                 // Load initial settings
-                mMgrActive = bool.Parse(mMgrSettings.GetParam("MgrActive"));
-                mDebugLevel = int.Parse(mMgrSettings.GetParam("DebugLevel"));
+                mMgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
+                mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
 
                 // Create the object that will manage the logging
                 var moduleName = mMgrSettings.GetParam("ModuleName", defaultModuleName);
@@ -178,7 +203,7 @@ namespace DataImportManager
             mFileWatcher.Changed += FileWatcher_Changed;
 
             // Get the debug level
-            mDebugLevel = int.Parse(mMgrSettings.GetParam("DebugLevel"));
+            mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
             return true;
         }
 
@@ -225,11 +250,15 @@ namespace DataImportManager
                     ShowTrace("Loading manager settings from the database");
 
                     mConfigChanged = false;
-                    if (!mMgrSettings.LoadSettings())
+
+                    var localSettings = GetLocalManagerSettings();
+
+                    var success = mMgrSettings.LoadSettings(localSettings, true);
+                    if (!success)
                     {
                         if (!string.IsNullOrEmpty(mMgrSettings.ErrMsg))
                         {
-                            // Manager has been deactivated, so report this
+                            // Report the error
                             LogWarning(mMgrSettings.ErrMsg);
                         }
                         else
@@ -248,8 +277,8 @@ namespace DataImportManager
                 if (mFailureCount > MAX_ERROR_COUNT)
                 {
                     // More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
-                    LogError("Excessive task failures, disabling manager");
-                    DisableManagerLocally();
+                    LogError("Excessive task failures, exiting");
+                    return false;
                 }
 
                 // Check to see if the manager is still active
@@ -394,6 +423,21 @@ namespace DataImportManager
                 mFailureCount++;
                 LogError("Exception in clsMainProcess.DoDataImportTask", ex);
             }
+
+        }
+
+        private Dictionary<string, string> GetLocalManagerSettings()
+        {
+
+            var localSettings = new Dictionary<string, string>
+            {
+                {MgrSettings.MGR_PARAM_MGR_CFG_DB_CONN_STRING, Properties.Settings.Default.MgrCnfgDbConnectStr},
+                {MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL, Properties.Settings.Default.MgrActive_Local.ToString()},
+                {MgrSettings.MGR_PARAM_MGR_NAME, Properties.Settings.Default.MgrName},
+                {MgrSettings.MGR_PARAM_USING_DEFAULTS, Properties.Settings.Default.UsingDefaults.ToString()}
+            };
+
+            return localSettings;
 
         }
 
@@ -1022,15 +1066,6 @@ namespace DataImportManager
             LogErrorToDatabase(errMsg);
         }
 
-        private void DisableManagerLocally()
-        {
-            if (!mMgrSettings.WriteConfigSetting("MgrActive_Local", "False"))
-            {
-                LogError("Error while disabling manager: " + mMgrSettings.ErrMsg);
-            }
-
-        }
-
         /// <summary>
         /// Show a message at the console, preceded by a time stamp
         /// </summary>
@@ -1049,7 +1084,54 @@ namespace DataImportManager
         /// <param name="message"></param>
         public static void ShowTraceMessage(string message)
         {
-            ConsoleMsgUtils.ShowDebug(DateTime.Now.ToString("hh:mm:ss.fff tt") + ": " + message);
+            BaseLogger.ShowTraceMessage(message, false);
         }
+
+
+        #region "EventNotifier events"
+
+        private void RegisterEvents(EventNotifier sourceClass, bool writeDebugEventsToLog = true)
+        {
+            if (writeDebugEventsToLog)
+            {
+                sourceClass.DebugEvent += DebugEventHandler;
+            }
+            else
+            {
+                sourceClass.DebugEvent += DebugEventHandlerConsoleOnly;
+            }
+
+            sourceClass.StatusEvent += StatusEventHandler;
+            sourceClass.ErrorEvent += ErrorEventHandler;
+            sourceClass.WarningEvent += WarningEventHandler;
+            // sourceClass.ProgressUpdate += ProgressUpdateHandler;
+        }
+
+        private void DebugEventHandlerConsoleOnly(string statusMessage)
+        {
+            LogDebug(statusMessage, writeToLog: false);
+        }
+
+        private void DebugEventHandler(string statusMessage)
+        {
+            LogDebug(statusMessage);
+        }
+
+        private void StatusEventHandler(string statusMessage)
+        {
+            LogMessage(statusMessage);
+        }
+
+        private void ErrorEventHandler(string errorMessage, Exception ex)
+        {
+            LogError(errorMessage, ex);
+        }
+
+        private void WarningEventHandler(string warningMessage)
+        {
+            LogWarning(warningMessage);
+        }
+
+        #endregion
     }
 }
