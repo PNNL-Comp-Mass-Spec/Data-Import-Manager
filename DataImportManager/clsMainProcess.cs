@@ -46,6 +46,7 @@ namespace DataImportManager
         /// <summary>
         /// Debug level
         /// </summary>
+        /// <remarks>Higher values lead to more log messages</remarks>
         private int mDebugLevel;
 
         /// <summary>
@@ -318,8 +319,8 @@ namespace DataImportManager
 
         private void DoDataImportTask(DMSInfoCache infoCache)
         {
-            var delBadXmlFilesDays = int.Parse(mMgrSettings.GetParam("DeleteBadXmlFiles"));
-            var delGoodXmlFilesDays = int.Parse(mMgrSettings.GetParam("DeleteGoodXmlFiles"));
+            var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
+            var delGoodXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteGoodXmlFiles", 30));
             var successFolder = mMgrSettings.GetParam("SuccessFolder");
             var failureFolder = mMgrSettings.GetParam("FailureFolder");
 
