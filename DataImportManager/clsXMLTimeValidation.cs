@@ -137,6 +137,71 @@ namespace DataImportManager
             mProcSettings = udtProcSettings;
         }
 
+        private bool ContainsIgnoreCase(string textToSearch, string textToFind)
+        {
+            if (textToSearch.ToLower().Contains(textToFind.ToLower()))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Check for zero byte files in the given directory, optionally filtering by file extension
+        /// </summary>
+        /// <param name="directoryPath">Directory to check</param>
+        /// <param name="extensionsToCheck">List of extensions to check; empty list means check all files</param>
+        /// <param name="recentTimeMinutes">Time, in minutes, that is considered "recent" for a zero-byte file</param>
+        /// <returns>True if a recent, zero-byte file is found</returns>
+        private bool DirectoryHasRecentZeroByteFiles(string directoryPath, IReadOnlyCollection<string> extensionsToCheck, int recentTimeMinutes)
+        {
+            var dataFolder = new DirectoryInfo(directoryPath);
+            if (!dataFolder.Exists)
+            {
+                return false;
+            }
+
+            foreach (var dataFile in dataFolder.GetFiles("*", SearchOption.TopDirectoryOnly))
+            {
+                // If extensionsToCheck is empty; check all files
+                // Otherwise, only check the file if the file extension is in extensionsToCheck
+
+                var checkFile = extensionsToCheck.Any(item => string.Equals(item, dataFile.Extension, StringComparison.OrdinalIgnoreCase));
+
+                if (extensionsToCheck.Count > 0 && !checkFile)
+                {
+                    continue;
+                }
+
+                if (dataFile.Length > 0)
+                {
+                    continue;
+                }
+
+                if (DateTime.UtcNow.Subtract(dataFile.LastWriteTimeUtc).TotalMinutes > recentTimeMinutes)
+                {
+                    continue;
+                }
+
+                LogDebug("Found a recent, zero-byte file: " + dataFile.FullName);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void DisconnectShare(ShareConnector connector)
+        {
+            if (TraceMode)
+            {
+                ShowTraceMessage("Disconnecting from Bionet share");
+            }
+
+            // Disconnects a shared drive
+            connector.Disconnect();
+        }
+
         private string FixNull(string strText)
         {
             if (string.IsNullOrEmpty(strText))
@@ -147,59 +212,108 @@ namespace DataImportManager
             return strText;
         }
 
-        public XmlValidateStatus ValidateXmlFile(FileInfo triggerFile)
+        /// <summary>
+        /// Determines if raw dataset exists as a single file, folder with same name as dataset, or folder with dataset name + extension
+        /// </summary>
+        /// <param name="instrumentSourcePath"></param>
+        /// <param name="captureSubFolderName"></param>
+        /// <param name="currentDataset"></param>
+        /// <param name="ignoreInstrumentSourceErrors"></param>
+        /// <param name="instrumentFileOrFolderName">Output: full name of the dataset file or dataset folder</param>
+        /// <returns>Enum specifying what was found</returns>
+        private RawDsTypes GetRawDsType(
+            string instrumentSourcePath,
+            string captureSubFolderName,
+            string currentDataset,
+            bool ignoreInstrumentSourceErrors,
+            out string instrumentFileOrFolderName)
         {
-            XmlValidateStatus rslt;
-            ErrorMessage = string.Empty;
-            try
+            // Verify instrument source folder exists
+            var diSourceFolder = new DirectoryInfo(instrumentSourcePath);
+            if (TraceMode)
             {
+                ShowTraceMessage("Instantiated diSourceFolder with " + instrumentSourcePath);
+            }
+
+            if (!diSourceFolder.Exists)
+            {
+                var msg = "Source folder not found for dataset " + currentDataset + ": " + diSourceFolder.FullName;
                 if (TraceMode)
                 {
-                    ShowTraceMessage("Reading " + triggerFile.FullName);
+                    ShowTraceMessage(msg);
                 }
 
-                rslt = GetXmlParameters(triggerFile);
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage = "Error reading the XML file " + triggerFile.Name;
-                var errMsg = "clsXMLTimeValidation.ValidateXMLFile(), " + ErrorMessage + ": " + ex.Message;
-                LogError(errMsg);
-                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-            }
-
-            if (rslt != XmlValidateStatus.XML_VALIDATE_CONTINUE)
-            {
-                return rslt;
-            }
-
-            if (mInstrumentsToSkip.ContainsKey(InstrumentName))
-            {
-                return XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT;
-            }
-
-            try
-            {
-                rslt = SetDbInstrumentParameters(InstrumentName);
-                if (rslt == XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                if (ignoreInstrumentSourceErrors)
                 {
-                    rslt = PerformValidation();
-                }
-                else
-                {
-                    return rslt;
+                    // Simply assume it's a Thermo .raw file
+                    instrumentFileOrFolderName = currentDataset + ".raw";
+                    return RawDsTypes.File;
                 }
 
+                ErrorMessage = msg;
+                LogError(ErrorMessage);
+                instrumentFileOrFolderName = string.Empty;
+                return RawDsTypes.None;
             }
-            catch (Exception ex)
+
+            if (!string.IsNullOrWhiteSpace(captureSubFolderName))
             {
-                ErrorMessage = "Exception calling PerformValidation";
-                LogError("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation", ex);
-                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+                if (captureSubFolderName.Length > 255)
+                {
+                    ErrorMessage = "Subdirectory path for dataset " + currentDataset + " is too long (over 255 characters): " + "[" + captureSubFolderName + "]";
+
+                    LogError(ErrorMessage);
+                    instrumentFileOrFolderName = string.Empty;
+                    return RawDsTypes.None;
+                }
+
+                var diSubfolder = new DirectoryInfo(Path.Combine(diSourceFolder.FullName, captureSubFolderName));
+                if (!diSubfolder.Exists)
+                {
+                    ErrorMessage = "Source directory not found for dataset " + currentDataset + " in the given subdirectory: " + "[" + diSubfolder.FullName + "]";
+
+                    LogError(ErrorMessage);
+                    instrumentFileOrFolderName = string.Empty;
+                    return RawDsTypes.None;
+                }
+
+                diSourceFolder = diSubfolder;
             }
 
-            return rslt;
+            // Check for a file with specified name
+            foreach (var fiFile in diSourceFolder.GetFiles())
+            {
+                if (string.Equals(Path.GetFileNameWithoutExtension(fiFile.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
+                {
+                    instrumentFileOrFolderName = fiFile.Name;
+                    return RawDsTypes.File;
+                }
+            }
+
+            // Check for a folder with specified name
+            foreach (var diFolder in diSourceFolder.GetDirectories())
+            {
+                if (!string.Equals(Path.GetFileNameWithoutExtension(diFolder.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (diFolder.Extension.Length == 0)
+                {
+                    // Found a directory that has no extension
+                    instrumentFileOrFolderName = diFolder.Name;
+                    return RawDsTypes.FolderNoExt;
+                }
+
+                // Directory name has an extension
+                instrumentFileOrFolderName = diFolder.Name;
+                return RawDsTypes.FolderExt;
+
+            }
+
+            // If we got to here, the raw dataset wasn't found, so there was a problem
+            instrumentFileOrFolderName = string.Empty;
+            return RawDsTypes.None;
         }
+
 
         // Take the xml file and load into a dataset
         // iterate through the dataset to retrieve the instrument name
@@ -316,56 +430,6 @@ namespace DataImportManager
 
         }
 
-        /// <summary>
-        /// Query to get the instrument data from the database and then iterate through the dataset to retrieve the capture type and source path
-        /// </summary>
-        /// <param name="insName"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
-        private XmlValidateStatus SetDbInstrumentParameters(string insName)
-        {
-            try
-            {
-                // Requests additional task parameters from database and adds them to the m_taskParams string dictionary
-                if (!mDMSInfoCache.GetInstrumentInfo(insName, out var udtInstrumentInfo))
-                {
-                    LogError(
-                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
-                        insName + " not found in data from V_Instrument_List_Export");
-                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-                }
-
-                mCaptureType = udtInstrumentInfo.CaptureType;
-                mSourcePath = udtInstrumentInfo.SourcePath;
-
-                if (string.IsNullOrWhiteSpace(mCaptureType))
-                {
-                    clsMainProcess.LogErrorToDatabase(
-                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
-                        insName + " has an empty value for Capture in V_Instrument_List_Export");
-
-                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-                }
-
-                if (!string.IsNullOrWhiteSpace(mSourcePath))
-                    return XmlValidateStatus.XML_VALIDATE_CONTINUE;
-
-                clsMainProcess.LogErrorToDatabase(
-                    "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " + insName +
-                    " has an empty value for SourcePath in V_Instrument_List_Export");
-
-                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-
-            }
-            catch (Exception ex)
-            {
-                LogError(
-                    "clsXMLTimeValidation.SetDbInstrumentParameters(), " +
-                    "Error retrieving source path and capture type for instrument: " + insName, ex);
-                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-            }
-
-        }
 
         private XmlValidateStatus PerformValidation()
         {
@@ -788,165 +852,179 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Check for zero byte files in the given directory, optionally filtering by file extension
+        /// Query to get the instrument data from the database and then iterate through the dataset to retrieve the capture type and source path
         /// </summary>
-        /// <param name="directoryPath">Directory to check</param>
-        /// <param name="extensionsToCheck">List of extensions to check; empty list means check all files</param>
-        /// <param name="recentTimeMinutes">Time, in minutes, that is considered "recent" for a zero-byte file</param>
-        /// <returns>True if a recent, zero-byte file is found</returns>
-        private bool DirectoryHasRecentZeroByteFiles(string directoryPath, IReadOnlyCollection<string> extensionsToCheck, int recentTimeMinutes)
+        /// <param name="insName"></param>
+        /// <returns></returns>
+        /// <remarks></remarks>
+        private XmlValidateStatus SetDbInstrumentParameters(string insName)
         {
-            var dataFolder = new DirectoryInfo(directoryPath);
-            if (!dataFolder.Exists)
+            try
             {
+                // Requests additional task parameters from database and adds them to the m_taskParams string dictionary
+                if (!mDMSInfoCache.GetInstrumentInfo(insName, out var udtInstrumentInfo))
+                {
+                    LogError(
+                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
+                        insName + " not found in data from V_Instrument_List_Export");
+                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+                }
+
+                mCaptureType = udtInstrumentInfo.CaptureType;
+                mSourcePath = udtInstrumentInfo.SourcePath;
+
+                if (string.IsNullOrWhiteSpace(mCaptureType))
+                {
+                    clsMainProcess.LogErrorToDatabase(
+                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
+                        insName + " has an empty value for Capture in V_Instrument_List_Export");
+
+                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+                }
+
+                if (!string.IsNullOrWhiteSpace(mSourcePath))
+                    return XmlValidateStatus.XML_VALIDATE_CONTINUE;
+
+                clsMainProcess.LogErrorToDatabase(
+                    "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " + insName +
+                    " has an empty value for SourcePath in V_Instrument_List_Export");
+
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+
+            }
+            catch (Exception ex)
+            {
+                LogError(
+                    "clsXMLTimeValidation.SetDbInstrumentParameters(), " +
+                    "Error retrieving source path and capture type for instrument: " + insName, ex);
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+            }
+
+        }
+
+        private bool SetOperatorName()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(mOperatorUsername))
+                {
+                    var logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
+                    LogWarning(logMsg);
+                    mOperatorName = logMsg;
+                    return false;
+                }
+
+                var operatorInfo = mDMSInfoCache.GetOperatorName(mOperatorUsername, out var userCountMatched);
+
+                // Update the operator name, e-mail, and PRN
+                mOperatorName = operatorInfo.Name;
+                mOperatorEmail = operatorInfo.Email;
+                mOperatorUsername = operatorInfo.Username;
+
+                if (userCountMatched == 1)
+                {
+                    // We matched a single user using strQueryName
+                    return true;
+                }
+
+                // We matched 0 users, or more than one user
+                // An error should have already been logged by mDMSInfoCache
+                return false;
+
+            }
+            catch (Exception ex)
+            {
+                LogError("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name", ex);
                 return false;
             }
 
-            foreach (var dataFile in dataFolder.GetFiles("*", SearchOption.TopDirectoryOnly))
-            {
-                // If extensionsToCheck is empty; check all files
-                // Otherwise, only check the file if the file extension is in extensionsToCheck
-
-                var checkFile = extensionsToCheck.Any(item => string.Equals(item, dataFile.Extension, StringComparison.OrdinalIgnoreCase));
-
-                if (extensionsToCheck.Count > 0 && !checkFile)
-                {
-                    continue;
-                }
-
-                if (dataFile.Length > 0)
-                {
-                    continue;
-                }
-
-                if (DateTime.UtcNow.Subtract(dataFile.LastWriteTimeUtc).TotalMinutes > recentTimeMinutes)
-                {
-                    continue;
-                }
-
-                LogDebug("Found a recent, zero-byte file: " + dataFile.FullName);
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Determines if raw dataset exists as a single file, folder with same name as dataset, or folder with dataset name + extension
-        /// </summary>
-        /// <param name="instrumentSourcePath"></param>
-        /// <param name="captureSubFolderName"></param>
-        /// <param name="currentDataset"></param>
-        /// <param name="ignoreInstrumentSourceErrors"></param>
-        /// <param name="instrumentFileOrFolderName">Output: full name of the dataset file or dataset folder</param>
-        /// <returns>Enum specifying what was found</returns>
-        private RawDsTypes GetRawDsType(
-            string instrumentSourcePath,
-            string captureSubFolderName,
-            string currentDataset,
-            bool ignoreInstrumentSourceErrors,
-            out string instrumentFileOrFolderName)
-        {
-            // Verify instrument source folder exists
-            var diSourceFolder = new DirectoryInfo(instrumentSourcePath);
-            if (TraceMode)
-            {
-                ShowTraceMessage("Instantiated diSourceFolder with " + instrumentSourcePath);
-            }
-
-            if (!diSourceFolder.Exists)
-            {
-                var msg = "Source folder not found for dataset " + currentDataset + ": " + diSourceFolder.FullName;
-                if (TraceMode)
-                {
-                    ShowTraceMessage(msg);
-                }
-
-                if (ignoreInstrumentSourceErrors)
-                {
-                    // Simply assume it's a Thermo .raw file
-                    instrumentFileOrFolderName = currentDataset + ".raw";
-                    return RawDsTypes.File;
-                }
-
-                ErrorMessage = msg;
-                LogError(ErrorMessage);
-                instrumentFileOrFolderName = string.Empty;
-                return RawDsTypes.None;
-            }
-
-            if (!string.IsNullOrWhiteSpace(captureSubFolderName))
-            {
-                if (captureSubFolderName.Length > 255)
-                {
-                    ErrorMessage = "Subdirectory path for dataset " + currentDataset + " is too long (over 255 characters): " + "[" + captureSubFolderName + "]";
-
-                    LogError(ErrorMessage);
-                    instrumentFileOrFolderName = string.Empty;
-                    return RawDsTypes.None;
-                }
-
-                var diSubfolder = new DirectoryInfo(Path.Combine(diSourceFolder.FullName, captureSubFolderName));
-                if (!diSubfolder.Exists)
-                {
-                    ErrorMessage = "Source directory not found for dataset " + currentDataset + " in the given subdirectory: " + "[" + diSubfolder.FullName + "]";
-
-                    LogError(ErrorMessage);
-                    instrumentFileOrFolderName = string.Empty;
-                    return RawDsTypes.None;
-                }
-
-                diSourceFolder = diSubfolder;
-            }
-
-            // Check for a file with specified name
-            foreach (var fiFile in diSourceFolder.GetFiles())
-            {
-                if (string.Equals(Path.GetFileNameWithoutExtension(fiFile.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
-                {
-                    instrumentFileOrFolderName = fiFile.Name;
-                    return RawDsTypes.File;
-                }
-            }
-
-            // Check for a folder with specified name
-            foreach (var diFolder in diSourceFolder.GetDirectories())
-            {
-                if (!string.Equals(Path.GetFileNameWithoutExtension(diFolder.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                if (diFolder.Extension.Length == 0)
-                {
-                    // Found a directory that has no extension
-                    instrumentFileOrFolderName = diFolder.Name;
-                    return RawDsTypes.FolderNoExt;
-                }
-
-                // Directory name has an extension
-                instrumentFileOrFolderName = diFolder.Name;
-                return RawDsTypes.FolderExt;
-
-            }
-
-            // If we got to here, the raw dataset wasn't found, so there was a problem
-            instrumentFileOrFolderName = string.Empty;
-            return RawDsTypes.None;
-        }
-
-        private void DisconnectShare(ShareConnector connector)
-        {
-            if (TraceMode)
-            {
-                ShowTraceMessage("Disconnecting from Bionet share");
-            }
-
-            // Disconnects a shared drive
-            connector.Disconnect();
         }
 
         private void ShowTraceMessage(string message)
         {
             clsMainProcess.ShowTraceMessage(message);
+        }
+
+        private void SleepWhileVerifyingConstantSize(int sleepIntervalSeconds, string datasetType)
+        {
+            int actualSecondsToSleep;
+
+            if (TraceMode)
+            {
+                if (sleepIntervalSeconds > 3)
+                {
+                    actualSecondsToSleep = 3;
+                    ShowTraceMessage("Monitoring dataset " + datasetType + " for 3 seconds to see if its size changes " +
+                        "(would wait " + sleepIntervalSeconds + " seconds if PreviewMode was not enabled)");
+                }
+                else
+                {
+                    actualSecondsToSleep = sleepIntervalSeconds;
+                    ShowTraceMessage("Monitoring dataset " + datasetType + " for " + sleepIntervalSeconds + " seconds to see if its size changes");
+                }
+
+            }
+            else
+            {
+                actualSecondsToSleep = sleepIntervalSeconds;
+            }
+
+            // Wait for specified sleep interval
+            ConsoleMsgUtils.SleepSeconds(actualSecondsToSleep);
+        }
+
+        public XmlValidateStatus ValidateXmlFile(FileInfo triggerFile)
+        {
+            XmlValidateStatus rslt;
+            ErrorMessage = string.Empty;
+            try
+            {
+                if (TraceMode)
+                {
+                    ShowTraceMessage("Reading " + triggerFile.FullName);
+                }
+
+                rslt = GetXmlParameters(triggerFile);
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = "Error reading the XML file " + triggerFile.Name;
+                var errMsg = "clsXMLTimeValidation.ValidateXMLFile(), " + ErrorMessage + ": " + ex.Message;
+                LogError(errMsg);
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+            }
+
+            if (rslt != XmlValidateStatus.XML_VALIDATE_CONTINUE)
+            {
+                return rslt;
+            }
+
+            if (mInstrumentsToSkip.ContainsKey(InstrumentName))
+            {
+                return XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT;
+            }
+
+            try
+            {
+                rslt = SetDbInstrumentParameters(InstrumentName);
+                if (rslt == XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                {
+                    rslt = PerformValidation();
+                }
+                else
+                {
+                    return rslt;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = "Exception calling PerformValidation";
+                LogError("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation", ex);
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+            }
+
+            return rslt;
         }
 
         /// <summary>
@@ -1056,80 +1134,5 @@ namespace DataImportManager
             return false;
         }
 
-        private bool ContainsIgnoreCase(string textToSearch, string textToFind)
-        {
-            if (textToSearch.ToLower().Contains(textToFind.ToLower()))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private bool SetOperatorName()
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(mOperatorUsername))
-                {
-                    var logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
-                    LogWarning(logMsg);
-                    mOperatorName = logMsg;
-                    return false;
-                }
-
-                var operatorInfo = mDMSInfoCache.GetOperatorName(mOperatorUsername, out var userCountMatched);
-
-                // Update the operator name, e-mail, and PRN
-                mOperatorName = operatorInfo.Name;
-                mOperatorEmail = operatorInfo.Email;
-                mOperatorUsername = operatorInfo.Username;
-
-                if (userCountMatched == 1)
-                {
-                    // We matched a single user using strQueryName
-                    return true;
-                }
-
-                // We matched 0 users, or more than one user
-                // An error should have already been logged by mDMSInfoCache
-                return false;
-
-            }
-            catch (Exception ex)
-            {
-                LogError("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name", ex);
-                return false;
-            }
-
-        }
-
-        private void SleepWhileVerifyingConstantSize(int sleepIntervalSeconds, string datasetType)
-        {
-            int actualSecondsToSleep;
-
-            if (TraceMode)
-            {
-                if (sleepIntervalSeconds > 3)
-                {
-                    actualSecondsToSleep = 3;
-                    ShowTraceMessage("Monitoring dataset " + datasetType + " for 3 seconds to see if its size changes " +
-                        "(would wait " + sleepIntervalSeconds + " seconds if PreviewMode was not enabled)");
-                }
-                else
-                {
-                    actualSecondsToSleep = sleepIntervalSeconds;
-                    ShowTraceMessage("Monitoring dataset " + datasetType + " for " + sleepIntervalSeconds + " seconds to see if its size changes");
-                }
-
-            }
-            else
-            {
-                actualSecondsToSleep = sleepIntervalSeconds;
-            }
-
-            // Wait for specified sleep interval
-            ConsoleMsgUtils.SleepSeconds(actualSecondsToSleep);
-        }
     }
 }
