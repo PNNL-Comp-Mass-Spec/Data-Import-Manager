@@ -231,6 +231,8 @@ namespace DataImportManager
                 mSecondaryLogonServiceChecked = true;
 
                 // Check the status of the Secondary Logon service
+
+                // ReSharper disable once StringLiteralTypo
                 var sc = new ServiceController("seclogon");
                 if (sc.Status == ServiceControllerStatus.Running)
                 {

@@ -317,6 +317,18 @@ namespace DataImportManager
 
         }
 
+        /// <summary>
+        /// Return an empty string if value is 1; otherwise return "s"
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private string CheckPlural(int value)
+        {
+            if (value == 1) return string.Empty;
+
+            return "s";
+        }
+
         private void DoDataImportTask(DMSInfoCache infoCache)
         {
             var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
@@ -354,7 +366,7 @@ namespace DataImportManager
                         importDelay = 1;
                     }
 
-                    ShowTrace("ImportDelay, sleep for " + importDelay + " seconds");
+                    ShowTrace(string.Format("ImportDelay, sleep for {0} second{1}", importDelay, CheckPlural(importDelay)));
                     ConsoleMsgUtils.SleepSeconds(importDelay);
 
                     // Load information from DMS
@@ -362,10 +374,9 @@ namespace DataImportManager
 
                     // Randomize order of files in m_XmlFilesToLoad
                     xmlFilesToImport.Shuffle();
-                    ShowTrace("Processing " + xmlFilesToImport.Count + " XML files");
+                    ShowTrace(string.Format("Processing {0} XML file{1}", xmlFilesToImport.Count, CheckPlural(xmlFilesToImport.Count)));
 
                     // Process the files in parallel, in groups of 50 at a time
-                    //
                     while (xmlFilesToImport.Count > 0)
                     {
                         var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
