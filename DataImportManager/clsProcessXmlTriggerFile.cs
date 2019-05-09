@@ -24,8 +24,8 @@ namespace DataImportManager
             public bool IgnoreInstrumentSourceErrors;
             public bool PreviewMode;
             public bool TraceMode;
-            public string FailureFolder;
-            public string SuccessFolder;
+            public string FailureDirectory;
+            public string SuccessDirectory;
         }
 
         #endregion
@@ -96,7 +96,7 @@ namespace DataImportManager
 
         private void CacheMail(List<clsValidationError> validationErrors, string addnlRecipient, string subjectAppend)
         {
-            var enableEmail = mMgrSettings.GetParam("enableemail", false);
+            var enableEmail = mMgrSettings.GetParam("EnableEmail", false);
             if (!enableEmail)
             {
                 return;
@@ -166,18 +166,18 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
+        /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\Manager\Logs\LogFileName.txt
         /// </summary>
         /// <returns></returns>
         /// <remarks></remarks>
         private string GetLogFileSharePath()
         {
-            var logFileName = mMgrSettings.GetParam("logfilename");
+            var logFileName = mMgrSettings.GetParam("LogFileName");
             return GetLogFileSharePath(logFileName);
         }
 
         /// <summary>
-        /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\ProgramFolder\Logs\LogFileName.txt
+        /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\Manager\Logs\LogFileName.txt
         /// </summary>
         /// <param name="baseLogFileName">Base name of the current log file, e.g. Logs\DataImportManager</param>
         /// <returns></returns>
@@ -302,7 +302,7 @@ namespace DataImportManager
 
             if (success)
             {
-                MoveXmlFile(triggerFile, ProcSettings.SuccessFolder);
+                MoveXmlFile(triggerFile, ProcSettings.SuccessDirectory);
                 LogMessage("Completed Data import task for dataset: " + triggerFile.FullName);
                 return true;
             }
@@ -329,7 +329,7 @@ namespace DataImportManager
 
             BaseLogger.LogLevels messageType;
 
-            var moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureFolder);
+            var moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureDirectory);
             statusMsg = "Error posting xml file to database: " + mDataImportTask.PostTaskErrorMessage;
 
             if (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("since already in database"))
@@ -381,13 +381,13 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Move a trigger file to the target folder
+        /// Move a trigger file to the target directory
         /// </summary>
         /// <param name="triggerFile"></param>
-        /// <param name="moveFolder"></param>
+        /// <param name="targetDirectory"></param>
         /// <returns>New path of the trigger file</returns>
         /// <remarks></remarks>
-        private string MoveXmlFile(FileInfo triggerFile, string moveFolder)
+        private string MoveXmlFile(FileInfo triggerFile, string targetDirectory)
         {
             try
             {
@@ -396,17 +396,17 @@ namespace DataImportManager
                     return string.Empty;
                 }
 
-                if (!Directory.Exists(moveFolder))
+                if (!Directory.Exists(targetDirectory))
                 {
                     if (ProcSettings.TraceMode)
                     {
-                        ShowTraceMessage("Creating target folder: " + moveFolder);
+                        ShowTraceMessage("Creating target directory: " + targetDirectory);
                     }
 
-                    Directory.CreateDirectory(moveFolder);
+                    Directory.CreateDirectory(targetDirectory);
                 }
 
-                var targetFilePath = Path.Combine(moveFolder, triggerFile.Name);
+                var targetFilePath = Path.Combine(targetDirectory, triggerFile.Name);
                 if (ProcSettings.TraceMode)
                 {
                     ShowTraceMessage("Instantiating file info var for " + targetFilePath);
@@ -492,32 +492,32 @@ namespace DataImportManager
         /// <param name="triggerFile">XML file to process</param>
         /// <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
         /// <remarks>
-        /// PerformValidation in clsXMLTimeValidation will monitor the dataset file (or dataset folder)
-        /// to make sure the file size (folder size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantFolderSize)
+        /// PerformValidation in clsXMLTimeValidation will monitor the dataset file (or dataset directory)
+        /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
         private bool ValidateXmlFileMain(FileInfo triggerFile)
         {
             try
             {
-                var timeValFolder = mMgrSettings.GetParam("TimeValidationFolder");
+                var timeValidationDirectory = mMgrSettings.GetParam("TimeValidationFolder");
                 string moveLocPath;
-                var failureFolder = mMgrSettings.GetParam("FailureFolder");
+                var failureDirectory = mMgrSettings.GetParam("FailureFolder");
 
                 var myDataXmlValidation = new clsXMLTimeValidation(mMgrSettings, mInstrumentsToSkip, mDMSInfoCache, ProcSettings)
                 {
                     TraceMode = ProcSettings.TraceMode
                 };
 
-                var xmlRslt = myDataXmlValidation.ValidateXmlFile(triggerFile);
+                var xmlResult = myDataXmlValidation.ValidateXmlFile(triggerFile);
 
                 mXmlOperatorName = myDataXmlValidation.OperatorName;
                 mXmlOperatorEmail = myDataXmlValidation.OperatorEMail;
                 mXmlDatasetPath = myDataXmlValidation.DatasetPath;
                 mXmlInstrumentName = myDataXmlValidation.InstrumentName;
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, failureFolder);
+                    moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
                     LogWarning("Undefined Operator in " + moveLocPath, true);
 
@@ -549,9 +549,9 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, timeValFolder);
+                    moveLocPath = MoveXmlFile(triggerFile, timeValidationDirectory);
 
                     LogWarning("XML Time validation error, file " + moveLocPath);
                     clsMainProcess.LogErrorToDatabase("Time validation error. View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
@@ -564,9 +564,9 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, failureFolder);
+                    moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
                     LogWarning("An error was encountered during the validation process, file " + moveLocPath, true);
 
@@ -578,13 +578,13 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
                 {
                     // Logon failure; Do not move the XML file
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
                 {
                     // Network error; Do not move the XML file
                     // Furthermore, do not process any more .XML files for this instrument
@@ -592,27 +592,27 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT)
                 {
                     LogMessage(" ... skipped since m_InstrumentsToSkip contains " + mXmlInstrumentName);
                     UpdateInstrumentsToSkip(mXmlInstrumentName);
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_WAIT_FOR_FILES)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_WAIT_FOR_FILES)
                 {
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
                 {
                     // Size changed; Do not move the XML file
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, failureFolder);
+                    moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
                     LogWarning("Dataset " + myDataXmlValidation.DatasetName + " not found at " + myDataXmlValidation.SourcePath, true);
 
@@ -646,15 +646,14 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlRslt == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING)
+                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING)
                 {
                     // The file is now missing; silently move on
                     return false;
                 }
 
-                // xmlRslt is one of the following:
+                // xmlResult is one of the following:
                 // XML_VALIDATE_SUCCESS
-                // XML_VALIDATE_NO_CHECK
                 // XML_VALIDATE_CONTINUE
                 // XML_VALIDATE_SKIP_INSTRUMENT
 

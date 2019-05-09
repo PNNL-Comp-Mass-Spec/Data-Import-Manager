@@ -321,8 +321,8 @@ namespace DataImportManager
         {
             var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
             var delGoodXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteGoodXmlFiles", 30));
-            var successFolder = mMgrSettings.GetParam("SuccessFolder");
-            var failureFolder = mMgrSettings.GetParam("FailureFolder");
+            var successDirectory = mMgrSettings.GetParam("SuccessFolder");
+            var failureDirectory = mMgrSettings.GetParam("FailureFolder");
 
             try
             {
@@ -376,7 +376,7 @@ namespace DataImportManager
                             LogMessage("Processing " + itemCount + " XML files in parallel");
                         }
 
-                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successFolder, failureFolder, infoCache));
+                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
                     }
 
                 }
@@ -408,10 +408,10 @@ namespace DataImportManager
                 }
 
                 // Remove successful XML files older than x days
-                DeleteXmlFiles(successFolder, delGoodXmlFilesDays);
+                DeleteXmlFiles(successDirectory, delGoodXmlFilesDays);
 
                 // Remove failed XML files older than x days
-                DeleteXmlFiles(failureFolder, delBadXmlFilesDays);
+                DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
 
                 // If we got to here, closeout the task as a success
                 clsGlobal.DeleteStatusFlagFile();
@@ -557,7 +557,7 @@ namespace DataImportManager
             LogError(message, ex, true);
         }
 
-        private void ProcessOneFile(FileInfo currentFile, string successFolder, string failureFolder, DMSInfoCache infoCache)
+        private void ProcessOneFile(FileInfo currentFile, string successDirectory, string failureDirectory, DMSInfoCache infoCache)
         {
             var objRand = new Random();
 
@@ -572,8 +572,8 @@ namespace DataImportManager
                 IgnoreInstrumentSourceErrors = IgnoreInstrumentSourceErrors,
                 PreviewMode = PreviewMode,
                 TraceMode = TraceMode,
-                FailureFolder = failureFolder,
-                SuccessFolder = successFolder
+                FailureDirectory = failureDirectory,
+                SuccessDirectory = successDirectory
             };
 
             var triggerProcessor = new clsProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
@@ -636,7 +636,7 @@ namespace DataImportManager
             if (!diXferDirectory.Exists)
             {
                 // There's a serious problem if the xfer directory can't be found!!!
-                LogErrorToDatabase("Xml transfer folder not found: " + serverXferDir);
+                LogErrorToDatabase("Xml transfer directory not found: " + serverXferDir);
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
             }
@@ -1012,15 +1012,15 @@ namespace DataImportManager
             LogError(message);
         }
 
-        private void DeleteXmlFiles(string folderPath, int fileAgeDays)
+        private void DeleteXmlFiles(string directoryPath, int fileAgeDays)
         {
-            var workingDirectory = new DirectoryInfo(folderPath);
+            var workingDirectory = new DirectoryInfo(directoryPath);
 
             // Verify directory exists
             if (!workingDirectory.Exists)
             {
                 // There's a serious problem if the success/failure directory can't be found!!!
-                LogErrorToDatabase("Xml success/failure folder not found: " + folderPath);
+                LogErrorToDatabase("Xml success/failure directory not found: " + directoryPath);
                 return;
             }
 
@@ -1055,13 +1055,13 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogErrorToDatabase("Error deleting old Xml Data files at " + folderPath, ex);
+                LogErrorToDatabase("Error deleting old Xml Data files at " + directoryPath, ex);
                 return;
             }
 
             if (deleteFailureCount <= 0) return;
 
-            var errMsg = "Error deleting " + deleteFailureCount + " XML files at " + folderPath +
+            var errMsg = "Error deleting " + deleteFailureCount + " XML files at " + directoryPath +
                          " -- for a detailed list, see log file " + GetLogFileSharePath();
 
             LogErrorToDatabase(errMsg);

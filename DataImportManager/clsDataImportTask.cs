@@ -108,7 +108,7 @@ namespace DataImportManager
                 mDatabaseErrorMessage = string.Empty;
 
                 // Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
-                mStoredProc = MgrParams.GetParam("storedprocedure");
+                mStoredProc = MgrParams.GetParam("StoredProcedure");
 
                 var spCmd = new SqlCommand(mStoredProc, DatabaseConnection)
                 {

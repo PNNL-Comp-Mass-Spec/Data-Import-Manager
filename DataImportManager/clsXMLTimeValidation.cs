@@ -71,9 +71,6 @@ namespace DataImportManager
 
         public string OperatorName => FixNull(mOperatorName);
 
-        // ReSharper disable once InconsistentNaming
-        public string OperatorPRN => FixNull(mOperatorUsername);
-
         /// <summary>
         /// Source path on the instrument, e.g. \\TSQ_1\ProteomicsData
         /// </summary>
@@ -85,21 +82,26 @@ namespace DataImportManager
 
         #region "Enums"
 
+        /// <summary>
+        /// Dataset types
+        /// </summary>
         private enum RawDsTypes
         {
             None = 0,
             File = 1,
-            FolderNoExt = 2,
-            FolderExt = 3
+            DirectoryNoExtension = 2,
+            DirectoryWithExtension = 3
         }
 
+        /// <summary>
+        /// Validation status
+        /// </summary>
         public enum XmlValidateStatus
         {
             // ReSharper disable InconsistentNaming
             XML_VALIDATE_SUCCESS = 0,
             XML_VALIDATE_FAILED = 1,
-            [Obsolete("Old enum")]
-            XML_VALIDATE_NO_CHECK = 2,
+            // XML_VALIDATE_NO_CHECK = 2,
             XML_VALIDATE_ENCOUNTERED_ERROR = 3,
             XML_VALIDATE_BAD_XML = 4,
             XML_VALIDATE_CONTINUE = 5,
@@ -137,9 +139,15 @@ namespace DataImportManager
             mProcSettings = udtProcSettings;
         }
 
+        /// <summary>
+        /// Look for textToFind in textToSearch, ignoring case
+        /// </summary>
+        /// <param name="textToSearch"></param>
+        /// <param name="textToFind"></param>
+        /// <returns></returns>
         private bool ContainsIgnoreCase(string textToSearch, string textToFind)
         {
-            if (textToSearch.ToLower().Contains(textToFind.ToLower()))
+            if (textToSearch.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return true;
             }
@@ -156,13 +164,13 @@ namespace DataImportManager
         /// <returns>True if a recent, zero-byte file is found</returns>
         private bool DirectoryHasRecentZeroByteFiles(string directoryPath, IReadOnlyCollection<string> extensionsToCheck, int recentTimeMinutes)
         {
-            var dataFolder = new DirectoryInfo(directoryPath);
-            if (!dataFolder.Exists)
+            var dataDirectory = new DirectoryInfo(directoryPath);
+            if (!dataDirectory.Exists)
             {
                 return false;
             }
 
-            foreach (var dataFile in dataFolder.GetFiles("*", SearchOption.TopDirectoryOnly))
+            foreach (var dataFile in dataDirectory.GetFiles("*", SearchOption.TopDirectoryOnly))
             {
                 // If extensionsToCheck is empty; check all files
                 // Otherwise, only check the file if the file extension is in extensionsToCheck
@@ -191,6 +199,10 @@ namespace DataImportManager
             return false;
         }
 
+        /// <summary>
+        /// Disconnect from a remote share
+        /// </summary>
+        /// <param name="connector"></param>
         private void DisconnectShare(ShareConnector connector)
         {
             if (TraceMode)
@@ -198,8 +210,9 @@ namespace DataImportManager
                 ShowTraceMessage("Disconnecting from Bionet share");
             }
 
-            // Disconnects a shared drive
-            connector.Disconnect();
+            connector?.Disconnect();
+        }
+
         }
 
         private string FixNull(string strText)
@@ -209,35 +222,35 @@ namespace DataImportManager
                 return string.Empty;
             }
 
-            return strText;
+            return textToCheck;
         }
 
         /// <summary>
-        /// Determines if raw dataset exists as a single file, folder with same name as dataset, or folder with dataset name + extension
+        /// Determines if raw dataset exists as a single file, directory with same name as dataset, or directory with dataset name + extension
         /// </summary>
         /// <param name="instrumentSourcePath"></param>
         /// <param name="captureSubFolderName"></param>
         /// <param name="currentDataset"></param>
         /// <param name="ignoreInstrumentSourceErrors"></param>
-        /// <param name="instrumentFileOrFolderName">Output: full name of the dataset file or dataset folder</param>
+        /// <param name="instrumentFileOrDirectoryName">Output: full name of the dataset file or dataset directory</param>
         /// <returns>Enum specifying what was found</returns>
         private RawDsTypes GetRawDsType(
             string instrumentSourcePath,
             string captureSubFolderName,
             string currentDataset,
             bool ignoreInstrumentSourceErrors,
-            out string instrumentFileOrFolderName)
+            out string instrumentFileOrDirectoryName)
         {
-            // Verify instrument source folder exists
-            var diSourceFolder = new DirectoryInfo(instrumentSourcePath);
+            // Verify instrument source directory exists
+            var sourceDirectory = new DirectoryInfo(instrumentSourcePath);
             if (TraceMode)
             {
-                ShowTraceMessage("Instantiated diSourceFolder with " + instrumentSourcePath);
+                ShowTraceMessage("Instantiated sourceDirectory with " + instrumentSourcePath);
             }
 
-            if (!diSourceFolder.Exists)
+            if (!sourceDirectory.Exists)
             {
-                var msg = "Source folder not found for dataset " + currentDataset + ": " + diSourceFolder.FullName;
+                var msg = "Source directory not found for dataset " + currentDataset + ": " + sourceDirectory.FullName;
                 if (TraceMode)
                 {
                     ShowTraceMessage(msg);
@@ -246,13 +259,13 @@ namespace DataImportManager
                 if (ignoreInstrumentSourceErrors)
                 {
                     // Simply assume it's a Thermo .raw file
-                    instrumentFileOrFolderName = currentDataset + ".raw";
+                    instrumentFileOrDirectoryName = currentDataset + ".raw";
                     return RawDsTypes.File;
                 }
 
                 ErrorMessage = msg;
                 LogError(ErrorMessage);
-                instrumentFileOrFolderName = string.Empty;
+                instrumentFileOrDirectoryName = string.Empty;
                 return RawDsTypes.None;
             }
 
@@ -263,32 +276,23 @@ namespace DataImportManager
                     ErrorMessage = "Subdirectory path for dataset " + currentDataset + " is too long (over 255 characters): " + "[" + captureSubFolderName + "]";
 
                     LogError(ErrorMessage);
-                    instrumentFileOrFolderName = string.Empty;
+                    instrumentFileOrDirectoryName = string.Empty;
                     return RawDsTypes.None;
                 }
 
-                var diSubfolder = new DirectoryInfo(Path.Combine(diSourceFolder.FullName, captureSubFolderName));
-                if (!diSubfolder.Exists)
+                var subdirectory = new DirectoryInfo(Path.Combine(sourceDirectory.FullName, captureSubFolderName));
+                if (!subdirectory.Exists)
                 {
-                    ErrorMessage = "Source directory not found for dataset " + currentDataset + " in the given subdirectory: " + "[" + diSubfolder.FullName + "]";
+                    ErrorMessage = "Source directory not found for dataset " + currentDataset + " in the given subdirectory: " + "[" + subdirectory.FullName + "]";
 
                     LogError(ErrorMessage);
-                    instrumentFileOrFolderName = string.Empty;
+                    instrumentFileOrDirectoryName = string.Empty;
                     return RawDsTypes.None;
                 }
 
-                diSourceFolder = diSubfolder;
+                sourceDirectory = subdirectory;
             }
 
-            // Check for a file with specified name
-            foreach (var fiFile in diSourceFolder.GetFiles())
-            {
-                if (string.Equals(Path.GetFileNameWithoutExtension(fiFile.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
-                {
-                    instrumentFileOrFolderName = fiFile.Name;
-                    return RawDsTypes.File;
-                }
-            }
 
             // Check for a folder with specified name
             foreach (var diFolder in diSourceFolder.GetDirectories())
@@ -310,17 +314,19 @@ namespace DataImportManager
             }
 
             // If we got to here, the raw dataset wasn't found, so there was a problem
-            instrumentFileOrFolderName = string.Empty;
+            instrumentFileOrDirectoryName = string.Empty;
             return RawDsTypes.None;
         }
 
-
-        // Take the xml file and load into a dataset
-        // iterate through the dataset to retrieve the instrument name
+        /// <summary>
+        /// Extract certain settings from an XML file
+        /// </summary>
+        /// <param name="triggerFile"></param>
+        /// <returns></returns>
         private XmlValidateStatus GetXmlParameters(FileInfo triggerFile)
         {
             // initialize return value
-            var rslt = XmlValidateStatus.XML_VALIDATE_CONTINUE;
+            var validationResult = XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
             var xmlFileContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFile);
             if (string.IsNullOrEmpty(xmlFileContents))
@@ -351,7 +357,7 @@ namespace DataImportManager
                                 CaptureSubfolder = row["Value"].ToString();
                                 if (Path.IsPathRooted(CaptureSubfolder))
                                 {
-                                    // Instrument folder has an older version of Buzzard that incorrectly determines the capture subfolder
+                                    // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
                                     // For safety, will blank this out, but will post a log entry to the database
                                     var msg = "clsXMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
                                         "this indicates a bug with Buzzard; see: " + triggerFile.Name;
@@ -387,12 +393,12 @@ namespace DataImportManager
                     InstrumentName.StartsWith("11T") ||
                     InstrumentName.StartsWith("12T"))
                 {
-                    rslt = InstrumentWaitDelay(triggerFile);
+                    validationResult = InstrumentWaitDelay(triggerFile);
                 }
 
-                if (rslt != XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                if (validationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
                 {
-                    return rslt;
+                    return validationResult;
                 }
 
                 return XmlValidateStatus.XML_VALIDATE_CONTINUE;
@@ -406,11 +412,16 @@ namespace DataImportManager
 
         }
 
+        /// <summary>
+        /// Examine the date of the trigger file; if less than XMLFileDelay minutes old, delay processing trigger file
+        /// </summary>
+        /// <param name="triggerFile"></param>
+        /// <returns></returns>
         private XmlValidateStatus InstrumentWaitDelay(FileSystemInfo triggerFile)
         {
             try
             {
-                var delayValue = int.Parse(mMgrParams.GetParam("xmlfiledelay"));
+                var delayValue = int.Parse(mMgrParams.GetParam("XMLFileDelay"));
                 var fileModDate = triggerFile.LastWriteTimeUtc;
                 var fileModDateDelay = fileModDate.AddMinutes(delayValue);
                 var dateNow = DateTime.UtcNow;
@@ -430,7 +441,10 @@ namespace DataImportManager
 
         }
 
-
+        /// <summary>
+        /// Validate that the remote dataset exists and that its size is constant
+        /// </summary>
+        /// <returns></returns>
         private XmlValidateStatus PerformValidation()
         {
             var connected = false;
@@ -446,16 +460,18 @@ namespace DataImportManager
 
                 if (string.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Make sure mSourcePath is not of the form \\proto-2 because if that is the case, then mCaptureType should be "fso"
+                    // Make sure mSourcePath is not of the form \\proto-2 because if that is the case, mCaptureType should be "fso"
                     var reProtoServer = new Regex(@"\\\\proto-\d+\\", (RegexOptions.Compiled | RegexOptions.IgnoreCase));
 
                     if (reProtoServer.IsMatch(mSourcePath))
                     {
                         // Auto-change mCaptureType to "fso", and log an error in the database
                         mCaptureType = "fso";
-                        var errMsg = "Instrument " + InstrumentName + " is configured to use 'secfso' yet its source folder is " +
-                            mSourcePath + ", which appears to be a domain path; auto-changing the capture_method to 'fso' for now, " +
-                            "but the configuration in the database should be updated (see table T_Instrument_Name)";
+                        var errMsg = string.Format("Instrument {0} is configured to use 'secfso' " +
+                                                   "yet its source directory is {1}, which appears to be a domain path; " +
+                                                   "auto-changing the capture_method to 'fso' for now, but the configuration " +
+                                                   "in the database should be updated (see table T_Instrument_Name)",
+                                                   InstrumentName, mSourcePath);
 
                         if (TraceMode)
                         {
@@ -482,16 +498,16 @@ namespace DataImportManager
                     datasetSourcePath = Path.Combine(mSourcePath, CaptureSubfolder);
                 }
 
-                // Initially define this as the dataset source folder and the dataset name
-                // It will later be updated to have the actual instrument file or folder name
+                // Initially define this as the dataset source directory and the dataset name
+                // It will later be updated to have the actual instrument file or directory name
                 mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName);
 
                 if (string.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase) &&
                     !clsGlobal.GetHostName().ToLower().StartsWith("monroe"))
                 {
-                    // Source folder is on bionet; establish a connection
-                    var username = mMgrParams.GetParam("bionetuser");
-                    var encodedPwd = mMgrParams.GetParam("bionetpwd");
+                    // Source directory is on bionet; establish a connection
+                    var username = mMgrParams.GetParam("BionetUser");
+                    var encodedPwd = mMgrParams.GetParam("BionetPwd");
                     if (!username.Contains('\\'))
                     {
                         // Prepend this computer's name to the username
@@ -613,7 +629,7 @@ namespace DataImportManager
                     ShowTraceMessage(currentTask);
                 }
 
-                var resType = GetRawDsType(mSourcePath, CaptureSubfolder, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrFolderName);
+                var resType = GetRawDsType(mSourcePath, CaptureSubfolder, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrDirectoryName);
 
                 currentTask = "Validating operator name " + mOperatorUsername + " for " + mDatasetName + " at " + datasetSourcePath;
                 if (TraceMode)
@@ -640,7 +656,7 @@ namespace DataImportManager
                 switch (resType)
                 {
                     case RawDsTypes.None:
-                        // No raw dataset file or folder found
+                        // No raw dataset file or directory found
                         currentTask = "Dataset not found at " + datasetSourcePath;
                         if (TraceMode)
                         {
@@ -670,8 +686,8 @@ namespace DataImportManager
                             ShowTraceMessage(currentTask);
                         }
 
-                        // Update the dataset path to include the instrument file or folder name
-                        mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrFolderName);
+                        // Update the dataset path to include the instrument file or directory name
+                        mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrDirectoryName);
 
                         if (ignoreInstrumentSourceErrors && !File.Exists(mDatasetPath))
                         {
@@ -712,19 +728,19 @@ namespace DataImportManager
                         }
                         else if (mRunFinishUtc != new DateTime(1960, 1, 1))
                         {
-                            var taskAddon = "validating file Date vs. Run_Finish listed In XML trigger file " +
+                            var additionalInfo = "validating file Date vs. Run_Finish listed In XML trigger file " +
                                             "(" + mRunFinishUtc.ToString(CultureInfo.InvariantCulture) + ")";
 
-                            currentTask += "; " + taskAddon;
+                            currentTask += "; " + additionalInfo;
 
                             if (TraceMode)
                             {
-                                ShowTraceMessage(taskAddon);
+                                ShowTraceMessage(additionalInfo);
                             }
 
                             var dtFileModDate = File.GetLastWriteTimeUtc(mDatasetPath);
 
-                            var strValue = mMgrParams.GetParam("timevalidationtolerance");
+                            var strValue = mMgrParams.GetParam("TimeValidationTolerance");
                             if (!int.TryParse(strValue, out var intTimeValToleranceMinutes))
                             {
                                 intTimeValToleranceMinutes = 800;
@@ -748,14 +764,14 @@ namespace DataImportManager
                         }
                         break;
 
-                    case RawDsTypes.FolderExt:
-                    case RawDsTypes.FolderNoExt:
-                        // Dataset found in a folder with an extension
+                    case RawDsTypes.DirectoryWithExtension:
+                    case RawDsTypes.DirectoryNoExtension:
+                        // Dataset found in a directory with an extension
                         // Verify that the directory size is constant
-                        currentTask = "Dataset folder found at " + datasetSourcePath + "; verifying folder size is constant for ";
+                        currentTask = "Dataset directory found at " + datasetSourcePath + "; verifying directory size is constant for ";
 
-                        // Update the dataset path to include the instrument file or folder name
-                        mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrFolderName);
+                        // Update the dataset path to include the instrument file or directory name
+                        mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrDirectoryName);
                         currentTask += mDatasetPath;
                         if (TraceMode)
                         {
@@ -765,11 +781,11 @@ namespace DataImportManager
                         if (!VerifyConstantDirectorySize(mDatasetPath, mSleepInterval))
                         {
                             LogWarning(
-                                "Dataset '" + mDatasetName + "' not ready (folder size changed over " + mSleepInterval + " seconds)");
+                                "Dataset '" + mDatasetName + "' not ready (directory size changed over " + mSleepInterval + " seconds)");
 
                             if (connected)
                             {
-                                currentTask = "Dataset folder size changed; disconnecting from " + mSourcePath;
+                                currentTask = "Dataset directory size changed; disconnecting from " + mSourcePath;
                                 DisconnectShare(mShareConnector);
                             }
 
@@ -795,7 +811,7 @@ namespace DataImportManager
                                 LogWarning("Dataset '" + mDatasetName + "' not ready (recent zero-byte .bin files)");
                                 if (connected)
                                 {
-                                    currentTask = "Dataset folder size changed; disconnecting from " + mSourcePath;
+                                    currentTask = "Dataset directory size changed; disconnecting from " + mSourcePath;
                                     DisconnectShare(mShareConnector);
                                 }
 
@@ -824,6 +840,7 @@ namespace DataImportManager
 
                 if (ContainsIgnoreCase(ex.Message, "unknown user name or bad password"))
                 {
+                    // ReSharper disable once CommentTypo
                     // Example message: Error accessing '\\VOrbi05.bionet\ProteomicsData\QC_Shew_11_02_pt5_d2_1Apr12_Earth_12-03-14.raw': Logon failure: unknown user name or bad password
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
                 }
@@ -902,6 +919,10 @@ namespace DataImportManager
 
         }
 
+        /// <summary>
+        /// Validate that the instrument operator is defined, and matches a user in DMS
+        /// </summary>
+        /// <returns></returns>
         private bool SetOperatorName()
         {
             try
@@ -940,11 +961,20 @@ namespace DataImportManager
 
         }
 
+        /// <summary>
+        /// Show a trace message
+        /// </summary>
+        /// <param name="message"></param>
         private void ShowTraceMessage(string message)
         {
             clsMainProcess.ShowTraceMessage(message);
         }
 
+        /// <summary>
+        /// Sleep for up to 3 seconds
+        /// </summary>
+        /// <param name="sleepIntervalSeconds"></param>
+        /// <param name="datasetType"></param>
         private void SleepWhileVerifyingConstantSize(int sleepIntervalSeconds, string datasetType)
         {
             int actualSecondsToSleep;
@@ -973,10 +1003,16 @@ namespace DataImportManager
             ConsoleMsgUtils.SleepSeconds(actualSecondsToSleep);
         }
 
+        /// <summary>
+        /// Process an XML file that defines a new dataset to add to DMS
+        /// </summary>
+        /// <param name="triggerFile">XML file to process</param>
+        /// <returns></returns>
         public XmlValidateStatus ValidateXmlFile(FileInfo triggerFile)
         {
-            XmlValidateStatus rslt;
+            XmlValidateStatus validationResult;
             ErrorMessage = string.Empty;
+
             try
             {
                 if (TraceMode)
@@ -984,7 +1020,7 @@ namespace DataImportManager
                     ShowTraceMessage("Reading " + triggerFile.FullName);
                 }
 
-                rslt = GetXmlParameters(triggerFile);
+                validationResult = GetXmlParameters(triggerFile);
             }
             catch (Exception ex)
             {
@@ -994,9 +1030,9 @@ namespace DataImportManager
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
 
-            if (rslt != XmlValidateStatus.XML_VALIDATE_CONTINUE)
+            if (validationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
             {
-                return rslt;
+                return validationResult;
             }
 
             if (mInstrumentsToSkip.ContainsKey(InstrumentName))
@@ -1006,14 +1042,14 @@ namespace DataImportManager
 
             try
             {
-                rslt = SetDbInstrumentParameters(InstrumentName);
-                if (rslt == XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                validationResult = SetDbInstrumentParameters(InstrumentName);
+                if (validationResult == XmlValidateStatus.XML_VALIDATE_CONTINUE)
                 {
-                    rslt = PerformValidation();
+                    validationResult = PerformValidation();
                 }
                 else
                 {
-                    return rslt;
+                    return validationResult;
                 }
 
             }
@@ -1024,17 +1060,17 @@ namespace DataImportManager
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
 
-            return rslt;
+            return validationResult;
         }
 
         /// <summary>
-        /// Determines if the size of a folder changes over specified time interval
+        /// Determines if the size of a directory changes over specified time interval
         /// </summary>
-        /// <param name="folderPath"></param>
+        /// <param name="directoryPath"></param>
         /// <param name="sleepIntervalSeconds"></param>
         /// <returns>True if constant, false if changed</returns>
         /// <remarks></remarks>
-        private bool VerifyConstantDirectorySize(string folderPath, int sleepIntervalSeconds)
+        private bool VerifyConstantDirectorySize(string directoryPath, int sleepIntervalSeconds)
         {
             // Sleep interval should be no more than 15 minutes (900 seconds)
             if (sleepIntervalSeconds > 900)
@@ -1048,12 +1084,12 @@ namespace DataImportManager
             }
 
             // Get the initial size of the directory
-            var initialDirectorySize = mFileTools.GetDirectorySize(folderPath);
+            var initialDirectorySize = mFileTools.GetDirectorySize(directoryPath);
 
             SleepWhileVerifyingConstantSize(sleepIntervalSeconds, "directory");
 
             // Get the final size of the directory and compare
-            var finalDirectorySize = mFileTools.GetDirectorySize(folderPath);
+            var finalDirectorySize = mFileTools.GetDirectorySize(directoryPath);
             if (finalDirectorySize == initialDirectorySize)
             {
                 return true;

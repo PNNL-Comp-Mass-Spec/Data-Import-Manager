@@ -9,7 +9,7 @@ namespace DataImportManager
 {
     internal class Program
     {
-        public const string PROGRAM_DATE = "May 7, 2019";
+        public const string PROGRAM_DATE = "May 8, 2019";
 
         private static bool mMailDisabled;
 
@@ -214,7 +214,7 @@ namespace DataImportManager
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
                     "Use /Preview to enable preview mode, where we report any trigger files found, " +
-                    "but do not post them to DMS and do not move them to the failure folder if there is an error. " +
+                    "but do not post them to DMS and do not move them to the failure directory if there is an error. " +
                     "Using /Preview forces /NoMail and /Trace to both be enabled"));
                 Console.WriteLine();
                 Console.WriteLine(ConsoleMsgUtils.WrapParagraph(
