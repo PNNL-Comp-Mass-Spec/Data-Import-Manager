@@ -25,6 +25,8 @@ namespace DataImportManager
 
         private string mSourcePath = string.Empty;
 
+        private readonly Dictionary<char, string> mFilenameAutoFixes;
+
         /// <summary>
         /// Operator username, aka OperatorPRN
         /// </summary>
@@ -137,6 +139,11 @@ namespace DataImportManager
             mInstrumentsToSkip = dctInstrumentsToSkip;
             mDMSInfoCache = dmsCache;
             mProcSettings = udtProcSettings;
+
+            mFilenameAutoFixes = new Dictionary<char, string> {
+                { ' ', "_"},
+                { '%', "pct"},
+                { '.', "pt"}};
         }
 
         /// <summary>
@@ -214,7 +221,7 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Look for a directory named datasetName, optionally treating spaces as underscores
+        /// Look for a directory named datasetName, optionally replacing invalid characters
         /// </summary>
         /// <param name="datasetName">Dataset name to find</param>
         /// <param name="sourceDirectory">Remote directory to search</param>
@@ -276,7 +283,7 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Look for a file named datasetName, optionally treating spaces as underscores
+        /// Look for a file named datasetName, optionally replacing invalid characters
         /// </summary>
         /// <param name="datasetName">Dataset name to find</param>
         /// <param name="sourceDirectory">Remote directory to search</param>
@@ -988,19 +995,17 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Replace spaces with underscores in the search text
+        /// Auto change spaces to underscores, % to 'pct', and periods to 'pt' in the search text
         /// </summary>
         /// <param name="searchText"></param>
         /// <returns></returns>
         private string ReplaceInvalidChars(string searchText)
         {
-            var charsToFind = new List<char> {' '};
-
             var updatedText = string.Copy(searchText);
 
-            foreach (var charToFind in charsToFind)
+            foreach (var charToFind in mFilenameAutoFixes)
             {
-                updatedText = updatedText.Replace(charToFind, '_');
+                updatedText = updatedText.Replace(charToFind.Key.ToString(), charToFind.Value);
             }
 
             return updatedText;
