@@ -213,11 +213,124 @@ namespace DataImportManager
             connector?.Disconnect();
         }
 
+        /// <summary>
+        /// Look for a directory named datasetName, optionally treating spaces as underscores
+        /// </summary>
+        /// <param name="datasetName">Dataset name to find</param>
+        /// <param name="sourceDirectory">Remote directory to search</param>
+        /// <param name="changeInvalidCharactersToSpace">When true, replace spaces with underscores in the remote directories searched</param>
+        /// <param name="matchingDirectory">Output: directory object, if a match</param>
+        /// <param name="hasExtension">Output: true if a match was found and it has an extension</param>
+        /// <returns>True if a match is found, otherwise false</returns>
+        private bool FindDatasetDirectory(
+            string datasetName,
+            DirectoryInfo sourceDirectory,
+            bool changeInvalidCharactersToSpace,
+            out DirectoryInfo matchingDirectory,
+            out bool hasExtension)
+        {
+            hasExtension = false;
+
+            // Check for a directory with specified name
+            foreach (var remoteDirectory in sourceDirectory.GetDirectories())
+            {
+                var baseName = Path.GetFileNameWithoutExtension(remoteDirectory.Name);
+
+                string remoteDirectoryName;
+                if (changeInvalidCharactersToSpace)
+                {
+                    remoteDirectoryName = ReplaceInvalidChars(baseName);
+                }
+                else
+                {
+                    remoteDirectoryName = baseName;
+                }
+
+                if (!string.Equals(remoteDirectoryName, datasetName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                ShowTraceMessage(string.Format("Matched remote directory '{0}'", remoteDirectoryName));
+
+                if (changeInvalidCharactersToSpace && !remoteDirectoryName.Equals(baseName))
+                {
+                    LogMessage(string.Format(
+                                   "Remote dataset name has spaces; directory will be renamed during capture: '{0}'",
+                                   remoteDirectory.Name));
+                }
+
+                if (remoteDirectory.Extension.Length == 0)
+                {
+                    // Found a directory that has no extension
+                    matchingDirectory = remoteDirectory;
+                    return true;
+                }
+
+                // Directory name has an extension
+                hasExtension = true;
+                matchingDirectory = remoteDirectory;
+                return true;
+            }
+
+            matchingDirectory = null;
+            return false;
         }
 
-        private string FixNull(string strText)
+        /// <summary>
+        /// Look for a file named datasetName, optionally treating spaces as underscores
+        /// </summary>
+        /// <param name="datasetName">Dataset name to find</param>
+        /// <param name="sourceDirectory">Remote directory to search</param>
+        /// <param name="changeInvalidCharactersToSpace">When true, replace spaces with underscores in the remote files searched</param>
+        /// <param name="matchingFile">Output: file object, if a match</param>
+        /// <returns>True if a match is found, otherwise false</returns>
+        private bool FindDatasetFile(
+            string datasetName,
+            DirectoryInfo sourceDirectory,
+            bool changeInvalidCharactersToSpace,
+            out FileInfo matchingFile)
         {
-            if (string.IsNullOrEmpty(strText))
+            foreach (var remoteFile in sourceDirectory.GetFiles())
+            {
+                var baseName = Path.GetFileNameWithoutExtension(remoteFile.Name);
+
+                string remoteFileName;
+                if (changeInvalidCharactersToSpace)
+                {
+                    remoteFileName = ReplaceInvalidChars(baseName);
+                }
+                else
+                {
+                    remoteFileName = baseName;
+                }
+
+                if (!string.Equals(remoteFileName, datasetName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                ShowTraceMessage(string.Format("Matched remote file '{0}'", remoteFileName));
+
+                if (changeInvalidCharactersToSpace && !remoteFileName.Equals(baseName))
+                {
+                    LogMessage(string.Format(
+                                   "Remote dataset name has spaces; file will be renamed during capture: '{0}'",
+                                   remoteFile.Name));
+                }
+
+                matchingFile = remoteFile;
+                return true;
+            }
+
+            matchingFile = null;
+            return false;
+        }
+
+        /// <summary>
+        /// If textToCheck is null or empty, return an empty string
+        /// </summary>
+        /// <param name="textToCheck"></param>
+        /// <returns></returns>
+        private string FixNull(string textToCheck)
+        {
+            if (string.IsNullOrEmpty(textToCheck))
             {
                 return string.Empty;
             }
@@ -293,24 +406,30 @@ namespace DataImportManager
                 sourceDirectory = subdirectory;
             }
 
+            // When i is 0, check for an exact match to a file or directory
+            // When i is 1, replace spaces with underscores and try again to match
 
-            // Check for a folder with specified name
-            foreach (var diFolder in diSourceFolder.GetDirectories())
+            for (var i = 0; i < 2; i++)
             {
-                if (!string.Equals(Path.GetFileNameWithoutExtension(diFolder.Name), currentDataset, StringComparison.OrdinalIgnoreCase))
-                    continue;
+                var changeInvalidCharactersToSpace = (i > 0);
 
-                if (diFolder.Extension.Length == 0)
+                if (FindDatasetFile(currentDataset, sourceDirectory, changeInvalidCharactersToSpace, out var matchingFile))
                 {
-                    // Found a directory that has no extension
-                    instrumentFileOrFolderName = diFolder.Name;
-                    return RawDsTypes.FolderNoExt;
+                    instrumentFileOrDirectoryName = matchingFile.Name;
+                    return RawDsTypes.File;
                 }
 
-                // Directory name has an extension
-                instrumentFileOrFolderName = diFolder.Name;
-                return RawDsTypes.FolderExt;
+                if (FindDatasetDirectory(currentDataset, sourceDirectory, changeInvalidCharactersToSpace, out var matchingDirectory, out var hasExtension))
+                {
+                    if (hasExtension)
+                    {
+                        instrumentFileOrDirectoryName = matchingDirectory.Name;
+                        return RawDsTypes.DirectoryNoExtension;
+                    }
 
+                    instrumentFileOrDirectoryName = matchingDirectory.Name;
+                    return RawDsTypes.DirectoryWithExtension;
+                }
             }
 
             // If we got to here, the raw dataset wasn't found, so there was a problem
@@ -866,6 +985,25 @@ namespace DataImportManager
 
             }
 
+        }
+
+        /// <summary>
+        /// Replace spaces with underscores in the search text
+        /// </summary>
+        /// <param name="searchText"></param>
+        /// <returns></returns>
+        private string ReplaceInvalidChars(string searchText)
+        {
+            var charsToFind = new List<char> {' '};
+
+            var updatedText = string.Copy(searchText);
+
+            foreach (var charToFind in charsToFind)
+            {
+                updatedText = updatedText.Replace(charToFind, '_');
+            }
+
+            return updatedText;
         }
 
         /// <summary>
