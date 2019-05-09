@@ -218,14 +218,14 @@ namespace DataImportManager
         /// </summary>
         /// <param name="datasetName">Dataset name to find</param>
         /// <param name="sourceDirectory">Remote directory to search</param>
-        /// <param name="changeInvalidCharactersToSpace">When true, replace spaces with underscores in the remote directories searched</param>
+        /// <param name="replaceInvalidCharacters">When true, replace invalid characters with a substitute</param>
         /// <param name="matchingDirectory">Output: directory object, if a match</param>
         /// <param name="hasExtension">Output: true if a match was found and it has an extension</param>
         /// <returns>True if a match is found, otherwise false</returns>
         private bool FindDatasetDirectory(
             string datasetName,
             DirectoryInfo sourceDirectory,
-            bool changeInvalidCharactersToSpace,
+            bool replaceInvalidCharacters,
             out DirectoryInfo matchingDirectory,
             out bool hasExtension)
         {
@@ -237,7 +237,7 @@ namespace DataImportManager
                 var baseName = Path.GetFileNameWithoutExtension(remoteDirectory.Name);
 
                 string remoteDirectoryName;
-                if (changeInvalidCharactersToSpace)
+                if (replaceInvalidCharacters)
                 {
                     remoteDirectoryName = ReplaceInvalidChars(baseName);
                 }
@@ -251,7 +251,7 @@ namespace DataImportManager
 
                 ShowTraceMessage(string.Format("Matched remote directory '{0}'", remoteDirectoryName));
 
-                if (changeInvalidCharactersToSpace && !remoteDirectoryName.Equals(baseName))
+                if (replaceInvalidCharacters && !remoteDirectoryName.Equals(baseName))
                 {
                     LogMessage(string.Format(
                                    "Remote dataset name has spaces; directory will be renamed during capture: '{0}'",
@@ -280,13 +280,13 @@ namespace DataImportManager
         /// </summary>
         /// <param name="datasetName">Dataset name to find</param>
         /// <param name="sourceDirectory">Remote directory to search</param>
-        /// <param name="changeInvalidCharactersToSpace">When true, replace spaces with underscores in the remote files searched</param>
+        /// <param name="replaceInvalidCharacters">When true, replace invalid characters with a substitute</param>
         /// <param name="matchingFile">Output: file object, if a match</param>
         /// <returns>True if a match is found, otherwise false</returns>
         private bool FindDatasetFile(
             string datasetName,
             DirectoryInfo sourceDirectory,
-            bool changeInvalidCharactersToSpace,
+            bool replaceInvalidCharacters,
             out FileInfo matchingFile)
         {
             foreach (var remoteFile in sourceDirectory.GetFiles())
@@ -294,7 +294,7 @@ namespace DataImportManager
                 var baseName = Path.GetFileNameWithoutExtension(remoteFile.Name);
 
                 string remoteFileName;
-                if (changeInvalidCharactersToSpace)
+                if (replaceInvalidCharacters)
                 {
                     remoteFileName = ReplaceInvalidChars(baseName);
                 }
@@ -308,7 +308,7 @@ namespace DataImportManager
 
                 ShowTraceMessage(string.Format("Matched remote file '{0}'", remoteFileName));
 
-                if (changeInvalidCharactersToSpace && !remoteFileName.Equals(baseName))
+                if (replaceInvalidCharacters && !remoteFileName.Equals(baseName))
                 {
                     LogMessage(string.Format(
                                    "Remote dataset name has spaces; file will be renamed during capture: '{0}'",
@@ -411,15 +411,15 @@ namespace DataImportManager
 
             for (var i = 0; i < 2; i++)
             {
-                var changeInvalidCharactersToSpace = (i > 0);
+                var replaceInvalidCharacters = (i > 0);
 
-                if (FindDatasetFile(currentDataset, sourceDirectory, changeInvalidCharactersToSpace, out var matchingFile))
+                if (FindDatasetFile(currentDataset, sourceDirectory, replaceInvalidCharacters, out var matchingFile))
                 {
                     instrumentFileOrDirectoryName = matchingFile.Name;
                     return RawDsTypes.File;
                 }
 
-                if (FindDatasetDirectory(currentDataset, sourceDirectory, changeInvalidCharactersToSpace, out var matchingDirectory, out var hasExtension))
+                if (FindDatasetDirectory(currentDataset, sourceDirectory, replaceInvalidCharacters, out var matchingDirectory, out var hasExtension))
                 {
                     if (hasExtension)
                     {
