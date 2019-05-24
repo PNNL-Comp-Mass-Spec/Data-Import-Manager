@@ -971,6 +971,13 @@ namespace DataImportManager
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
                 }
 
+                if (ContainsIgnoreCase(ex.Message, "user name or password is incorrect"))
+                {
+                    // ReSharper disable once CommentTypo
+                    // Example message: Error reading XML File, current task: Dataset found at \\QEHFX01.bionet\ProteomicsData\; verifying file size is constant: The user name or password is incorrect.
+                    return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
+                }
+
                 if (ContainsIgnoreCase(ex.Message, "Access to the path") && ContainsIgnoreCase(ex.Message, "is denied"))
                 {
                     // Example message: Access to the path '\\exact01.bionet\ProteomicsData\Alz_Cap_Test_14_31Mar12_Roc_12-03-16.raw' is denied.
