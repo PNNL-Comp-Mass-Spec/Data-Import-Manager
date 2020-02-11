@@ -36,7 +36,7 @@ namespace DataImportManager
 
                 var parsed = cmdLineParser.ParseArgs(args, false);
                 var options = parsed.ParsedResults;
-                if (!parsed.Success || !options.Validate())
+                if (args.Length > 0 && (!parsed.Success || !options.Validate()))
                 {
                     // Delay for 1500 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
                     Thread.Sleep(1500);
