@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Data;
-using System.Data.SqlClient;
 using System.IO;
 using PRISM.AppSettings;
+using PRISMDatabaseUtils;
 
 namespace DataImportManager
 {
@@ -58,8 +58,8 @@ namespace DataImportManager
         /// Constructor
         /// </summary>
         /// <param name="mgrParams"></param>
-        /// <param name="dbConnection"></param>
-        public clsDataImportTask(MgrSettings mgrParams, SqlConnection dbConnection) : base(mgrParams, dbConnection)
+        /// <param name="dbTools"></param>
+        public clsDataImportTask(MgrSettings mgrParams, IDBTools dbTools) : base(mgrParams, dbTools)
         {
         }
 
@@ -110,41 +110,38 @@ namespace DataImportManager
                 // Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
                 mStoredProc = MgrParams.GetParam("StoredProcedure");
 
-                var spCmd = new SqlCommand(mStoredProc, DatabaseConnection)
-                {
-                    CommandType = CommandType.StoredProcedure,
-                    CommandTimeout = 45
-                };
+                var cmd = DBTools.CreateCommand(mStoredProc, CommandType.StoredProcedure);
+                cmd.CommandTimeout = 45;
 
                 // Define parameter for stored procedure's return value
-                spCmd.Parameters.Add("@Return", SqlDbType.Int).Direction = ParameterDirection.ReturnValue;
-                spCmd.Parameters.Add("@XmlDoc", SqlDbType.VarChar, 4000).Value = mXmlContents;
-                spCmd.Parameters.Add("@mode", SqlDbType.VarChar, 24).Value = "add";
-                spCmd.Parameters.Add("@message", SqlDbType.VarChar, 512).Direction = ParameterDirection.Output;
+                DBTools.AddParameter(cmd, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
+                DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, mXmlContents);
+                DBTools.AddParameter(cmd, "@mode", SqlType.VarChar, 24, "add");
+                DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.Output);
 
                 if (PreviewMode)
                 {
-                    clsMainProcess.ShowTraceMessage("Preview: call stored procedure " + mStoredProc + " in database " + DatabaseConnection.Database);
+                    clsMainProcess.ShowTraceMessage("Preview: call stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
                     return true;
                 }
 
                 if (TraceMode)
                 {
-                    clsMainProcess.ShowTraceMessage("Calling stored procedure " + mStoredProc + " in database " + DatabaseConnection.Database);
+                    clsMainProcess.ShowTraceMessage("Calling stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
                 }
 
                 // Execute the stored procedure
-                spCmd.ExecuteNonQuery();
+                var returnCode = DBTools.ExecuteSP(cmd);
 
                 // Get return value
-                var ret = Convert.ToInt32(spCmd.Parameters["@Return"].Value);
+                var ret = Convert.ToInt32(cmd.Parameters["@Return"].Value);
                 if (ret == 0)
                 {
                     // Get values for output parameters
                     return true;
                 }
 
-                mPostTaskErrorMessage = spCmd.Parameters["@message"].Value.ToString();
+                mPostTaskErrorMessage = cmd.Parameters["@message"].Value.ToString();
                 LogError("clsDataImportTask.ImportDataTask(), Problem posting dataset: " + mPostTaskErrorMessage);
                 return false;
 

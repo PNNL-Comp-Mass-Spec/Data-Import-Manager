@@ -1,5 +1,5 @@
-﻿using System.Data.SqlClient;
-using PRISM.AppSettings;
+﻿using PRISM.AppSettings;
+using PRISMDatabaseUtils;
 
 namespace DataImportManager
 {
@@ -12,9 +12,9 @@ namespace DataImportManager
         protected MgrSettings MgrParams { get; }
 
         /// <summary>
-        /// Database connection object
+        /// Database tools object
         /// </summary>
-        protected SqlConnection DatabaseConnection { get; }
+        protected IDBTools DBTools { get; }
 
         /// <summary>
         /// When true, show additional debug messages as the console
@@ -25,11 +25,11 @@ namespace DataImportManager
         /// Constructor
         /// </summary>
         /// <param name="mgrParams">Manager parameters</param>
-        /// <param name="dbConnection">Database connection object (connection should already be open)</param>
-        protected clsDBTask(MgrSettings mgrParams, SqlConnection dbConnection)
+        /// <param name="dbTools">Database tools object</param>
+        protected clsDBTask(MgrSettings mgrParams, IDBTools dbTools)
         {
             MgrParams = mgrParams;
-            DatabaseConnection = dbConnection;
+            DBTools = dbTools;
         }
     }
 }

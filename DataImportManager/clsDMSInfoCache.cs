@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
 using PRISM;
+using PRISMDatabaseUtils;
 
 namespace DataImportManager
 {
@@ -65,52 +65,21 @@ namespace DataImportManager
         public DMSInfoCache(string connectionString, bool traceMode)
         {
             mConnectionString = connectionString;
+            DBTools = DbToolsFactory.GetDBTools(connectionString);
+            DBTools.ErrorEvent += (message, exception) => DatabaseErrorEvent?.Invoke(message);
             mTraceMode = traceMode;
             mErrorSolutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             mInstruments = new Dictionary<string, InstrumentInfoType>(StringComparer.OrdinalIgnoreCase);
             mOperators = new Dictionary<string, OperatorInfoType>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public SqlConnection GetNewDbConnection()
-        {
-            var retryCount = 3;
-            while (retryCount > 0)
-            {
-                try
-                {
-                    if (mTraceMode)
-                    {
-                        ShowTraceMessage("Opening database connection using " + mConnectionString);
-                    }
-
-                    var newDbConnection = new SqlConnection(mConnectionString);
-                    newDbConnection.InfoMessage += OnInfoMessage;
-
-                    newDbConnection.Open();
-
-                    return newDbConnection;
-                }
-                catch (SqlException ex)
-                {
-                    retryCount--;
-
-                    LogError("Connection problem: ", ex);
-                    ConsoleMsgUtils.SleepSeconds(0.5);
-                }
-
-            }
-
-            throw new Exception("Unable to connect to the database after 3 tries");
-        }
+        public IDBTools DBTools { get; }
 
         public string GetDbErrorSolution(string errorText)
         {
             if (mErrorSolutions.Count == 0)
             {
-                using (var dbConnection = GetNewDbConnection())
-                {
-                    LoadErrorSolutionsFromDMS(dbConnection);
-                }
+                LoadErrorSolutionsFromDMS(DBTools);
             }
 
 
@@ -126,10 +95,7 @@ namespace DataImportManager
         {
             if (mInstruments.Count == 0)
             {
-                using (var dbConnection = GetNewDbConnection())
-                {
-                    LoadInstrumentsFromDMS(dbConnection);
-                }
+                LoadInstrumentsFromDMS(DBTools);
             }
 
             if (mInstruments.TryGetValue(instrumentName, out udtInstrumentInfo))
@@ -143,10 +109,7 @@ namespace DataImportManager
         {
             if (mOperators.Count == 0)
             {
-                using (var dbConnection = GetNewDbConnection())
-                {
-                    LoadOperatorsFromDMS(dbConnection);
-                }
+                LoadOperatorsFromDMS(DBTools);
             }
 
             var blnSuccess = LookupOperatorName(operatorUsername, out var operatorInfo, out userCountMatched);
@@ -170,29 +133,6 @@ namespace DataImportManager
             ShowTraceMessage("  Warning: operator not found: " + operatorUsername);
 
             return operatorInfo;
-
-        }
-
-        private int GetValue(IDataRecord reader, int columnIndex, int valueIfNull)
-        {
-            if (reader.IsDBNull(columnIndex))
-            {
-                return valueIfNull;
-            }
-
-            return reader.GetInt32(columnIndex);
-
-        }
-
-        private string GetValue(IDataRecord reader, int columnIndex, string valueIfNull)
-        {
-            if (reader.IsDBNull(columnIndex))
-            {
-                return valueIfNull;
-            }
-
-            return reader.GetString(columnIndex);
-
         }
 
         /// <summary>
@@ -202,18 +142,15 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         public void LoadDMSInfo()
         {
-            using (var dbConnection = GetNewDbConnection())
-            {
-                LoadErrorSolutionsFromDMS(dbConnection);
-                LoadInstrumentsFromDMS(dbConnection);
-                LoadOperatorsFromDMS(dbConnection);
-            }
+            LoadErrorSolutionsFromDMS(DBTools);
+            LoadInstrumentsFromDMS(DBTools);
+            LoadOperatorsFromDMS(DBTools);
         }
 
         // ReSharper disable once InconsistentNaming
-        private void LoadErrorSolutionsFromDMS(SqlConnection dbConnection)
+        private void LoadErrorSolutionsFromDMS(IDBTools dbTools)
         {
-            var retryCount = 3;
+            short retryCount = 3;
             var timeoutSeconds = 5;
 
             // Get a list of error messages in T_DIM_Error_Solution
@@ -225,56 +162,23 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting error messages and solutions using " + sqlQuery);
 
-            while (retryCount > 0)
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount: retryCount, timeoutSeconds: timeoutSeconds);
+            foreach (var row in results)
             {
-                try
+                var errorMessage = row[0];
+                var solutionMessage = row[1];
+
+                if (!mErrorSolutions.ContainsKey(errorMessage))
                 {
-                    mErrorSolutions.Clear();
-
-                    using (var cmd = new SqlCommand(sqlQuery, dbConnection))
-                    {
-                        cmd.CommandTimeout = timeoutSeconds;
-
-                        using (var reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-
-                                var errorMessage = GetValue(reader, 0, string.Empty);
-                                var solutionMessage = GetValue(reader, 1, string.Empty);
-
-                                if (!mErrorSolutions.ContainsKey(errorMessage))
-                                {
-                                    mErrorSolutions.Add(errorMessage, solutionMessage);
-                                }
-
-                            }
-                        }
-                    }
-                    break;
-
+                    mErrorSolutions.Add(errorMessage, solutionMessage);
                 }
-                catch (Exception ex)
-                {
-                    retryCount -= 1;
-                    var errorMessage = "Exception querying database in LoadErrorSolutionsFromDMS: " + ex.Message;
-
-                    LogError(errorMessage);
-
-                    if (retryCount > 0)
-                    {
-                        // Delay for 5 seconds before trying again
-                        ConsoleMsgUtils.SleepSeconds(5);
-                    }
-                }
-
-            } // while
+            }
         }
 
         // ReSharper disable once InconsistentNaming
-        private void LoadInstrumentsFromDMS(SqlConnection dbConnection)
+        private void LoadInstrumentsFromDMS(IDBTools dbTools)
         {
-            var retryCount = 3;
+            short retryCount = 3;
             var timeoutSeconds = 5;
 
             // Get a list of instruments in V_Instrument_List_Export
@@ -286,65 +190,33 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting instruments using " + sqlQuery);
 
-            while (retryCount > 0)
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount: retryCount, timeoutSeconds: timeoutSeconds);
+            foreach (var row in results)
             {
-                try
+                var instrumentName = row[0];
+
+                var udtInstrumentInfo = new InstrumentInfoType
                 {
-                    mInstruments.Clear();
+                    InstrumentClass = row[1],
+                    RawDataType = row[2],
+                    CaptureType = row[3],
+                    SourcePath = row[4]
+                };
 
-                    using (var cmd = new SqlCommand(sqlQuery, dbConnection))
-                    {
-                        cmd.CommandTimeout = timeoutSeconds;
-
-                        using (var reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                var instrumentName = GetValue(reader, 0, string.Empty)
-;
-                                var udtInstrumentInfo = new InstrumentInfoType
-                                {
-                                    InstrumentClass = GetValue(reader, 1, string.Empty),
-                                    RawDataType = GetValue(reader, 2, string.Empty),
-                                    CaptureType = GetValue(reader, 3, string.Empty),
-                                    SourcePath = GetValue(reader, 4, string.Empty)
-                                };
-
-                                if (!mInstruments.ContainsKey(instrumentName))
-                                {
-                                    mInstruments.Add(instrumentName, udtInstrumentInfo);
-                                }
-
-                            }
-                        }
-                    }
-                    break;
-
-                }
-                catch (Exception ex)
+                if (!mInstruments.ContainsKey(instrumentName))
                 {
-                    retryCount -= 1;
-                    var errorMessage = "Exception querying database in LoadInstrumentsFromDMS: " + ex.Message;
-
-                    LogError(errorMessage);
-
-                    if (retryCount > 0)
-                    {
-                        // Delay for 5 seconds before trying again
-                        ConsoleMsgUtils.SleepSeconds(5);
-                    }
+                    mInstruments.Add(instrumentName, udtInstrumentInfo);
                 }
-
-            } // while
+            }
 
             if (mTraceMode)
                 ShowTraceMessage(" ... retrieved " + mInstruments.Count + " instruments");
         }
 
         // ReSharper disable once InconsistentNaming
-        private void LoadOperatorsFromDMS(SqlConnection dbConnection)
+        private void LoadOperatorsFromDMS(IDBTools dbTools)
         {
-            var retryCount = 3;
+            short retryCount = 3;
             var timeoutSeconds = 5;
 
             // Get a list of all users in the database
@@ -356,54 +228,27 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting DMS users using " + sqlQuery);
 
-            while (retryCount > 0)
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount: retryCount, timeoutSeconds: timeoutSeconds);
+            foreach (var row in results)
             {
-                try
+                if (!int.TryParse(row[3], out var userId))
                 {
-                    mOperators.Clear();
-
-                    using (var cmd = new SqlCommand(sqlQuery, dbConnection))
-                    {
-                        cmd.CommandTimeout = timeoutSeconds;
-
-                        using (var reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                var udtOperator = new OperatorInfoType
-                                {
-                                    Name = GetValue(reader, 0, string.Empty),
-                                    Email = GetValue(reader, 1, string.Empty),
-                                    Username = GetValue(reader, 2, string.Empty),
-                                    UserId = GetValue(reader, 3, 0)
-                                }
-;
-                                if (!string.IsNullOrWhiteSpace(udtOperator.Username) && !mOperators.ContainsKey(udtOperator.Username))
-                                {
-                                    mOperators.Add(udtOperator.Username, udtOperator);
-                                }
-
-                            }
-                        }
-                    }
-                    break;
-
-                }
-                catch (Exception ex)
-                {
-                    retryCount -= 1;
-                    var errorMessage = "Exception querying database in LoadOperatorsFromDMS: " + ex.Message;
-
-                    LogError(errorMessage);
-
-                    if (retryCount > 0)
-                    {
-                        // Delay for 5 seconds before trying again
-                        ConsoleMsgUtils.SleepSeconds(5);
-                    }
+                    userId = 0;
                 }
 
-            } // while
+                var udtOperator = new OperatorInfoType
+                {
+                    Name = row[0],
+                    Email = row[1],
+                    Username = row[2],
+                    UserId = userId
+                };
+
+                if (!string.IsNullOrWhiteSpace(udtOperator.Username) && !mOperators.ContainsKey(udtOperator.Username))
+                {
+                    mOperators.Add(udtOperator.Username, udtOperator);
+                }
+            }
 
             if (mTraceMode)
                 ShowTraceMessage(" ... retrieved " + mOperators.Count + " users");
@@ -503,31 +348,6 @@ namespace DataImportManager
                 operatorInfo.Name = "Operator [" + operatorUsernameToFind + "] not found in T_Users; should be network login name (D3E154) or full name (Moore, Ronald J)";
                 return false;
             }
-
-        }
-
-        /// <summary>
-        /// Event handler for InfoMessage event
-        /// Errors and warnings sent from the SQL server are caught here
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="args"></param>
-        private void OnInfoMessage(object sender, SqlInfoMessageEventArgs args)
-        {
-            foreach (SqlError err in args.Errors)
-            {
-                var s = "Message: " + err.Message +
-                     ", Source: " + err.Source +
-                     ", Class: " + err.Class +
-                     ", State: " + err.State +
-                     ", Number: " + err.Number +
-                     ", LineNumber: " + err.LineNumber +
-                     ", Procedure:" + err.Procedure +
-                     ", Server: " + err.Server;
-
-                DatabaseErrorEvent?.Invoke(s);
-            }
-
         }
 
         private void ShowTraceMessage(string message)
@@ -535,6 +355,4 @@ namespace DataImportManager
             clsMainProcess.ShowTraceMessage(message);
         }
     }
-
-
 }

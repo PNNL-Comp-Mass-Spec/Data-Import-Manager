@@ -280,11 +280,11 @@ namespace DataImportManager
 
             // Open a new database connection
             // Doing this now due to database timeouts that were seen when using mDMSInfoCache.DBConnection
-            var dbConnection = mDMSInfoCache.GetNewDbConnection();
+            var dbTools = mDMSInfoCache.DBTools;
 
             // Create the object that will import the Data record
             //
-            mDataImportTask = new clsDataImportTask(mMgrSettings, dbConnection)
+            mDataImportTask = new clsDataImportTask(mMgrSettings, dbTools)
             {
                 TraceMode = ProcSettings.TraceMode,
                 PreviewMode = ProcSettings.PreviewMode

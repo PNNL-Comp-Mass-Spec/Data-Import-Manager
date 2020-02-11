@@ -11,6 +11,7 @@ using PRISM;
 using PRISM.AppSettings;
 using PRISM.Logging;
 using PRISM.FileProcessor;
+using PRISMDatabaseUtils.AppSettings;
 
 namespace DataImportManager
 {
@@ -94,7 +95,6 @@ namespace DataImportManager
         /// <returns></returns>
         public bool InitMgr()
         {
-
             var defaultModuleName = "DataImportManager: " + clsGlobal.GetHostName();
 
             try
@@ -127,13 +127,13 @@ namespace DataImportManager
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 LogTools.CreateDbLogger(dmsConnectionString, "Analysis Tool Manager: " + clsGlobal.GetHostName(), false);
 
-                var localSettings = GetLocalManagerSettings();
-
-                mMgrSettings = new MgrSettings {
+                mMgrSettings = new MgrSettingsDB {
                     TraceMode = TraceMode
                 };
                 RegisterEvents(mMgrSettings);
                 mMgrSettings.CriticalErrorEvent += ErrorEventHandler;
+
+                var localSettings = GetLocalManagerSettings();
 
                 var success = mMgrSettings.LoadSettings(localSettings, true);
                 if (!success)
@@ -440,8 +440,7 @@ namespace DataImportManager
 
         private Dictionary<string, string> GetLocalManagerSettings()
         {
-
-            var localSettings = new Dictionary<string, string>
+            var defaultSettings = new Dictionary<string, string>
             {
                 {MgrSettings.MGR_PARAM_MGR_CFG_DB_CONN_STRING, Properties.Settings.Default.MgrCnfgDbConnectStr},
                 {MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL, Properties.Settings.Default.MgrActive_Local.ToString()},
@@ -449,8 +448,27 @@ namespace DataImportManager
                 {MgrSettings.MGR_PARAM_USING_DEFAULTS, Properties.Settings.Default.UsingDefaults.ToString()}
             };
 
-            return localSettings;
+            var mgrExePath = PRISM.FileProcessor.ProcessFilesOrDirectoriesBase.GetAppPath();
+            var localSettings = mMgrSettings.LoadMgrSettingsFromFile(mgrExePath + ".config");
 
+            if (localSettings == null)
+            {
+                localSettings = defaultSettings;
+            }
+            else
+            {
+                // Make sure the default settings exist and have valid values
+                foreach (var setting in defaultSettings)
+                {
+                    if (!localSettings.TryGetValue(setting.Key, out var existingValue) ||
+                        string.IsNullOrWhiteSpace(existingValue))
+                    {
+                        localSettings[setting.Key] = setting.Value;
+                    }
+                }
+            }
+
+            return localSettings;
         }
 
         private string GetLogFileSharePath()
