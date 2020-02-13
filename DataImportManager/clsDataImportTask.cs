@@ -114,10 +114,10 @@ namespace DataImportManager
                 cmd.CommandTimeout = 45;
 
                 // Define parameter for stored procedure's return value
-                DBTools.AddParameter(cmd, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
+                var returnParam = DBTools.AddParameter(cmd, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
                 DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, mXmlContents);
                 DBTools.AddParameter(cmd, "@mode", SqlType.VarChar, 24, "add");
-                DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.Output);
+                var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.Output);
 
                 if (PreviewMode)
                 {
@@ -134,14 +134,14 @@ namespace DataImportManager
                 var returnCode = DBTools.ExecuteSP(cmd);
 
                 // Get return value
-                var ret = Convert.ToInt32(cmd.Parameters["@Return"].Value);
+                var ret = Convert.ToInt32(returnParam.Value);
                 if (ret == 0)
                 {
                     // Get values for output parameters
                     return true;
                 }
 
-                mPostTaskErrorMessage = cmd.Parameters["@message"].Value.ToString();
+                mPostTaskErrorMessage = messageParam.Value.ToString();
                 LogError("clsDataImportTask.ImportDataTask(), Problem posting dataset: " + mPostTaskErrorMessage);
                 return false;
 
