@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using PRISM;
 using PRISMDatabaseUtils;
 
 namespace DataImportManager
@@ -29,15 +27,8 @@ namespace DataImportManager
 
         #endregion
 
-        #region "Events"
-
-        public event EventNotifier.StatusEventEventHandler DatabaseErrorEvent;
-
-        #endregion
-
         #region "Member Variables"
 
-        private readonly string mConnectionString;
         private readonly bool mTraceMode;
 
         /// <summary>
@@ -64,9 +55,9 @@ namespace DataImportManager
         /// <remarks></remarks>
         public DMSInfoCache(string connectionString, bool traceMode)
         {
-            mConnectionString = connectionString;
-            DBTools = DbToolsFactory.GetDBTools(connectionString);
-            DBTools.ErrorEvent += (message, exception) => DatabaseErrorEvent?.Invoke(message);
+            DBTools = DbToolsFactory.GetDBTools(connectionString, debugMode: traceMode);
+            RegisterEvents(DBTools);
+
             mTraceMode = traceMode;
             mErrorSolutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             mInstruments = new Dictionary<string, InstrumentInfoType>(StringComparer.OrdinalIgnoreCase);

@@ -301,8 +301,6 @@ namespace DataImportManager
                     return false;
                 }
 
-                infoCache.DatabaseErrorEvent += OnDatabaseErrorEvent;
-
                 // Check to see if there are any data import files ready
                 DoDataImportTask(infoCache);
                 ProgRunner.SleepMilliseconds(250);
@@ -1032,13 +1030,6 @@ namespace DataImportManager
             }
 
             mFileWatcher.EnableRaisingEvents = false;
-        }
-
-        private void OnDatabaseErrorEvent(string message)
-        {
-            ShowTrace("Database error message: " + message);
-
-            LogError(message);
         }
 
         private void DeleteXmlFiles(string directoryPath, int fileAgeDays)
