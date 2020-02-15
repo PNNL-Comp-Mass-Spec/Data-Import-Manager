@@ -1117,51 +1117,5 @@ namespace DataImportManager
             BaseLogger.ShowTraceMessage(message, false);
         }
 
-
-        #region "EventNotifier events"
-
-        private void RegisterEvents(EventNotifier sourceClass, bool writeDebugEventsToLog = true)
-        {
-            if (writeDebugEventsToLog)
-            {
-                sourceClass.DebugEvent += DebugEventHandler;
-            }
-            else
-            {
-                sourceClass.DebugEvent += DebugEventHandlerConsoleOnly;
-            }
-
-            sourceClass.StatusEvent += StatusEventHandler;
-            sourceClass.ErrorEvent += ErrorEventHandler;
-            sourceClass.WarningEvent += WarningEventHandler;
-            // sourceClass.ProgressUpdate += ProgressUpdateHandler;
-        }
-
-        private void DebugEventHandlerConsoleOnly(string statusMessage)
-        {
-            LogDebug(statusMessage, writeToLog: false);
-        }
-
-        private void DebugEventHandler(string statusMessage)
-        {
-            LogDebug(statusMessage);
-        }
-
-        private void StatusEventHandler(string statusMessage)
-        {
-            LogMessage(statusMessage);
-        }
-
-        private void ErrorEventHandler(string errorMessage, Exception ex)
-        {
-            LogError(errorMessage, ex);
-        }
-
-        private void WarningEventHandler(string warningMessage)
-        {
-            LogWarning(warningMessage);
-        }
-
-        #endregion
     }
 }

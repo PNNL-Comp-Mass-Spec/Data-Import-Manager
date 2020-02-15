@@ -1,4 +1,5 @@
 ﻿using System;
+using PRISM;
 using PRISM.Logging;
 
 namespace DataImportManager
@@ -64,6 +65,85 @@ namespace DataImportManager
             LogTools.LogWarning(warningMessage, logToDb);
         }
 
+        #region "EventNotifier events"
+
+        /// <summary>
+        /// Register event handlers
+        /// However, does not subscribe to .ProgressUpdate
+        /// Note: the DatasetInfoPlugin does subscribe to .ProgressUpdate
+        /// </summary>
+        /// <param name="processingClass"></param>
+        /// <param name="writeDebugEventsToLog"></param>
+        protected void RegisterEvents(IEventNotifier processingClass, bool writeDebugEventsToLog = true)
+        {
+            if (writeDebugEventsToLog)
+            {
+                processingClass.DebugEvent += DebugEventHandler;
+            }
+            else
+            {
+                processingClass.DebugEvent += DebugEventHandlerConsoleOnly;
+            }
+
+            processingClass.StatusEvent += StatusEventHandler;
+            processingClass.ErrorEvent += ErrorEventHandler;
+            processingClass.WarningEvent += WarningEventHandler;
+            // Ignore: processingClass.ProgressUpdate += ProgressUpdateHandler;
+        }
+
+        /// <summary>
+        /// Unregister the event handler for the given LogLevel
+        /// </summary>
+        /// <param name="processingClass"></param>
+        /// <param name="messageType"></param>
+        protected void UnregisterEventHandler(EventNotifier processingClass, BaseLogger.LogLevels messageType)
+        {
+            switch (messageType)
+            {
+                case BaseLogger.LogLevels.DEBUG:
+                    processingClass.DebugEvent -= DebugEventHandler;
+                    processingClass.DebugEvent -= DebugEventHandlerConsoleOnly;
+                    break;
+                case BaseLogger.LogLevels.ERROR:
+                    processingClass.ErrorEvent -= ErrorEventHandler;
+                    break;
+                case BaseLogger.LogLevels.WARN:
+                    processingClass.WarningEvent -= WarningEventHandler;
+                    break;
+                case BaseLogger.LogLevels.INFO:
+                    processingClass.StatusEvent -= StatusEventHandler;
+                    break;
+                default:
+                    throw new Exception("Log level not supported for unregistering");
+            }
+        }
+
+        protected void DebugEventHandlerConsoleOnly(string statusMessage)
+        {
+            LogDebug(statusMessage, writeToLog: false);
+        }
+
+        protected void DebugEventHandler(string statusMessage)
+        {
+            LogDebug(statusMessage);
+        }
+
+        protected void StatusEventHandler(string statusMessage)
+        {
+            LogMessage(statusMessage);
+        }
+
+        protected void ErrorEventHandler(string errorMessage, Exception ex)
+        {
+            LogError(errorMessage, ex);
+        }
+
+        protected void WarningEventHandler(string warningMessage)
+        {
+            LogWarning(warningMessage);
+        }
+
+        #endregion
     }
 
 }
