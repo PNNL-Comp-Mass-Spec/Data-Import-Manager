@@ -73,7 +73,6 @@ namespace DataImportManager
                 LoadErrorSolutionsFromDMS(DBTools);
             }
 
-
             var query = (from item in mErrorSolutions where errorText.Contains(item.Key) select item.Value).ToList();
 
             if (query.Count > 0)
@@ -153,7 +152,10 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting error messages and solutions using " + sqlQuery);
 
-            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount: retryCount, timeoutSeconds: timeoutSeconds);
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+            if (!success)
+                LogWarning("GetQueryResults returned false querying T_DIM_Error_Solution");
+
             foreach (var row in results)
             {
                 var errorMessage = row[0];
@@ -174,14 +176,17 @@ namespace DataImportManager
 
             // Get a list of instruments in V_Instrument_List_Export
             var sqlQuery =
-                 "SELECT Name, Class, RawDataType, Capture, SourcePath " +
-                 "FROM dbo.V_Instrument_List_Export " +
-                 "ORDER BY Name";
+                "SELECT Name, Class, RawDataType, Capture, SourcePath " +
+                "FROM dbo.V_Instrument_List_Export " +
+                "ORDER BY Name";
 
             if (mTraceMode)
                 ShowTraceMessage("Getting instruments using " + sqlQuery);
 
-            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount: retryCount, timeoutSeconds: timeoutSeconds);
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+            if (!success)
+                LogWarning("GetQueryResults returned false querying V_Instrument_List_Export");
+
             foreach (var row in results)
             {
                 var instrumentName = row[0];
@@ -219,7 +224,10 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting DMS users using " + sqlQuery);
 
-            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount: retryCount, timeoutSeconds: timeoutSeconds);
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+            if (!success)
+                LogWarning("GetQueryResults returned false querying T_Users");
+
             foreach (var row in results)
             {
                 if (!int.TryParse(row[3], out var userId))
