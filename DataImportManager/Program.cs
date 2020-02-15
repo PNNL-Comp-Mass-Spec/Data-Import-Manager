@@ -8,7 +8,7 @@ namespace DataImportManager
 {
     internal class Program
     {
-        public const string PROGRAM_DATE = "February 10, 2020";
+        public const string PROGRAM_DATE = "February 15, 2020";
 
         /// <summary>
         /// Entry method

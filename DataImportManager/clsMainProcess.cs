@@ -446,7 +446,7 @@ namespace DataImportManager
                 {MgrSettings.MGR_PARAM_USING_DEFAULTS, Properties.Settings.Default.UsingDefaults.ToString()}
             };
 
-            var mgrExePath = PRISM.FileProcessor.ProcessFilesOrDirectoriesBase.GetAppPath();
+            var mgrExePath = ProcessFilesOrDirectoriesBase.GetAppPath();
             var localSettings = mMgrSettings.LoadMgrSettingsFromFile(mgrExePath + ".config");
 
             if (localSettings == null)
