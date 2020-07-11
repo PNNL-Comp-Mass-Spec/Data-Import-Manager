@@ -532,51 +532,26 @@ namespace DataImportManager
             if (string.IsNullOrWhiteSpace(settingName))
                 throw new ArgumentException("Setting name cannot be blank", nameof(settingName));
 
-            try
+            var exePath = clsGlobal.GetExePath();
+
+            var configFilePaths = new List<string>();
+
+            if (settingName.Equals("MgrCnfgDbConnectStr", StringComparison.OrdinalIgnoreCase) ||
+                settingName.Equals("DefaultDMSConnString", StringComparison.OrdinalIgnoreCase))
             {
-                var configFilePath = clsGlobal.GetExePath() + ".config";
-                var configFile = new FileInfo(configFilePath);
-
-                if (!configFile.Exists)
-                {
-                    LogError("File not found: " + configFilePath);
-                    return string.Empty;
-                }
-
-                var configXml = new StringBuilder();
-
-                // Open DataImportManager.exe.config using a simple text reader in case the file has malformed XML
-
-                ShowTrace(string.Format("Extracting setting {0} from {1}", settingName, configFile.FullName));
-
-                using (var reader = new StreamReader(new FileStream(configFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
-                {
-                    while (!reader.EndOfStream)
-                    {
-                        var dataLine = reader.ReadLine();
-                        if (string.IsNullOrWhiteSpace(dataLine))
-                            continue;
-
-                        configXml.Append(dataLine);
-                    }
-                }
-
-                var matcher = new Regex(settingName + ".+?<value>(?<ConnString>.+?)</value>", RegexOptions.IgnoreCase);
-
-                var match = matcher.Match(configXml.ToString());
-
-                if (match.Success)
-                    return match.Groups["ConnString"].Value;
-
-                LogError(settingName + " setting not found in " + configFilePath);
-                return string.Empty;
-            }
-            catch (Exception ex)
-            {
-                LogError("Exception reading setting " + settingName + " in DataImportManager.exe.config", ex);
-                return string.Empty;
+                configFilePaths.Add(Path.ChangeExtension(exePath, ".exe.db.config"));
             }
 
+            configFilePaths.Add(clsGlobal.GetExePath() + ".config");
+
+            var mgrSettings = new MgrSettings();
+            RegisterEvents(mgrSettings);
+
+            var valueFound = mgrSettings.GetXmlConfigFileSetting(configFilePaths, settingName, out var settingValue);
+            if (valueFound)
+                return settingValue;
+
+            return string.Empty;
         }
 
         public static void LogErrorToDatabase(string message, Exception ex = null)
