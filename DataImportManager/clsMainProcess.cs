@@ -36,7 +36,7 @@ namespace DataImportManager
 
         #region "Member Variables"
 
-        private MgrSettings mMgrSettings;
+        private MgrSettingsDB mMgrSettings;
 
         private bool mConfigChanged;
 
@@ -134,6 +134,9 @@ namespace DataImportManager
                 mMgrSettings.CriticalErrorEvent += ErrorEventHandler;
 
                 var localSettings = GetLocalManagerSettings();
+
+                Console.WriteLine();
+                mMgrSettings.ValidatePgPass(localSettings);
 
                 var success = mMgrSettings.LoadSettings(localSettings, true);
                 if (!success)
