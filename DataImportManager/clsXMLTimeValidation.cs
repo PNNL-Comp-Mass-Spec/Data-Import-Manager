@@ -52,11 +52,13 @@ namespace DataImportManager
 
         private readonly MgrSettings mMgrParams;
 
+        private string captureShareNameInTriggerFile = string.Empty;
+
         #endregion
 
         #region "Properties"
 
-        public string CaptureSubfolder { get; private set; } = string.Empty;
+        public string CaptureSubdirectory { get; private set; } = string.Empty;
 
         public string DatasetName => FixNull(mDatasetName);
 
@@ -479,9 +481,14 @@ namespace DataImportManager
                                 InstrumentName = row["Value"].ToString();
                                 break;
 
+                            case "Capture Share Name":
+                                captureShareNameInTriggerFile = row["Value"].ToString();
+                                break;
+
                             case "Capture Subfolder":
-                                CaptureSubfolder = row["Value"].ToString();
-                                if (Path.IsPathRooted(CaptureSubfolder))
+                            case "Capture Subdirectory":
+                                CaptureSubdirectory = row["Value"].ToString();
+                                if (Path.IsPathRooted(CaptureSubdirectory))
                                 {
                                     // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
                                     // For safety, will blank this out, but will post a log entry to the database
@@ -489,7 +496,7 @@ namespace DataImportManager
                                         "this indicates a bug with Buzzard; see: " + triggerFile.Name;
 
                                     LogError(msg, null, true);
-                                    CaptureSubfolder = string.Empty;
+                                    CaptureSubdirectory = string.Empty;
                                 }
                                 break;
 
@@ -506,7 +513,6 @@ namespace DataImportManager
                                 break;
                         }
                     }
-
                 }
 
                 if (string.IsNullOrEmpty(InstrumentName))
@@ -528,14 +534,12 @@ namespace DataImportManager
                 }
 
                 return XmlValidateStatus.XML_VALIDATE_CONTINUE;
-
             }
             catch (Exception ex)
             {
                 LogError("clsXMLTimeValidation.GetXMLParameters(), Error reading XML File", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
-
         }
 
         /// <summary>
@@ -564,7 +568,6 @@ namespace DataImportManager
                 LogError("clsXMLTimeValidation.InstrumentWaitDelay(), Error determining wait delay", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
-
         }
 
         /// <summary>
@@ -576,6 +579,35 @@ namespace DataImportManager
             var connected = false;
             var currentTask = string.Empty;
             var ignoreInstrumentSourceErrors = mProcSettings.IgnoreInstrumentSourceErrors;
+
+            if (!string.IsNullOrWhiteSpace(captureShareNameInTriggerFile))
+            {
+                // Get the default share name in DMS
+                var defaultShareName = mSourcePath.Substring(mSourcePath.IndexOf('\\', 2)).Trim('\\');
+                var captureShareName = captureShareNameInTriggerFile.Trim('\\', '.');
+
+                if (!defaultShareName.EndsWith(captureShareName, StringComparison.OrdinalIgnoreCase))
+                {
+                    captureShareName = $"..\\{captureShareName}\\";
+
+                    // If mSourcePath specifies more than just a hostname and share name (that is, it also specifies a subdirectory)
+                    // we need to add additional directory backups
+                    var extraDirectoryBackups = defaultShareName.Count(x => x == '\\');
+                    for (var i = 0; i < extraDirectoryBackups; i++)
+                    {
+                        captureShareName = $"..\\{captureShareName}";
+                    }
+
+                    if (string.IsNullOrWhiteSpace(CaptureSubdirectory))
+                    {
+                        CaptureSubdirectory = captureShareName;
+                    }
+                    else
+                    {
+                        CaptureSubdirectory = Path.Combine(captureShareName, CaptureSubdirectory);
+                    }
+                }
+            }
 
             try
             {
@@ -608,20 +640,19 @@ namespace DataImportManager
 
                         clsMainProcess.LogErrorToDatabase(errMsg);
                     }
-
                 }
 
                 // Define the source path now, before attempting to connect to Bionet
                 // This is done so that mDatasetPath will be defined so we can include it in a log message if a connection error occurs
                 string datasetSourcePath;
 
-                if (string.IsNullOrWhiteSpace(CaptureSubfolder))
+                if (string.IsNullOrWhiteSpace(CaptureSubdirectory))
                 {
                     datasetSourcePath = string.Copy(mSourcePath);
                 }
                 else
                 {
-                    datasetSourcePath = Path.Combine(mSourcePath, CaptureSubfolder);
+                    datasetSourcePath = Path.Combine(mSourcePath, CaptureSubdirectory);
                 }
 
                 // Initially define this as the dataset source directory and the dataset name
@@ -734,11 +765,8 @@ namespace DataImportManager
 
                                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                             }
-
                         }
-
                     }
-
                 }
 
                 // Make sure mSleepInterval isn't too large
@@ -755,7 +783,7 @@ namespace DataImportManager
                     ShowTraceMessage(currentTask);
                 }
 
-                var resType = GetRawDsType(mSourcePath, CaptureSubfolder, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrDirectoryName);
+                var resType = GetRawDsType(mSourcePath, CaptureSubdirectory, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrDirectoryName);
 
                 currentTask = "Validating operator name " + mOperatorUsername + " for " + mDatasetName + " at " + datasetSourcePath;
                 if (TraceMode)
@@ -839,7 +867,6 @@ namespace DataImportManager
                             }
 
                             return logonFailure ? XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE : XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED;
-
                         }
 
                         currentTask = "Dataset found at " + datasetSourcePath + " and is unchanged";
@@ -886,7 +913,6 @@ namespace DataImportManager
 
                             clsMainProcess.LogErrorToDatabase(errMsg);
                             return XmlValidateStatus.XML_VALIDATE_FAILED;
-
                         }
                         break;
 
@@ -943,7 +969,6 @@ namespace DataImportManager
 
                                 return XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED;
                             }
-
                         }
                         break;
 
@@ -996,9 +1021,7 @@ namespace DataImportManager
                 }
 
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-
             }
-
         }
 
         /// <summary>
@@ -1057,7 +1080,6 @@ namespace DataImportManager
                     " has an empty value for SourcePath in V_Instrument_List_Export");
 
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
-
             }
             catch (Exception ex)
             {
@@ -1066,7 +1088,6 @@ namespace DataImportManager
                     "Error retrieving source path and capture type for instrument: " + insName, ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
-
         }
 
         /// <summary>
@@ -1101,14 +1122,12 @@ namespace DataImportManager
                 // We matched 0 users, or more than one user
                 // An error should have already been logged by mDMSInfoCache
                 return false;
-
             }
             catch (Exception ex)
             {
                 LogError("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name", ex);
                 return false;
             }
-
         }
 
         /// <summary>
@@ -1201,7 +1220,6 @@ namespace DataImportManager
                 {
                     return validationResult;
                 }
-
             }
             catch (Exception ex)
             {
@@ -1246,7 +1264,6 @@ namespace DataImportManager
             }
 
             return false;
-
         }
 
         /// <summary>
@@ -1288,7 +1305,6 @@ namespace DataImportManager
                 }
 
                 return false;
-
             }
             catch (Exception ex)
             {
@@ -1314,11 +1330,9 @@ namespace DataImportManager
                     // We check for that in clsProcessXmlTriggerFile.ProcessFile if ValidateXMLFileMain returns false
                     throw;
                 }
-
             }
 
             return false;
         }
-
     }
 }
