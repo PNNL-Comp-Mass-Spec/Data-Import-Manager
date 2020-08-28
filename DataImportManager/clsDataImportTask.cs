@@ -133,16 +133,19 @@ namespace DataImportManager
                 // Execute the stored procedure
                 var returnCode = DBTools.ExecuteSP(cmd);
 
-                // Get return value
-                var ret = Convert.ToInt32(returnParam.Value);
-                if (ret == 0)
+                // Get return code
+                var returnParamText = DBTools.GetString(returnParam.Value);
+
+                if (returnCode == 0)
                 {
                     // Get values for output parameters
                     return true;
                 }
 
-                mPostTaskErrorMessage = messageParam.Value.ToString();
-                LogError("clsDataImportTask.ImportDataTask(), Problem posting dataset: " + mPostTaskErrorMessage);
+                mPostTaskErrorMessage = DBTools.GetString(messageParam.Value) ?? string.Empty;
+                LogError(string.Format("clsDataImportTask.ImportDataTask(), Problem posting dataset (return code {0}): {1}",
+                    returnParamText ?? string.Empty, mPostTaskErrorMessage));
+
                 return false;
 
             }
