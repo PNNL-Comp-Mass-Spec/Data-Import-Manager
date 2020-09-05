@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.IO;
+using System.Text.RegularExpressions;
 using PRISM.AppSettings;
 using PRISMDatabaseUtils;
 
@@ -66,9 +67,9 @@ namespace DataImportManager
         /// <summary>
         /// Send the contents of an XML trigger file to the database to create a new dataset
         /// </summary>
-        /// <param name="triggerFile"></param>
+        /// <param name="triggerFileInfo"></param>
         /// <returns></returns>
-        public bool PostTask(FileInfo triggerFile)
+        public bool PostTask(TriggerFileInfo triggerFileInfo)
         {
             mPostTaskErrorMessage = string.Empty;
             mDatabaseErrorMessage = string.Empty;
@@ -77,10 +78,19 @@ namespace DataImportManager
             try
             {
                 // Load the XML file into memory
-                mXmlContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFile);
+                mXmlContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
                 if (string.IsNullOrEmpty(mXmlContents))
                 {
                     return false;
+                }
+
+                // Check and modify contents if needed. Also report any replacements to the log file.
+                if (triggerFileInfo.NeedsCaptureSubdirectoryReplacement)
+                {
+                    // <Parameter Name="Capture Subdirectory" Value="2020ESI_new.PRO\Data" />
+                    var pattern = "(Parameter Name=\"Capture Sub(directory|folder)\" Value=\")" + Regex.Escape(triggerFileInfo.OriginalCaptureSubdirectory) + "\"";
+                    mXmlContents = Regex.Replace(mXmlContents, pattern, $"$1{triggerFileInfo.FinalCaptureSubdirectory}\"", RegexOptions.IgnoreCase);
+                    LogMessage($"Replaced capture subdirectory \"{triggerFileInfo.OriginalCaptureSubdirectory}\" with \"{triggerFileInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
                 }
 
                 // Call the stored procedure (typically AddNewDataset)

@@ -221,7 +221,8 @@ namespace DataImportManager
 
             LogMessage(statusMsg);
 
-            if (!ValidateXmlFileMain(triggerFile))
+            var triggerFileInfo = new TriggerFileInfo(triggerFile);
+            if (!ValidateXmlFileMain(triggerFileInfo))
             {
                 if (mSecondaryLogonServiceChecked)
                 {
@@ -253,7 +254,7 @@ namespace DataImportManager
                     LogWarning(statusMsg, true);
 
                     // Now that the service is running, try the validation one more time
-                    if (!ValidateXmlFileMain(triggerFile))
+                    if (!ValidateXmlFileMain(triggerFileInfo))
                     {
                         return false;
                     }
@@ -291,7 +292,7 @@ namespace DataImportManager
             };
 
             mDatabaseErrorMsg = string.Empty;
-            var success = mDataImportTask.PostTask(triggerFile);
+            var success = mDataImportTask.PostTask(triggerFileInfo);
 
             mDatabaseErrorMsg = mDataImportTask.DatabaseErrorMessage;
 
@@ -491,13 +492,13 @@ namespace DataImportManager
         /// <summary>
         /// Process the specified XML file
         /// </summary>
-        /// <param name="triggerFile">XML file to process</param>
+        /// <param name="triggerFileInfo">XML file to process</param>
         /// <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
         /// <remarks>
         /// PerformValidation in clsXMLTimeValidation will monitor the dataset file (or dataset directory)
         /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
-        private bool ValidateXmlFileMain(FileInfo triggerFile)
+        private bool ValidateXmlFileMain(TriggerFileInfo triggerFileInfo)
         {
             try
             {
@@ -510,13 +511,14 @@ namespace DataImportManager
                     TraceMode = ProcSettings.TraceMode
                 };
 
-                var xmlResult = myDataXmlValidation.ValidateXmlFile(triggerFile);
+                var xmlResult = myDataXmlValidation.ValidateXmlFile(triggerFileInfo);
 
                 mXmlOperatorName = myDataXmlValidation.OperatorName;
                 mXmlOperatorEmail = myDataXmlValidation.OperatorEMail;
                 mXmlDatasetPath = myDataXmlValidation.DatasetPath;
                 mXmlInstrumentName = myDataXmlValidation.InstrumentName;
 
+                var triggerFile = triggerFileInfo.TriggerFile;
                 if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
@@ -663,7 +665,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                clsMainProcess.LogErrorToDatabase("Error validating Xml Data file, file " + triggerFile.FullName, ex);
+                clsMainProcess.LogErrorToDatabase("Error validating Xml Data file, file " + triggerFileInfo.TriggerFile.FullName, ex);
                 return false;
             }
         }

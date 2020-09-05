@@ -449,14 +449,14 @@ namespace DataImportManager
         /// <summary>
         /// Extract certain settings from an XML file
         /// </summary>
-        /// <param name="triggerFile"></param>
+        /// <param name="triggerFileInfo"></param>
         /// <returns></returns>
-        private XmlValidateStatus GetXmlParameters(FileInfo triggerFile)
+        private XmlValidateStatus GetXmlParameters(TriggerFileInfo triggerFileInfo)
         {
             // initialize return value
             var validationResult = XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-            var xmlFileContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFile);
+            var xmlFileContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
             if (string.IsNullOrEmpty(xmlFileContents))
             {
                 return XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING;
@@ -483,6 +483,7 @@ namespace DataImportManager
 
                             case "Capture Share Name":
                                 captureShareNameInTriggerFile = row["Value"].ToString();
+                                triggerFileInfo.CaptureShareName = captureShareNameInTriggerFile;
                                 break;
 
                             case "Capture Subfolder":
@@ -493,11 +494,13 @@ namespace DataImportManager
                                     // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
                                     // For safety, will blank this out, but will post a log entry to the database
                                     var msg = "clsXMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
-                                        "this indicates a bug with Buzzard; see: " + triggerFile.Name;
+                                        "this indicates a bug with Buzzard; see: " + triggerFileInfo.TriggerFile.Name;
 
                                     LogError(msg, null, true);
                                     CaptureSubdirectory = string.Empty;
                                 }
+
+                                triggerFileInfo.OriginalCaptureSubdirectory = CaptureSubdirectory;
                                 break;
 
                             case "Dataset Name":
@@ -525,7 +528,7 @@ namespace DataImportManager
                     InstrumentName.StartsWith("11T") ||
                     InstrumentName.StartsWith("12T"))
                 {
-                    validationResult = InstrumentWaitDelay(triggerFile);
+                    validationResult = InstrumentWaitDelay(triggerFileInfo.TriggerFile);
                 }
 
                 if (validationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
@@ -588,7 +591,7 @@ namespace DataImportManager
 
                 if (!defaultShareName.EndsWith(captureShareName, StringComparison.OrdinalIgnoreCase))
                 {
-                    captureShareName = $"..\\{captureShareName}\\";
+                    captureShareName = $"..\\{captureShareName}";
 
                     // If mSourcePath specifies more than just a hostname and share name (that is, it also specifies a subdirectory)
                     // we need to add additional directory backups
@@ -1175,12 +1178,13 @@ namespace DataImportManager
         /// <summary>
         /// Process an XML file that defines a new dataset to add to DMS
         /// </summary>
-        /// <param name="triggerFile">XML file to process</param>
+        /// <param name="triggerFileInfo">XML file to process</param>
         /// <returns></returns>
-        public XmlValidateStatus ValidateXmlFile(FileInfo triggerFile)
+        public XmlValidateStatus ValidateXmlFile(TriggerFileInfo triggerFileInfo)
         {
             XmlValidateStatus validationResult;
             ErrorMessage = string.Empty;
+            var triggerFile = triggerFileInfo.TriggerFile;
 
             try
             {
@@ -1189,7 +1193,7 @@ namespace DataImportManager
                     ShowTraceMessage("Reading " + triggerFile.FullName);
                 }
 
-                validationResult = GetXmlParameters(triggerFile);
+                validationResult = GetXmlParameters(triggerFileInfo);
             }
             catch (Exception ex)
             {
@@ -1215,6 +1219,7 @@ namespace DataImportManager
                 if (validationResult == XmlValidateStatus.XML_VALIDATE_CONTINUE)
                 {
                     validationResult = PerformValidation();
+                    triggerFileInfo.FinalCaptureSubdirectory = CaptureSubdirectory;
                 }
                 else
                 {
