@@ -3,7 +3,7 @@ using System.IO;
 
 namespace DataImportManager
 {
-    class TriggerFileInfo
+    internal class TriggerFileInfo
     {
         public TriggerFileInfo(FileInfo triggerFile)
         {

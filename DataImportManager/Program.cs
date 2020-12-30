@@ -6,7 +6,7 @@ using PRISM.FileProcessor;
 
 namespace DataImportManager
 {
-    internal class Program
+    internal static class Program
     {
         public const string PROGRAM_DATE = "September 4, 2020";
 
