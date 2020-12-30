@@ -658,7 +658,7 @@ namespace DataImportManager
                 mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName);
 
                 if (string.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase) &&
-                    !clsGlobal.GetHostName().ToLower().StartsWith("monroe"))
+                    !clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                 {
                     // Source directory is on bionet; establish a connection
                     var username = mMgrParams.GetParam("BionetUser");
@@ -873,6 +873,7 @@ namespace DataImportManager
                             ShowTraceMessage(currentTask);
                         }
 
+                        if (clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                         {
                             Console.WriteLine("Skipping date validation because host name starts with Monroe");
                         }

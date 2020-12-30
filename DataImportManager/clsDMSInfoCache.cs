@@ -282,7 +282,7 @@ namespace DataImportManager
             var query1 = (
                 from item in mOperators
                 orderby item.Value.UserId descending
-                where item.Value.Username.ToLower().StartsWith(operatorUsernameToFind.ToLower())
+                where item.Value.Username.StartsWith(operatorUsernameToFind, StringComparison.OrdinalIgnoreCase)
                 select item.Value).ToList();
 
             if (query1.Count == 1)
@@ -313,7 +313,7 @@ namespace DataImportManager
             var query2 = (
                 from item in mOperators
                 orderby item.Value.UserId descending
-                where item.Value.Name.ToLower().StartsWith(strQueryName.ToLower())
+                where item.Value.Name.StartsWith(strQueryName, StringComparison.OrdinalIgnoreCase)
                 select item.Value).ToList();
 
             userCountMatched = query2.Count;

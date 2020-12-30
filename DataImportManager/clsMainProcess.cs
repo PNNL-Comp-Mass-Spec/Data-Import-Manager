@@ -223,7 +223,7 @@ namespace DataImportManager
                 {
                     LogWarning("Flag file exists - auto-deleting it, then closing program");
                     clsGlobal.DeleteStatusFlagFile();
-                    if (!clsGlobal.GetHostName().ToLower().StartsWith("monroe"))
+                    if (!clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -353,7 +353,7 @@ namespace DataImportManager
                         importDelay = 2;
                     }
 
-                    if (clsGlobal.GetHostName().ToLower().StartsWith("monroe"))
+                    if (clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                     {
                         // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
                         importDelay = 1;
@@ -916,7 +916,7 @@ namespace DataImportManager
                             //  or
                             // "Data Import Manager - Operator not defined."
                             // If any of the subjects contains "error", use it for the mail subject
-                            foreach (var subject in (from item in subjectList where item.ToLower().Contains("error") select item))
+                            foreach (var subject in (from item in subjectList where item.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 select item))
                             {
                                 mailToSend.Subject = subject;
                                 break;
