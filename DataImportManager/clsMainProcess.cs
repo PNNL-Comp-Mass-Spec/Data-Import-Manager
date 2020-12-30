@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using PRISM;
 using PRISM.AppSettings;
@@ -18,6 +17,8 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsMainProcess : clsLoggerBase
     {
+        // Ignore Spelling: spam, smtp, yyyy-MM, yyyy-MM-dd hh:mm:ss tt
+
         #region "Constants and enums"
 
         private const string DEFAULT_BASE_LOGFILE_NAME = @"Logs\DataImportManager";
@@ -54,7 +55,6 @@ namespace DataImportManager
         /// Keys in this dictionary are instrument names
         /// Values are the number of datasets skipped for the given instrument
         /// </summary>
-        /// <remarks></remarks>
         private readonly ConcurrentDictionary<string, int> mInstrumentsToSkip;
 
         private int mFailureCount;
@@ -62,7 +62,6 @@ namespace DataImportManager
         /// Keys in this dictionary are semicolon separated e-mail addresses
         /// Values are mail messages to send
         /// </summary>
-        /// <remarks></remarks>
         private readonly ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> mQueuedMail;
 
         #endregion
@@ -92,7 +91,6 @@ namespace DataImportManager
         /// <summary>
         /// Load the manager settings
         /// </summary>
-        /// <returns></returns>
         public bool InitMgr()
         {
             var defaultModuleName = "DataImportManager: " + clsGlobal.GetHostName();
@@ -220,7 +218,7 @@ namespace DataImportManager
         {
             try
             {
-                // Verify an error hasn't left the the system in an odd state
+                // Verify an error hasn't left the system in an odd state
                 if (clsGlobal.DetectStatusFlagFile())
                 {
                     LogWarning("Flag file exists - auto-deleting it, then closing program");
@@ -322,7 +320,6 @@ namespace DataImportManager
         /// Return an empty string if value is 1; otherwise return "s"
         /// </summary>
         /// <param name="value"></param>
-        /// <returns></returns>
         private string CheckPlural(int value)
         {
             if (value == 1) return string.Empty;
@@ -484,8 +481,6 @@ namespace DataImportManager
         /// <typeparam name="T"></typeparam>
         /// <param name="sourceList">List of items to retrieve a chunk from; will be updated to remove the items in the returned list</param>
         /// <param name="chunkSize">Number of items to return</param>
-        /// <returns></returns>
-        /// <remarks></remarks>
         private IEnumerable<T> GetNextChunk<T>(ref List<T> sourceList, int chunkSize)
         {
             if (chunkSize < 1)
@@ -518,7 +513,6 @@ namespace DataImportManager
         /// <summary>
         /// Extract the value MgrCnfgDbConnectStr fromDataImportManager.exe.config
         /// </summary>
-        /// <returns></returns>
         private string GetXmlConfigDefaultConnectionString()
         {
             return GetXmlConfigFileSetting("MgrCnfgDbConnectStr");
@@ -594,7 +588,6 @@ namespace DataImportManager
         /// Add one or more mail messages to mQueuedMail
         /// </summary>
         /// <param name="newQueuedMail"></param>
-        /// <remarks></remarks>
         private void AddToMailQueue(ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> newQueuedMail)
         {
             foreach (var newQueuedMessage in newQueuedMail)
@@ -842,14 +835,14 @@ namespace DataImportManager
                                 databaseErrorMessages.Add(queuedMailItem.DatabaseErrorMsg);
                                 errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
 
-                            } // foreach validationError
+                            } // for each validationError
 
                             if (!subjectList.Contains(queuedMailItem.Subject))
                             {
                                 subjectList.Add(queuedMailItem.Subject);
                             }
 
-                        } // foreach queuedMailItem
+                        } // for each queuedMailItem
 
                         currentTask = "Iterate over summarizedErrors, sorted by SortWeight";
 
@@ -897,7 +890,7 @@ namespace DataImportManager
                             mailBody.AppendLine(errorSummary.DatabaseErrorMsg);
                             mailBody.AppendLine();
 
-                        } // foreach errorEntry
+                        } // for each errorEntry
 
                         if (instrumentFilePaths.Count == 1)
                         {
@@ -981,7 +974,7 @@ namespace DataImportManager
                         mailLogger.WriteLine();
                         mailLogger.WriteLine(mailToSend.Body);
 
-                    } // foreach queuedMailContainer
+                    } // for each queuedMailContainer
 
                     currentTask = "Preview cached messages";
                     if (MailDisabled && mailContentPreview.Length > 0)

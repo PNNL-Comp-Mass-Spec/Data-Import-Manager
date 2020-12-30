@@ -4,6 +4,8 @@ namespace DataImportManager
 {
     internal class CommandLineOptions
     {
+        // Ignore Spelling: bionet
+
         [Option("NoMail", HelpShowsDefault = false, HelpText = "Disable sending e-mail when errors are encountered")]
         public bool NoMailMode { get; set; }
 

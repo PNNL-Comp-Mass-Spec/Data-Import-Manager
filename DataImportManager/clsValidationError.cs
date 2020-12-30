@@ -13,7 +13,6 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <remarks></remarks>
         public clsValidationError(string issueType, string issueDetail)
         {
             IssueType = issueType;

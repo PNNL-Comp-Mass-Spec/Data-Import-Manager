@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data;
-using System.IO;
 using System.Text.RegularExpressions;
 using PRISM.AppSettings;
 using PRISMDatabaseUtils;
@@ -68,7 +67,6 @@ namespace DataImportManager
         /// Send the contents of an XML trigger file to the database to create a new dataset
         /// </summary>
         /// <param name="triggerFileInfo"></param>
-        /// <returns></returns>
         public bool PostTask(TriggerFileInfo triggerFileInfo)
         {
             mPostTaskErrorMessage = string.Empty;
@@ -109,7 +107,6 @@ namespace DataImportManager
         /// Posts the given XML to DMS5 using stored procedure AddNewDataset
         /// </summary>
         /// <returns>True if success, false if an error</returns>
-        /// <remarks></remarks>
         private bool ImportDataTask()
         {
             try

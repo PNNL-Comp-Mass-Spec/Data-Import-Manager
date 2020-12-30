@@ -13,7 +13,6 @@ namespace DataImportManager
         /// <summary>
         /// Semi-colon separated list of e-mail addresses
         /// </summary>
-        /// <remarks></remarks>
         public string Recipients { get; }
 
         public string Subject { get; }
@@ -22,9 +21,6 @@ namespace DataImportManager
         /// Tracks any database message errors
         /// Also used to track suggested solutions
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public string DatabaseErrorMsg { get; set; }
 
         public List<clsValidationError> ValidationErrors { get; }
@@ -32,9 +28,6 @@ namespace DataImportManager
         /// <summary>
         /// Tracks the path to the dataset on the instrument
         /// </summary>
-        /// <value></value>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public string InstrumentDatasetPath { get; set; }
 
         #endregion

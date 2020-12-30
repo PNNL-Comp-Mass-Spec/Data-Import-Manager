@@ -8,6 +8,8 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class DMSInfoCache : clsLoggerBase
     {
+        // Ignore Spelling: desc
+
         #region "Structures"
         public struct InstrumentInfoType
         {
@@ -34,7 +36,6 @@ namespace DataImportManager
         /// <summary>
         /// Keys in this dictionary are error messages; values are suggested solutions to fix the error
         /// </summary>
-        /// <remarks></remarks>
         private readonly Dictionary<string, string> mErrorSolutions;
 
         /// <summary>
@@ -52,7 +53,6 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <remarks></remarks>
         public DMSInfoCache(string connectionString, bool traceMode)
         {
             DBTools = DbToolsFactory.GetDBTools(connectionString, debugMode: traceMode);
@@ -128,7 +128,6 @@ namespace DataImportManager
         /// <summary>
         /// Reload all DMS info now
         /// </summary>
-        /// <remarks></remarks>
         // ReSharper disable once InconsistentNaming
         public void LoadDMSInfo()
         {
@@ -219,7 +218,7 @@ namespace DataImportManager
             var sqlQuery =
                 "SELECT U_Name, U_email, U_PRN, ID " +
                 "FROM dbo.T_Users " +
-                "ORDER BY ID desc";
+                "ORDER BY ID Desc";
 
             if (mTraceMode)
                 ShowTraceMessage("Getting DMS users using " + sqlQuery);
@@ -260,7 +259,6 @@ namespace DataImportManager
         /// <param name="operatorInfo">Output: Matching operator info</param>
         /// <param name="userCountMatched">Output: Number of users matched by operatorUsernameToFind</param>
         /// <returns>True if success, otherwise false</returns>
-        /// <remarks></remarks>
         private bool LookupOperatorName(string operatorUsernameToFind, out OperatorInfoType operatorInfo, out int userCountMatched)
         {
             // Get a list of all operators (hopefully just one) matching the user operator username

@@ -66,7 +66,6 @@ namespace DataImportManager
         /// <summary>
         /// Returns the full path to the directory with the executable
         /// </summary>
-        /// <returns></returns>
         /// <remarks>Returns an empty string if unable to determine the parent directory</remarks>
         public static string GetExeDirectoryPath()
         {
@@ -81,7 +80,6 @@ namespace DataImportManager
         /// <summary>
         /// Returns the full path to this application's executable
         /// </summary>
-        /// <returns></returns>
         public static string GetExePath()
         {
             return PRISM.FileProcessor.ProcessFilesOrDirectoriesBase.GetAppPath();
@@ -90,7 +88,6 @@ namespace DataImportManager
         /// <summary>
         /// Current host name
         /// </summary>
-        /// <returns></returns>
         public static string GetHostName()
         {
             var hostName = System.Net.Dns.GetHostName();
@@ -106,7 +103,6 @@ namespace DataImportManager
         /// Load an XML file into memory and return as a string
         /// </summary>
         /// <param name="xmlFile"></param>
-        /// <returns></returns>
         /// <remarks>Replaces the ampersand character with &#38;</remarks>
         public static string LoadXmlFileContentsIntoString(FileInfo xmlFile)
         {

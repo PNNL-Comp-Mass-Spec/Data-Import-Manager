@@ -13,8 +13,9 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsProcessXmlTriggerFile : clsLoggerBase
     {
+        // Ignore Spelling: prepend, MM-dd-yyyy, logon, Bionet
 
-        #region "Constants and Structs"
+        #region "Constants and Structures"
 
         private const string CHECK_THE_LOG_FOR_DETAILS = "Check the log for details";
 
@@ -78,7 +79,6 @@ namespace DataImportManager
         /// <param name="instrumentsToSkip"></param>
         /// <param name="infoCache"></param>
         /// <param name="udtSettings"></param>
-        /// <remarks></remarks>
         public clsProcessXmlTriggerFile(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
@@ -168,8 +168,6 @@ namespace DataImportManager
         /// <summary>
         /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\Manager\Logs\LogFileName.txt
         /// </summary>
-        /// <returns></returns>
-        /// <remarks></remarks>
         private string GetLogFileSharePath()
         {
             var logFileName = mMgrSettings.GetParam("LogFileName");
@@ -180,8 +178,6 @@ namespace DataImportManager
         /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\Manager\Logs\LogFileName.txt
         /// </summary>
         /// <param name="baseLogFileName">Base name of the current log file, e.g. Logs\DataImportManager</param>
-        /// <returns></returns>
-        /// <remarks></remarks>
         public static string GetLogFileSharePath(string baseLogFileName)
         {
             var exeDirectoryPath = clsGlobal.GetExeDirectoryPath();
@@ -389,7 +385,6 @@ namespace DataImportManager
         /// <param name="triggerFile"></param>
         /// <param name="targetDirectory"></param>
         /// <returns>New path of the trigger file</returns>
-        /// <remarks></remarks>
         private string MoveXmlFile(FileInfo triggerFile, string targetDirectory)
         {
             try
@@ -467,7 +462,6 @@ namespace DataImportManager
         /// Adds or updates instrumentName in m_InstrumentsToSkip
         /// </summary>
         /// <param name="instrumentName"></param>
-        /// <remarks></remarks>
         private void UpdateInstrumentsToSkip(string instrumentName)
         {
             // Look for the instrument in m_InstrumentsToSkip

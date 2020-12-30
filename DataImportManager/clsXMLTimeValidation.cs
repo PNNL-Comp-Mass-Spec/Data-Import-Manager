@@ -14,6 +14,7 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsXMLTimeValidation : clsLoggerBase
     {
+        // Ignore Spelling: bionet, fso, secfso, subfolder, pwd, prepend, AcqData, logon, Alz, Roc
 
         #region "Member variables"
 
@@ -129,7 +130,6 @@ namespace DataImportManager
         /// <param name="dctInstrumentsToSkip"></param>
         /// <param name="dmsCache"></param>
         /// <param name="udtProcSettings"></param>
-        /// <remarks></remarks>
         public clsXMLTimeValidation(
             MgrSettings mgrParams,
             ConcurrentDictionary<string, int> dctInstrumentsToSkip,
@@ -153,7 +153,6 @@ namespace DataImportManager
         /// </summary>
         /// <param name="textToSearch"></param>
         /// <param name="textToFind"></param>
-        /// <returns></returns>
         private bool ContainsIgnoreCase(string textToSearch, string textToFind)
         {
             if (textToSearch.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0)
@@ -336,7 +335,6 @@ namespace DataImportManager
         /// If textToCheck is null or empty, return an empty string
         /// </summary>
         /// <param name="textToCheck"></param>
-        /// <returns></returns>
         private string FixNull(string textToCheck)
         {
             if (string.IsNullOrEmpty(textToCheck))
@@ -450,7 +448,6 @@ namespace DataImportManager
         /// Extract certain settings from an XML file
         /// </summary>
         /// <param name="triggerFileInfo"></param>
-        /// <returns></returns>
         private XmlValidateStatus GetXmlParameters(TriggerFileInfo triggerFileInfo)
         {
             // initialize return value
@@ -549,7 +546,6 @@ namespace DataImportManager
         /// Examine the date of the trigger file; if less than XMLFileDelay minutes old, delay processing trigger file
         /// </summary>
         /// <param name="triggerFile"></param>
-        /// <returns></returns>
         private XmlValidateStatus InstrumentWaitDelay(FileSystemInfo triggerFile)
         {
             try
@@ -576,7 +572,6 @@ namespace DataImportManager
         /// <summary>
         /// Validate that the remote dataset exists and that its size is constant
         /// </summary>
-        /// <returns></returns>
         private XmlValidateStatus PerformValidation()
         {
             var connected = false;
@@ -593,7 +588,7 @@ namespace DataImportManager
                 {
                     captureShareName = $"..\\{captureShareName}";
 
-                    // If mSourcePath specifies more than just a hostname and share name (that is, it also specifies a subdirectory)
+                    // If mSourcePath specifies more than just a host name and share name (that is, it also specifies a subdirectory)
                     // we need to add additional directory backups
                     var extraDirectoryBackups = defaultShareName.Count(x => x == '\\');
                     for (var i = 0; i < extraDirectoryBackups; i++)
@@ -820,7 +815,7 @@ namespace DataImportManager
                             ShowTraceMessage(currentTask);
                         }
 
-                        // Disconnect from BioNet if necessary
+                        // Disconnect from Bionet if necessary
                         if (connected)
                         {
                             currentTask = "Dataset not found; disconnecting from " + mSourcePath;
@@ -878,7 +873,6 @@ namespace DataImportManager
                             ShowTraceMessage(currentTask);
                         }
 
-                        if (clsGlobal.GetHostName().ToLower().StartsWith("monroe"))
                         {
                             Console.WriteLine("Skipping date validation because host name starts with Monroe");
                         }
@@ -1031,7 +1025,6 @@ namespace DataImportManager
         /// Auto change spaces to underscores, % to 'pct', and periods to 'pt' in the search text
         /// </summary>
         /// <param name="searchText"></param>
-        /// <returns></returns>
         private string ReplaceInvalidChars(string searchText)
         {
             var updatedText = string.Copy(searchText);
@@ -1048,8 +1041,6 @@ namespace DataImportManager
         /// Query to get the instrument data from the database and then iterate through the dataset to retrieve the capture type and source path
         /// </summary>
         /// <param name="insName"></param>
-        /// <returns></returns>
-        /// <remarks></remarks>
         private XmlValidateStatus SetDbInstrumentParameters(string insName)
         {
             try
@@ -1096,7 +1087,6 @@ namespace DataImportManager
         /// <summary>
         /// Validate that the instrument operator is defined, and matches a user in DMS
         /// </summary>
-        /// <returns></returns>
         private bool SetOperatorName()
         {
             try
@@ -1179,7 +1169,6 @@ namespace DataImportManager
         /// Process an XML file that defines a new dataset to add to DMS
         /// </summary>
         /// <param name="triggerFileInfo">XML file to process</param>
-        /// <returns></returns>
         public XmlValidateStatus ValidateXmlFile(TriggerFileInfo triggerFileInfo)
         {
             XmlValidateStatus validationResult;
@@ -1242,7 +1231,6 @@ namespace DataImportManager
         /// <param name="directoryPath"></param>
         /// <param name="sleepIntervalSeconds"></param>
         /// <returns>True if constant, false if changed</returns>
-        /// <remarks></remarks>
         private bool VerifyConstantDirectorySize(string directoryPath, int sleepIntervalSeconds)
         {
             // Sleep interval should be no more than 15 minutes (900 seconds)
@@ -1278,7 +1266,6 @@ namespace DataImportManager
         /// <param name="sleepIntervalSeconds"></param>
         /// <param name="logonFailure"></param>
         /// <returns>True if constant, false if changed</returns>
-        /// <remarks></remarks>
         private bool VerifyConstantFileSize(string filePath, int sleepIntervalSeconds, out bool logonFailure)
         {
             // Sleep interval should be no more than 15 minutes (900 seconds)
