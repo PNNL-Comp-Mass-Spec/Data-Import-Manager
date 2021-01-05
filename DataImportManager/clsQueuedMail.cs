@@ -5,7 +5,6 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsQueuedMail
     {
-
         #region "Properties"
 
         public string InstrumentOperator { get; }

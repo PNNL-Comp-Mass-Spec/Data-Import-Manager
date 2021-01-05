@@ -159,7 +159,6 @@ namespace DataImportManager
                     ShowTrace("Manager parameter " + MGR_PARAM_MGR_ACTIVE + " is false");
                     return false;
                 }
-
             }
             catch (Exception ex)
             {
@@ -227,7 +226,6 @@ namespace DataImportManager
                     {
                         return true;
                     }
-
                 }
 
                 if (WindowsUpdateStatus.ServerUpdatesArePending(DateTime.Now, out var pendingWindowsUpdateMessage))
@@ -313,7 +311,6 @@ namespace DataImportManager
                 LogErrorToDatabase("Exception in clsMainProcess.DoImport()", ex);
                 return false;
             }
-
         }
 
         /// <summary>
@@ -387,7 +384,6 @@ namespace DataImportManager
 
                         Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
                     }
-
                 }
                 else
                 {
@@ -433,7 +429,6 @@ namespace DataImportManager
                 mFailureCount++;
                 LogError("Exception in clsMainProcess.DoDataImportTask", ex);
             }
-
         }
 
         private Dictionary<string, string> GetLocalManagerSettings()
@@ -525,7 +520,6 @@ namespace DataImportManager
         /// <remarks>Uses a simple text reader in case the file has malformed XML</remarks>
         private string GetXmlConfigFileSetting(string settingName)
         {
-
             if (string.IsNullOrWhiteSpace(settingName))
                 throw new ArgumentException("Setting name cannot be blank", nameof(settingName));
 
@@ -581,7 +575,6 @@ namespace DataImportManager
             {
                 AddToMailQueue(triggerProcessor.QueuedMail);
             }
-
         }
 
         /// <summary>
@@ -775,7 +768,6 @@ namespace DataImportManager
                             {
                                 mailBody.AppendLine();
                             }
-
                         }
 
                         // Summarize the validation errors
@@ -805,7 +797,6 @@ namespace DataImportManager
                                 {
                                     instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath);
                                 }
-
                             }
 
                             LogDebug(statusMsg);
@@ -834,14 +825,12 @@ namespace DataImportManager
 
                                 databaseErrorMessages.Add(queuedMailItem.DatabaseErrorMsg);
                                 errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
-
                             } // for each validationError
 
                             if (!subjectList.Contains(queuedMailItem.Subject))
                             {
                                 subjectList.Add(queuedMailItem.Subject);
                             }
-
                         } // for each queuedMailItem
 
                         currentTask = "Iterate over summarizedErrors, sorted by SortWeight";
@@ -875,7 +864,6 @@ namespace DataImportManager
                                     // Add the cached additional info items
                                     mailBody.AppendLine("  " + infoItem);
                                 }
-
                             }
                             else
                             {
@@ -889,7 +877,6 @@ namespace DataImportManager
 
                             mailBody.AppendLine(errorSummary.DatabaseErrorMsg);
                             mailBody.AppendLine();
-
                         } // for each errorEntry
 
                         if (instrumentFilePaths.Count == 1)
@@ -973,7 +960,6 @@ namespace DataImportManager
                         mailLogger.WriteLine("Subject: " + mailToSend.Subject);
                         mailLogger.WriteLine();
                         mailLogger.WriteLine(mailToSend.Body);
-
                     } // for each queuedMailContainer
 
                     currentTask = "Preview cached messages";
@@ -981,7 +967,6 @@ namespace DataImportManager
                     {
                         ShowTraceMessage("Mail content preview" + Environment.NewLine + mailContentPreview);
                     }
-
                 }
             }
             catch (Exception ex)
@@ -1078,6 +1063,5 @@ namespace DataImportManager
         {
             BaseLogger.ShowTraceMessage(message, false);
         }
-
     }
 }

@@ -559,7 +559,6 @@ namespace DataImportManager
 
                 LogWarning("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name);
                 return XmlValidateStatus.XML_WAIT_FOR_FILES;
-
             }
             catch (Exception ex)
             {
@@ -1158,7 +1157,6 @@ namespace DataImportManager
                     actualSecondsToSleep = sleepIntervalSeconds;
                     ShowTraceMessage("Monitoring dataset " + datasetType + " for " + sleepIntervalSeconds + " seconds to see if its size changes");
                 }
-
             }
             else
             {

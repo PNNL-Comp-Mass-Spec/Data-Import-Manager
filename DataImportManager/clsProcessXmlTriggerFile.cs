@@ -153,13 +153,11 @@ namespace DataImportManager
                         existingQueuedMessages.Add(messageToQueue);
                     }
                 }
-
             }
             catch (Exception ex)
             {
                 LogError("Error sending email message", ex);
             }
-
         }
 
         /// <summary>
@@ -251,14 +249,12 @@ namespace DataImportManager
                     {
                         return false;
                     }
-
                 }
                 catch (Exception ex)
                 {
                     LogWarning("Unable to start the Secondary Logon service: " + ex.Message);
                     return false;
                 }
-
             }
 
             if (!triggerFile.Exists)
@@ -289,7 +285,7 @@ namespace DataImportManager
 
             mDatabaseErrorMsg = mDataImportTask.DatabaseErrorMessage;
 
-            if (mDatabaseErrorMsg.ToLower().Contains("timeout expired."))
+            if (mDatabaseErrorMsg.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
                 clsMainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + triggerFile.FullName);
@@ -305,7 +301,7 @@ namespace DataImportManager
 
             // Look for:
             // Transaction (Process ID 67) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction
-            if (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("deadlocked"))
+            if (mDataImportTask.PostTaskErrorMessage.IndexOf("deadlocked", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
                 statusMsg = "Deadlock encountered";
@@ -315,7 +311,7 @@ namespace DataImportManager
 
             // Look for:
             // The current transaction cannot be committed and cannot support operations that write to the log file. Roll back the transaction
-            if (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("current transaction cannot be committed"))
+            if (mDataImportTask.PostTaskErrorMessage.IndexOf("current transaction cannot be committed", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
                 statusMsg = "Transaction commit error";
@@ -328,7 +324,7 @@ namespace DataImportManager
             var moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureDirectory);
             statusMsg = "Error posting xml file to database: " + mDataImportTask.PostTaskErrorMessage;
 
-            if (mDataImportTask.PostTaskErrorMessage.ToLower().Contains("since already in database"))
+            if (mDataImportTask.PostTaskErrorMessage.IndexOf("since already in database", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 messageType = BaseLogger.LogLevels.WARN;
                 LogWarning(statusMsg + ". See: " + moveLocPath);
@@ -423,7 +419,6 @@ namespace DataImportManager
 
                         xmlFileNewLoc.Delete();
                     }
-
                 }
 
                 var movePaths =
@@ -452,7 +447,6 @@ namespace DataImportManager
                 LogError("Exception in MoveXmlFile", ex);
                 return string.Empty;
             }
-
         }
 
         /// <summary>
@@ -477,7 +471,6 @@ namespace DataImportManager
             {
                 mInstrumentsToSkip[instrumentName] = datasetsSkippedRetry + 1;
             }
-
         }
 
         /// <summary>

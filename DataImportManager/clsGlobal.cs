@@ -12,7 +12,6 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     public static class clsGlobal
     {
-
         //  Constants
         private const string FLAG_FILE_NAME = "FlagFile.txt";
 
@@ -34,7 +33,6 @@ namespace DataImportManager
         /// </summary>
         public static void DeleteStatusFlagFile()
         {
-
             var exeDirectoryPath = GetExeDirectoryPath();
             var flagFilePath = Path.Combine(exeDirectoryPath, FLAG_FILE_NAME);
             try
@@ -43,13 +41,11 @@ namespace DataImportManager
                 {
                     File.Delete(flagFilePath);
                 }
-
             }
             catch (Exception ex)
             {
                 LogTools.LogError("Error in DeleteStatusFlagFile", ex);
             }
-
         }
 
         /// <summary>
@@ -74,7 +70,6 @@ namespace DataImportManager
                 return "";
 
             return exeFile.DirectoryName;
-
         }
 
         /// <summary>
@@ -139,8 +134,6 @@ namespace DataImportManager
                 LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file", ex);
                 return string.Empty;
             }
-
         }
     }
-
 }

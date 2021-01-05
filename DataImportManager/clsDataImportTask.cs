@@ -154,7 +154,6 @@ namespace DataImportManager
                     returnParamText ?? string.Empty, mPostTaskErrorMessage));
 
                 return false;
-
             }
             catch (Exception ex)
             {
@@ -162,7 +161,6 @@ namespace DataImportManager
                 mDatabaseErrorMessage = Environment.NewLine + ("Database Error Message:" + ex.Message);
                 return false;
             }
-
         }
     }
 }
