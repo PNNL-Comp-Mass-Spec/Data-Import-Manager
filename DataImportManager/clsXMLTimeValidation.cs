@@ -1283,20 +1283,16 @@ namespace DataImportManager
             try
             {
                 // Get the initial size of the file
-                var fiDatasetFile = new FileInfo(filePath);
-                var initialFileSize = fiDatasetFile.Length;
+                var datasetFile = new FileInfo(filePath);
+                var initialFileSize = datasetFile.Length;
 
                 SleepWhileVerifyingConstantSize(sleepIntervalSeconds, "file");
 
                 // Get the final size of the file and compare
-                fiDatasetFile.Refresh();
-                var finalFileSize = fiDatasetFile.Length;
-                if (finalFileSize == initialFileSize)
-                {
-                    return true;
-                }
+                datasetFile.Refresh();
+                var finalFileSize = datasetFile.Length;
 
-                return false;
+                return finalFileSize == initialFileSize;
             }
             catch (Exception ex)
             {

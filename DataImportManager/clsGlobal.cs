@@ -22,8 +22,8 @@ namespace DataImportManager
         public static void CreateStatusFlagFile()
         {
             var exeDirectoryPath = GetExeDirectoryPath();
-            var fiFlagFile = new FileInfo(Path.Combine(exeDirectoryPath, FLAG_FILE_NAME));
-            using (var swFlagFile = fiFlagFile.AppendText())
+            var flagFile = new FileInfo(Path.Combine(exeDirectoryPath, FLAG_FILE_NAME));
+            using (var swFlagFile = flagFile.AppendText())
             {
                 swFlagFile.WriteLine(DateTime.Now.ToString(CultureInfo.InvariantCulture));
             }
