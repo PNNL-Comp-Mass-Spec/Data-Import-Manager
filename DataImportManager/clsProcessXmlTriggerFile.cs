@@ -38,7 +38,7 @@ namespace DataImportManager
         /// <summary>
         /// Mail message(s) that need to be sent
         /// </summary>
-        public ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> QueuedMail => mQueuedMail;
+        public ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> QueuedMail { get; }
 
         #endregion
 
@@ -68,8 +68,6 @@ namespace DataImportManager
 
         private string mXmlInstrumentName = string.Empty;
 
-        private readonly ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> mQueuedMail;
-
         #endregion
 
         /// <summary>
@@ -91,7 +89,7 @@ namespace DataImportManager
 
             mDMSInfoCache = infoCache;
 
-            mQueuedMail = new ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>>();
+            QueuedMail = new ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>>();
         }
 
         private void CacheMail(List<clsValidationError> validationErrors, string addnlRecipient, string subjectAppend)
@@ -136,7 +134,7 @@ namespace DataImportManager
                 messageToQueue.InstrumentDatasetPath = mXmlDatasetPath;
 
                 // Queue the message
-                if (mQueuedMail.TryGetValue(mailRecipients, out var existingQueuedMessages))
+                if (QueuedMail.TryGetValue(mailRecipients, out var existingQueuedMessages))
                 {
                     existingQueuedMessages.Add(messageToQueue);
                 }
@@ -147,14 +145,13 @@ namespace DataImportManager
                         messageToQueue
                     };
 
-                    if (mQueuedMail.TryAdd(mailRecipients, newQueuedMessages))
+                    if (QueuedMail.TryAdd(mailRecipients, newQueuedMessages))
                         return;
 
-                    if (mQueuedMail.TryGetValue(mailRecipients, out existingQueuedMessages))
+                    if (QueuedMail.TryGetValue(mailRecipients, out existingQueuedMessages))
                     {
                         existingQueuedMessages.Add(messageToQueue);
                     }
-
                 }
 
             }
