@@ -63,6 +63,7 @@
     <Compile Include="clsQueuedMail.cs" />
     <Compile Include="clsValidationError.cs" />
     <Compile Include="clsXMLTimeValidation.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

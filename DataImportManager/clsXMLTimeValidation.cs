@@ -155,12 +155,7 @@ namespace DataImportManager
         /// <param name="textToFind"></param>
         private bool ContainsIgnoreCase(string textToSearch, string textToFind)
         {
-            if (textToSearch.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return true;
-            }
-
-            return false;
+            return textToSearch.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         /// <summary>
@@ -393,7 +388,9 @@ namespace DataImportManager
             {
                 if (captureSubFolderName.Length > 255)
                 {
-                    ErrorMessage = "Subdirectory path for dataset " + currentDataset + " is too long (over 255 characters): " + "[" + captureSubFolderName + "]";
+                    ErrorMessage = string.Format(
+                        "Subdirectory path for dataset {0} is too long (over 255 characters): [{1}]",
+                        currentDataset, captureSubFolderName);
 
                     LogError(ErrorMessage);
                     instrumentFileOrDirectoryName = string.Empty;
@@ -403,7 +400,9 @@ namespace DataImportManager
                 var subdirectory = new DirectoryInfo(Path.Combine(sourceDirectory.FullName, captureSubFolderName));
                 if (!subdirectory.Exists)
                 {
-                    ErrorMessage = "Source directory not found for dataset " + currentDataset + " in the given subdirectory: " + "[" + subdirectory.FullName + "]";
+                    ErrorMessage = string.Format(
+                        "Source directory not found for dataset {0} in the given subdirectory: [{1}]",
+                        currentDataset, subdirectory.FullName);
 
                     LogError(ErrorMessage);
                     instrumentFileOrDirectoryName = string.Empty;
@@ -617,7 +616,7 @@ namespace DataImportManager
                 if (string.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase))
                 {
                     // Make sure mSourcePath is not of the form \\proto-2 because if that is the case, mCaptureType should be "fso"
-                    var reProtoServer = new Regex(@"\\\\proto-\d+\\", (RegexOptions.Compiled | RegexOptions.IgnoreCase));
+                    var reProtoServer = new Regex(@"\\\\proto-\d+\\", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
                     if (reProtoServer.IsMatch(mSourcePath))
                     {
@@ -669,7 +668,10 @@ namespace DataImportManager
                         username = clsGlobal.GetHostName() + '\\' + username;
                     }
 
-                    var currentTaskBase = "Connecting to " + mSourcePath + " using secfso, user " + username + "," + " and encoded password " + encodedPwd;
+                    var currentTaskBase = string.Format(
+                        "Connecting to {0} using secfso, user {1}, and encoded password {2}",
+                        mSourcePath, username, encodedPwd);
+
                     currentTask = currentTaskBase + "; Decoding password";
                     if (TraceMode)
                     {
@@ -701,10 +703,9 @@ namespace DataImportManager
                     else
                     {
                         currentTask = currentTaskBase + "; Error connecting";
-                        ErrorMessage = "Error "
-                                    + mShareConnector.ErrorMessage + " connecting to "
-                                    + mSourcePath + " as user "
-                                    + username + " using 'secfso'" + "; error code " + mShareConnector.ErrorMessage;
+                        ErrorMessage = string.Format(
+                            "Error connecting to {0} as user {1} using 'secfso': {2}",
+                            mSourcePath, username, mShareConnector.ErrorMessage);
 
                         LogError(ErrorMessage);
 
@@ -720,8 +721,10 @@ namespace DataImportManager
 
                             case "1219":
                             case "1203":
-                                var statusMsg = "Likely had error 'An unexpected network error occurred' while validating the Dataset " +
-                                                "specified by the XML file (ErrorMessage=" + mShareConnector.ErrorMessage + ")";
+                                var statusMsg = string.Format(
+                                    "Likely had error 'An unexpected network error occurred' while validating the Dataset specified by the XML file (ErrorMessage={0})",
+                                    mShareConnector.ErrorMessage);
+
                                 if (TraceMode)
                                 {
                                     ShowTraceMessage(statusMsg);
@@ -1094,7 +1097,7 @@ namespace DataImportManager
             {
                 if (string.IsNullOrWhiteSpace(mOperatorUsername))
                 {
-                    var logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
+                    const string logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
                     LogWarning(logMsg);
                     mOperatorName = logMsg;
                     return false;
@@ -1252,12 +1255,8 @@ namespace DataImportManager
 
             // Get the final size of the directory and compare
             var finalDirectorySize = mFileTools.GetDirectorySize(directoryPath);
-            if (finalDirectorySize == initialDirectorySize)
-            {
-                return true;
-            }
 
-            return false;
+            return finalDirectorySize == initialDirectorySize;
         }
 
         /// <summary>
