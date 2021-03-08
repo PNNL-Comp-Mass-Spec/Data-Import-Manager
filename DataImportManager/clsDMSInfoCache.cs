@@ -24,6 +24,7 @@ namespace DataImportManager
             public string Name;
             public string Email;
             public string Username;
+            public bool Obsolete;
             public int UserId;
         }
 
@@ -216,7 +217,7 @@ namespace DataImportManager
 
             // Get a list of all users in the database
             var sqlQuery =
-                "SELECT U_Name, U_email, U_PRN, ID " +
+                "SELECT U_Name, U_email, U_PRN, ID, U_Status " +
                 "FROM dbo.T_Users " +
                 "ORDER BY ID Desc";
 
@@ -239,12 +240,13 @@ namespace DataImportManager
                     Name = row[0],
                     Email = row[1],
                     Username = row[2],
-                    UserId = userId
+                    UserId = userId,
+                    Obsolete = string.Equals(row[4], "Obsolete", StringComparison.OrdinalIgnoreCase)
                 };
 
-                if (!string.IsNullOrWhiteSpace(udtOperator.Username) && !mOperators.ContainsKey(udtOperator.Username))
+                if (!string.IsNullOrWhiteSpace(udtOperator.Username) && !mOperators.ContainsKey(udtOperator.Username.ToUpper()))
                 {
-                    mOperators.Add(udtOperator.Username, udtOperator);
+                    mOperators.Add(udtOperator.Username.ToUpper(), udtOperator);
                 }
             }
 
@@ -267,7 +269,23 @@ namespace DataImportManager
                 ShowTraceMessage("Looking for operator by username: " + operatorUsernameToFind);
             }
 
-            if (mOperators.TryGetValue(operatorUsernameToFind, out operatorInfo))
+            // operatorUsernameToFind may contain the person's name instead of their PRN; check for this
+            // In other words, operatorUsernameToFind may be "Baker, Erin M" instead of "D3P347"
+            var strQueryName = string.Copy(operatorUsernameToFind);
+            var strQueryUsername = string.Copy(operatorUsernameToFind);
+            if (strQueryName.IndexOf('(') > 0)
+            {
+                // Name likely is something like: Baker, Erin M (D3P347)
+                // Truncate any text after the parenthesis for the name
+                strQueryName = strQueryName.Substring(0, strQueryName.IndexOf('(')).Trim();
+
+                // Only keep what's inside the parentheses for the username
+                // This is not a comprehensive check; it assumes there is nothing in the string after the user's name besides the username, surrounded by parentheses and spaces
+                strQueryUsername = strQueryUsername.Substring(strQueryName.Length).Trim(new char[] {' ', '(', ')'});
+            }
+
+
+            if (mOperators.TryGetValue(strQueryUsername.ToUpper(), out operatorInfo))
             {
                 // Match found
                 if (mTraceMode)
@@ -280,15 +298,15 @@ namespace DataImportManager
             }
 
             var query1 = (
-                from item in mOperators
-                orderby item.Value.UserId descending
-                where item.Value.Username.StartsWith(operatorUsernameToFind, StringComparison.OrdinalIgnoreCase)
-                select item.Value).ToList();
+                from item in mOperators.Values
+                orderby item.UserId descending
+                where item.Username.StartsWith(strQueryUsername, StringComparison.OrdinalIgnoreCase)
+                select item).ToList();
 
             if (query1.Count == 1)
             {
                 operatorInfo = query1.FirstOrDefault();
-                var logMsg = "Matched "  + operatorInfo.Username + " using LINQ (the lookup with .TryGetValue(" + operatorUsernameToFind + ") failed)";
+                var logMsg = "Matched "  + operatorInfo.Username + " using LINQ (the lookup with .TryGetValue(" + strQueryUsername + ") failed)";
                 LogWarning(logMsg);
                 if (mTraceMode)
                 {
@@ -300,21 +318,13 @@ namespace DataImportManager
             }
 
             // No match to an operator with username operatorUsernameToFind
-            // operatorUsernameToFind may contain the person's name instead of their PRN; check for this
-            // In other words, operatorUsernameToFind may be "Baker, Erin M" instead of "D3P347"
-            var strQueryName = string.Copy(operatorUsernameToFind);
-            if (strQueryName.IndexOf('(') > 0)
-            {
-                // Name likely is something like: Baker, Erin M (D3P347)
-                // Truncate any text after the parenthesis
-                strQueryName = strQueryName.Substring(0, strQueryName.IndexOf('(')).Trim();
-            }
+            // See if a user's name was supplied instead
 
             var query2 = (
-                from item in mOperators
-                orderby item.Value.UserId descending
-                where item.Value.Name.StartsWith(strQueryName, StringComparison.OrdinalIgnoreCase)
-                select item.Value).ToList();
+                from item in mOperators.Values
+                orderby item.UserId descending
+                where item.Name.StartsWith(strQueryName, StringComparison.OrdinalIgnoreCase)
+                select item).ToList();
 
             userCountMatched = query2.Count;
             if (userCountMatched == 1)
@@ -327,6 +337,25 @@ namespace DataImportManager
 
             if (userCountMatched > 1)
             {
+                var nonObsolete = query2.Where(item => !item.Obsolete).ToList();
+                if (nonObsolete.Count == 1)
+                {
+                    // We only matched a single non-obsolete user
+                    // Update the operator name, e-mail, and PRN
+                    operatorInfo = nonObsolete.FirstOrDefault();
+                    return true;
+                }
+
+                var exactMatch = nonObsolete
+                    .Where(item => item.Name.Equals(strQueryName, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (exactMatch.Count == 1)
+                {
+                    // We do have an exact match to a single non-obsolete user
+                    // Update the operator name, e-mail, and PRN
+                    operatorInfo = exactMatch.FirstOrDefault();
+                    return true;
+                }
+
                 operatorInfo = query2.FirstOrDefault();
                 var logMsg = "LookupOperatorName: Ambiguous match found for '" + strQueryName + "' in T_Users; will e-mail '" + operatorInfo.Email + "'";
                 LogWarning(logMsg);
