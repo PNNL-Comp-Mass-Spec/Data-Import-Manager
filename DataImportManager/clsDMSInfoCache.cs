@@ -140,11 +140,11 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private void LoadErrorSolutionsFromDMS(IDBTools dbTools)
         {
-            short retryCount = 3;
-            var timeoutSeconds = 5;
+            const short retryCount = 3;
+            const int timeoutSeconds = 5;
 
             // Get a list of error messages in T_DIM_Error_Solution
-            var sqlQuery =
+            const string sqlQuery =
                 "SELECT Error_Text, Solution " +
                 "FROM T_DIM_Error_Solution " +
                 "ORDER BY Error_Text";
@@ -171,11 +171,11 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private void LoadInstrumentsFromDMS(IDBTools dbTools)
         {
-            short retryCount = 3;
-            var timeoutSeconds = 5;
+            const short retryCount = 3;
+            const int timeoutSeconds = 5;
 
             // Get a list of instruments in V_Instrument_List_Export
-            var sqlQuery =
+            const string sqlQuery =
                 "SELECT Name, Class, RawDataType, Capture, SourcePath " +
                 "FROM dbo.V_Instrument_List_Export " +
                 "ORDER BY Name";
@@ -212,11 +212,11 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private void LoadOperatorsFromDMS(IDBTools dbTools)
         {
-            short retryCount = 3;
-            var timeoutSeconds = 5;
+            const short retryCount = 3;
+            const int timeoutSeconds = 5;
 
             // Get a list of all users in the database
-            var sqlQuery =
+            const string sqlQuery =
                 "SELECT U_Name, U_email, U_PRN, ID, U_Status " +
                 "FROM dbo.T_Users " +
                 "ORDER BY ID Desc";
