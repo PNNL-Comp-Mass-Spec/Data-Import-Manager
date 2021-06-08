@@ -20,7 +20,7 @@ namespace DataImportManager
 
         private string mDatasetName = string.Empty;
 
-        private DateTime mRunFinishUtc = new DateTime(1960, 1, 1);
+        private DateTime mRunFinishUtc = new(1960, 1, 1);
 
         private string mCaptureType = string.Empty;
 

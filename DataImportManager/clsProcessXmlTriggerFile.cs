@@ -524,6 +524,7 @@ namespace DataImportManager
 
                     mDatabaseErrorMsg = "Operator payroll number/HID was blank";
                     var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
+
                     if (string.IsNullOrWhiteSpace(errorSolution))
                     {
                         mDatabaseErrorMsg = string.Empty;
@@ -546,8 +547,9 @@ namespace DataImportManager
 
                     var validationErrors = new List<clsValidationError>
                     {
-                        new clsValidationError("Time validation error", moveLocPath)
+                        new("Time validation error", moveLocPath)
                     };
+
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Time validation error.");
                     return false;
                 }
@@ -560,8 +562,9 @@ namespace DataImportManager
 
                     var validationErrors = new List<clsValidationError>
                     {
-                        new clsValidationError("XML error encountered during validation process", moveLocPath)
+                        new("XML error encountered during validation process", moveLocPath)
                     };
+
                     CacheMail(validationErrors, mXmlOperatorEmail, " - XML validation error.");
                     return false;
                 }
