@@ -22,10 +22,9 @@ namespace DataImportManager
         {
             var exeDirectoryPath = GetExeDirectoryPath();
             var flagFile = new FileInfo(Path.Combine(exeDirectoryPath, FLAG_FILE_NAME));
-            using (var swFlagFile = flagFile.AppendText())
-            {
-                swFlagFile.WriteLine(DateTime.Now.ToString(CultureInfo.InvariantCulture));
-            }
+
+            using var writer = flagFile.AppendText();
+            writer.WriteLine(DateTime.Now.ToString(CultureInfo.InvariantCulture));
         }
 
         /// <summary>
@@ -110,21 +109,21 @@ namespace DataImportManager
                 }
 
                 var xmlFileContents = new StringBuilder();
-                using (var sr = new StreamReader(new FileStream(xmlFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+
+                using var reader = new StreamReader(new FileStream(xmlFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+
+                while (!reader.EndOfStream)
                 {
-                    while (!sr.EndOfStream)
+                    var input = reader.ReadLine();
+                    if (string.IsNullOrWhiteSpace(input))
+                        continue;
+
+                    if (xmlFileContents.Length > 0)
                     {
-                        var input = sr.ReadLine();
-                        if (string.IsNullOrWhiteSpace(input))
-                            continue;
-
-                        if (xmlFileContents.Length > 0)
-                        {
-                            xmlFileContents.Append(Environment.NewLine);
-                        }
-
-                        xmlFileContents.Append(input.Replace("&", "&#38;"));
+                        xmlFileContents.Append(Environment.NewLine);
                     }
+
+                    xmlFileContents.Append(input.Replace("&", "&#38;"));
                 }
 
                 return xmlFileContents.ToString();

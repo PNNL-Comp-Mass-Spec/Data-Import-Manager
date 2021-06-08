@@ -703,270 +703,271 @@ namespace DataImportManager
                     ShowTrace("Appending to mail log file " + mailLogFile.FullName);
 
                 currentTask = "Create the mail logger";
-                using (var mailLogger = new StreamWriter(new FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)))
+
+                using var mailLogger = new StreamWriter(new FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
                 {
-                    mailLogger.AutoFlush = true;
+                    AutoFlush = true
+                };
 
-                    currentTask = "Iterate over mQueuedMail";
-                    foreach (var queuedMailContainer in mQueuedMail)
+                currentTask = "Iterate over mQueuedMail";
+                foreach (var queuedMailContainer in mQueuedMail)
+                {
+                    var recipients = queuedMailContainer.Key;
+                    var messageCount = queuedMailContainer.Value.Count;
+
+                    if (messageCount < 1)
                     {
-                        var recipients = queuedMailContainer.Key;
-                        var messageCount = queuedMailContainer.Value.Count;
+                        ShowTrace("Empty clsQueuedMail list; this should never happen");
 
-                        if (messageCount < 1)
+                        LogWarning("Empty mail queue for recipients " + recipients + "; nothing to do", true);
+                        continue;
+                    }
+
+                    currentTask = "Get first queued mail";
+
+                    var firstQueuedMail = queuedMailContainer.Value.First();
+                    if (firstQueuedMail == null)
+                    {
+                        LogErrorToDatabase("firstQueuedMail item is null in SendQueuedMail");
+
+                        var defaultRecipients = mMgrSettings.GetParam("to");
+                        firstQueuedMail = new clsQueuedMail("Unknown Operator", defaultRecipients, "Exception", new List<clsValidationError>());
+                    }
+
+                    // Create the mail message
+                    var mailToSend = new MailMessage
+                    {
+                        From = new MailAddress(mMgrSettings.GetParam("from"))
+                    };
+
+                    var mailRecipientsList = firstQueuedMail.Recipients.Split(';').Distinct().ToList();
+                    foreach (var emailAddress in mailRecipientsList)
+                    {
+                        mailToSend.To.Add(emailAddress);
+                    }
+
+                    mailToSend.Subject = firstQueuedMail.Subject;
+
+                    var subjectList = new SortedSet<string>();
+                    var databaseErrorMessages = new SortedSet<string>();
+                    var instrumentFilePaths = new SortedSet<string>();
+
+                    var mailBody = new StringBuilder();
+
+                    if (messageCount == 1)
+                    {
+                        LogDebug("E-mailing " + recipients + " regarding " + firstQueuedMail.InstrumentDatasetPath);
+                    }
+                    else
+                    {
+                        LogDebug("E-mailing " + recipients + " regarding " + messageCount + " errors");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator))
+                    {
+                        mailBody.AppendLine("Operator: " + firstQueuedMail.InstrumentOperator);
+                        if (messageCount > 1)
                         {
-                            ShowTrace("Empty clsQueuedMail list; this should never happen");
+                            mailBody.AppendLine();
+                        }
+                    }
 
-                            LogWarning("Empty mail queue for recipients " + recipients + "; nothing to do", true);
+                    // Summarize the validation errors
+                    var summarizedErrors = new Dictionary<string, clsValidationErrorSummary>();
+                    var messageNumber = 0;
+                    var nextSortWeight = 1;
+
+                    currentTask = "Summarize validation errors in queuedMailContainer.Value";
+                    foreach (var queuedMailItem in queuedMailContainer.Value)
+                    {
+                        if (queuedMailItem == null)
+                        {
+                            LogErrorToDatabase("queuedMailItem is nothing for " + queuedMailContainer.Key);
                             continue;
                         }
 
-                        currentTask = "Get first queued mail";
-
-                        var firstQueuedMail = queuedMailContainer.Value.First();
-                        if (firstQueuedMail == null)
+                        messageNumber++;
+                        string statusMsg;
+                        if (string.IsNullOrWhiteSpace(queuedMailItem.InstrumentDatasetPath))
                         {
-                            LogErrorToDatabase("firstQueuedMail item is null in SendQueuedMail");
-
-                            var defaultRecipients = mMgrSettings.GetParam("to");
-                            firstQueuedMail = new clsQueuedMail("Unknown Operator", defaultRecipients, "Exception", new List<clsValidationError>());
-                        }
-
-                        // Create the mail message
-                        var mailToSend = new MailMessage
-                        {
-                            From = new MailAddress(mMgrSettings.GetParam("from"))
-                        };
-
-                        var mailRecipientsList = firstQueuedMail.Recipients.Split(';').Distinct().ToList();
-                        foreach (var emailAddress in mailRecipientsList)
-                        {
-                            mailToSend.To.Add(emailAddress);
-                        }
-
-                        mailToSend.Subject = firstQueuedMail.Subject;
-
-                        var subjectList = new SortedSet<string>();
-                        var databaseErrorMessages = new SortedSet<string>();
-                        var instrumentFilePaths = new SortedSet<string>();
-
-                        var mailBody = new StringBuilder();
-
-                        if (messageCount == 1)
-                        {
-                            LogDebug("E-mailing " + recipients + " regarding " + firstQueuedMail.InstrumentDatasetPath);
+                            statusMsg = string.Format("XML File {0}: queuedMailItem.InstrumentDatasetPath is empty", messageNumber);
                         }
                         else
                         {
-                            LogDebug("E-mailing " + recipients + " regarding " + messageCount + " errors");
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator))
-                        {
-                            mailBody.AppendLine("Operator: " + firstQueuedMail.InstrumentOperator);
-                            if (messageCount > 1)
+                            statusMsg = string.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath);
+                            if (!instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath))
                             {
-                                mailBody.AppendLine();
+                                instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath);
                             }
                         }
 
-                        // Summarize the validation errors
-                        var summarizedErrors = new Dictionary<string, clsValidationErrorSummary>();
-                        var messageNumber = 0;
-                        var nextSortWeight = 1;
-
-                        currentTask = "Summarize validation errors in queuedMailContainer.Value";
-                        foreach (var queuedMailItem in queuedMailContainer.Value)
+                        LogDebug(statusMsg);
+                        currentTask = "Iterate over queuedMailItem.ValidationErrors, message " + messageNumber;
+                        foreach (var validationError in queuedMailItem.ValidationErrors)
                         {
-                            if (queuedMailItem == null)
+                            if (!summarizedErrors.TryGetValue(validationError.IssueType, out var errorSummary))
                             {
-                                LogErrorToDatabase("queuedMailItem is nothing for " + queuedMailContainer.Key);
-                                continue;
+                                errorSummary = new clsValidationErrorSummary(validationError.IssueType, nextSortWeight);
+                                nextSortWeight++;
+                                summarizedErrors.Add(validationError.IssueType, errorSummary);
                             }
 
-                            messageNumber++;
-                            string statusMsg;
-                            if (string.IsNullOrWhiteSpace(queuedMailItem.InstrumentDatasetPath))
+                            var affectedItem = new clsValidationErrorSummary.AffectedItemType
                             {
-                                statusMsg = string.Format("XML File {0}: queuedMailItem.InstrumentDatasetPath is empty", messageNumber);
-                            }
-                            else
-                            {
-                                statusMsg = string.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath);
-                                if (!instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath))
-                                {
-                                    instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath);
-                                }
-                            }
+                                IssueDetail = validationError.IssueDetail,
+                                AdditionalInfo = validationError.AdditionalInfo
+                            };
+                            errorSummary.AffectedItems.Add(affectedItem);
 
-                            LogDebug(statusMsg);
-                            currentTask = "Iterate over queuedMailItem.ValidationErrors, message " + messageNumber;
-                            foreach (var validationError in queuedMailItem.ValidationErrors)
-                            {
-                                if (!summarizedErrors.TryGetValue(validationError.IssueType, out var errorSummary))
-                                {
-                                    errorSummary = new clsValidationErrorSummary(validationError.IssueType, nextSortWeight);
-                                    nextSortWeight++;
-                                    summarizedErrors.Add(validationError.IssueType, errorSummary);
-                                }
-
-                                var affectedItem = new clsValidationErrorSummary.AffectedItemType
-                                {
-                                    IssueDetail = validationError.IssueDetail,
-                                    AdditionalInfo = validationError.AdditionalInfo
-                                };
-                                errorSummary.AffectedItems.Add(affectedItem);
-
-                                if (string.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg))
-                                    continue;
-
-                                if (databaseErrorMessages.Contains(queuedMailItem.DatabaseErrorMsg))
-                                    continue;
-
-                                databaseErrorMessages.Add(queuedMailItem.DatabaseErrorMsg);
-                                errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
-                            } // for each validationError
-
-                            if (!subjectList.Contains(queuedMailItem.Subject))
-                            {
-                                subjectList.Add(queuedMailItem.Subject);
-                            }
-                        } // for each queuedMailItem
-
-                        currentTask = "Iterate over summarizedErrors, sorted by SortWeight";
-
-                        var additionalInfoList = new List<string>();
-
-                        foreach (var errorEntry in (from item in summarizedErrors orderby item.Value.SortWeight select item))
-                        {
-                            var errorSummary = errorEntry.Value;
-
-                            var affectedItems = (from item in errorSummary.AffectedItems where !String.IsNullOrWhiteSpace(item.IssueDetail) select item).ToList();
-
-                            if (affectedItems.Count > 0)
-                            {
-                                mailBody.AppendLine(errorEntry.Key + ": ");
-
-                                foreach (var affectedItem in affectedItems)
-                                {
-                                    mailBody.AppendLine("  " + affectedItem.IssueDetail);
-                                    if (string.IsNullOrWhiteSpace(affectedItem.AdditionalInfo))
-                                        continue;
-
-                                    if (!string.Equals(additionalInfoList.LastOrDefault(), affectedItem.AdditionalInfo))
-                                    {
-                                        additionalInfoList.Add(affectedItem.AdditionalInfo);
-                                    }
-                                }
-
-                                foreach (var infoItem in additionalInfoList)
-                                {
-                                    // Add the cached additional info items
-                                    mailBody.AppendLine("  " + infoItem);
-                                }
-                            }
-                            else
-                            {
-                                mailBody.AppendLine(errorEntry.Key);
-                            }
-
-                            mailBody.AppendLine();
-
-                            if (string.IsNullOrWhiteSpace(errorSummary.DatabaseErrorMsg))
+                            if (string.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg))
                                 continue;
 
-                            mailBody.AppendLine(errorSummary.DatabaseErrorMsg);
-                            mailBody.AppendLine();
-                        } // for each errorEntry
+                            if (databaseErrorMessages.Contains(queuedMailItem.DatabaseErrorMsg))
+                                continue;
 
-                        if (instrumentFilePaths.Count == 1)
+                            databaseErrorMessages.Add(queuedMailItem.DatabaseErrorMsg);
+                            errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
+                        } // for each validationError
+
+                        if (!subjectList.Contains(queuedMailItem.Subject))
                         {
-                            mailBody.AppendLine("Instrument file:" + Environment.NewLine + instrumentFilePaths.First());
+                            subjectList.Add(queuedMailItem.Subject);
                         }
-                        else if (instrumentFilePaths.Count > 1)
-                        {
-                            mailBody.AppendLine("Instrument files:");
-                            foreach (var triggerFile in instrumentFilePaths)
-                            {
-                                mailBody.AppendLine("  " + triggerFile);
-                            }
-                        }
+                    } // for each queuedMailItem
 
-                        currentTask = "Examine subject";
-                        if (subjectList.Count > 1)
-                        {
-                            // Possibly update the subject of the e-mail
-                            // Common subjects:
-                            // "Data Import Manager - Database error."
-                            //   or
-                            // "Data Import Manager - Database warning."
-                            //  or
-                            // "Data Import Manager - Operator not defined."
-                            // If any of the subjects contains "error", use it for the mail subject
-                            foreach (var subject in (from item in subjectList where item.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 select item))
-                            {
-                                mailToSend.Subject = subject;
-                                break;
-                            }
-                        }
+                    currentTask = "Iterate over summarizedErrors, sorted by SortWeight";
 
-                        mailBody.AppendLine();
-                        mailBody.AppendLine("Log file location:");
-                        mailBody.AppendLine("  " + GetLogFileSharePath());
-                        mailBody.AppendLine();
-                        mailBody.AppendLine(
-                            "This message was sent from an account that is not monitored. " +
-                            "If you have any questions, please reply to the list of recipients directly.");
+                    var additionalInfoList = new List<string>();
 
-                        if (messageCount > 1)
-                        {
-                            // Add the message count to the subject, e.g. 3x
-                            mailToSend.Subject = string.Format("{0} ({1}x)", mailToSend.Subject, messageCount);
-                        }
-
-                        mailToSend.Body = mailBody.ToString();
-                        if (MailDisabled)
-                        {
-                            currentTask = "Cache the mail for preview";
-                            mailContentPreview.AppendLine("E-mail that would be sent:");
-                            mailContentPreview.AppendLine("To: " + recipients);
-                            mailContentPreview.AppendLine("Subject: " + mailToSend.Subject);
-                            mailContentPreview.AppendLine();
-                            mailContentPreview.AppendLine(mailToSend.Body);
-                            mailContentPreview.AppendLine();
-                        }
-                        else
-                        {
-                            currentTask = "Send the mail";
-                            var smtp = new SmtpClient(mailServer);
-                            smtp.Send(mailToSend);
-
-                            ProgRunner.SleepMilliseconds(100);
-                        }
-
-                        if (newLogFile)
-                        {
-                            newLogFile = false;
-                        }
-                        else
-                        {
-                            mailLogger.WriteLine();
-                            mailLogger.WriteLine("===============================================");
-                        }
-
-                        mailLogger.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss tt"));
-                        mailLogger.WriteLine();
-                        mailLogger.WriteLine("To: " + recipients);
-                        mailLogger.WriteLine("Subject: " + mailToSend.Subject);
-                        mailLogger.WriteLine();
-                        mailLogger.WriteLine(mailToSend.Body);
-                    } // for each queuedMailContainer
-
-                    currentTask = "Preview cached messages";
-                    if (MailDisabled && mailContentPreview.Length > 0)
+                    foreach (var errorEntry in (from item in summarizedErrors orderby item.Value.SortWeight select item))
                     {
-                        ShowTraceMessage("Mail content preview" + Environment.NewLine + mailContentPreview);
+                        var errorSummary = errorEntry.Value;
+
+                        var affectedItems = (from item in errorSummary.AffectedItems where !String.IsNullOrWhiteSpace(item.IssueDetail) select item).ToList();
+
+                        if (affectedItems.Count > 0)
+                        {
+                            mailBody.AppendLine(errorEntry.Key + ": ");
+
+                            foreach (var affectedItem in affectedItems)
+                            {
+                                mailBody.AppendLine("  " + affectedItem.IssueDetail);
+                                if (string.IsNullOrWhiteSpace(affectedItem.AdditionalInfo))
+                                    continue;
+
+                                if (!string.Equals(additionalInfoList.LastOrDefault(), affectedItem.AdditionalInfo))
+                                {
+                                    additionalInfoList.Add(affectedItem.AdditionalInfo);
+                                }
+                            }
+
+                            foreach (var infoItem in additionalInfoList)
+                            {
+                                // Add the cached additional info items
+                                mailBody.AppendLine("  " + infoItem);
+                            }
+                        }
+                        else
+                        {
+                            mailBody.AppendLine(errorEntry.Key);
+                        }
+
+                        mailBody.AppendLine();
+
+                        if (string.IsNullOrWhiteSpace(errorSummary.DatabaseErrorMsg))
+                            continue;
+
+                        mailBody.AppendLine(errorSummary.DatabaseErrorMsg);
+                        mailBody.AppendLine();
+                    } // for each errorEntry
+
+                    if (instrumentFilePaths.Count == 1)
+                    {
+                        mailBody.AppendLine("Instrument file:" + Environment.NewLine + instrumentFilePaths.First());
                     }
+                    else if (instrumentFilePaths.Count > 1)
+                    {
+                        mailBody.AppendLine("Instrument files:");
+                        foreach (var triggerFile in instrumentFilePaths)
+                        {
+                            mailBody.AppendLine("  " + triggerFile);
+                        }
+                    }
+
+                    currentTask = "Examine subject";
+                    if (subjectList.Count > 1)
+                    {
+                        // Possibly update the subject of the e-mail
+                        // Common subjects:
+                        // "Data Import Manager - Database error."
+                        //   or
+                        // "Data Import Manager - Database warning."
+                        //  or
+                        // "Data Import Manager - Operator not defined."
+                        // If any of the subjects contains "error", use it for the mail subject
+                        foreach (var subject in (from item in subjectList where item.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0 select item))
+                        {
+                            mailToSend.Subject = subject;
+                            break;
+                        }
+                    }
+
+                    mailBody.AppendLine();
+                    mailBody.AppendLine("Log file location:");
+                    mailBody.AppendLine("  " + GetLogFileSharePath());
+                    mailBody.AppendLine();
+                    mailBody.AppendLine(
+                        "This message was sent from an account that is not monitored. " +
+                        "If you have any questions, please reply to the list of recipients directly.");
+
+                    if (messageCount > 1)
+                    {
+                        // Add the message count to the subject, e.g. 3x
+                        mailToSend.Subject = string.Format("{0} ({1}x)", mailToSend.Subject, messageCount);
+                    }
+
+                    mailToSend.Body = mailBody.ToString();
+                    if (MailDisabled)
+                    {
+                        currentTask = "Cache the mail for preview";
+                        mailContentPreview.AppendLine("E-mail that would be sent:");
+                        mailContentPreview.AppendLine("To: " + recipients);
+                        mailContentPreview.AppendLine("Subject: " + mailToSend.Subject);
+                        mailContentPreview.AppendLine();
+                        mailContentPreview.AppendLine(mailToSend.Body);
+                        mailContentPreview.AppendLine();
+                    }
+                    else
+                    {
+                        currentTask = "Send the mail";
+                        var smtp = new SmtpClient(mailServer);
+                        smtp.Send(mailToSend);
+
+                        ProgRunner.SleepMilliseconds(100);
+                    }
+
+                    if (newLogFile)
+                    {
+                        newLogFile = false;
+                    }
+                    else
+                    {
+                        mailLogger.WriteLine();
+                        mailLogger.WriteLine("===============================================");
+                    }
+
+                    mailLogger.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss tt"));
+                    mailLogger.WriteLine();
+                    mailLogger.WriteLine("To: " + recipients);
+                    mailLogger.WriteLine("Subject: " + mailToSend.Subject);
+                    mailLogger.WriteLine();
+                    mailLogger.WriteLine(mailToSend.Body);
+                } // for each queuedMailContainer
+
+                currentTask = "Preview cached messages";
+                if (MailDisabled && mailContentPreview.Length > 0)
+                {
+                    ShowTraceMessage("Mail content preview" + Environment.NewLine + mailContentPreview);
                 }
             }
             catch (Exception ex)
