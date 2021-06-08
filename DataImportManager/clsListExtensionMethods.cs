@@ -17,8 +17,8 @@ namespace DataImportManager
         /// <summary>
         /// Returns a random number generator
         /// </summary>
-        public static Random ThisThreadsRandom => mRandGenerator ??
-                                                  (mRandGenerator = new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId)));
+        public static Random ThisThreadsRandom =>
+            mRandGenerator ??= new Random(unchecked(Environment.TickCount * 31 + Thread.CurrentThread.ManagedThreadId));
     }
 
     /// <summary>
