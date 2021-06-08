@@ -766,7 +766,7 @@ namespace DataImportManager
 
                     if (!string.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator))
                     {
-                        mailBody.AppendLine("Operator: " + firstQueuedMail.InstrumentOperator);
+                        mailBody.AppendFormat("Operator: {0}", firstQueuedMail.InstrumentOperator);
                         if (messageCount > 1)
                         {
                             mailBody.AppendLine();
@@ -848,11 +848,12 @@ namespace DataImportManager
 
                         if (affectedItems.Count > 0)
                         {
-                            mailBody.AppendLine(errorEntry.Key + ": ");
+                            mailBody.AppendFormat("{0}: ", errorEntry.Key);
 
                             foreach (var affectedItem in affectedItems)
                             {
-                                mailBody.AppendLine("  " + affectedItem.IssueDetail);
+                                mailBody.AppendFormat("  {0}", affectedItem.IssueDetail);
+
                                 if (string.IsNullOrWhiteSpace(affectedItem.AdditionalInfo))
                                     continue;
 
@@ -865,7 +866,7 @@ namespace DataImportManager
                             foreach (var infoItem in additionalInfoList)
                             {
                                 // Add the cached additional info items
-                                mailBody.AppendLine("  " + infoItem);
+                                mailBody.AppendFormat("  {0}", infoItem);
                             }
                         }
                         else
@@ -884,14 +885,14 @@ namespace DataImportManager
 
                     if (instrumentFilePaths.Count == 1)
                     {
-                        mailBody.AppendLine("Instrument file:" + Environment.NewLine + instrumentFilePaths.First());
+                        mailBody.AppendFormat("Instrument file:{0}{1}", Environment.NewLine, instrumentFilePaths.First());
                     }
                     else if (instrumentFilePaths.Count > 1)
                     {
                         mailBody.AppendLine("Instrument files:");
                         foreach (var triggerFile in instrumentFilePaths)
                         {
-                            mailBody.AppendLine("  " + triggerFile);
+                            mailBody.AppendFormat("  {0}", triggerFile);
                         }
                     }
 
@@ -915,7 +916,7 @@ namespace DataImportManager
 
                     mailBody.AppendLine();
                     mailBody.AppendLine("Log file location:");
-                    mailBody.AppendLine("  " + GetLogFileSharePath());
+                    mailBody.AppendFormat("  {0}", GetLogFileSharePath());
                     mailBody.AppendLine();
                     mailBody.AppendLine(
                         "This message was sent from an account that is not monitored. " +
@@ -932,8 +933,8 @@ namespace DataImportManager
                     {
                         currentTask = "Cache the mail for preview";
                         mailContentPreview.AppendLine("E-mail that would be sent:");
-                        mailContentPreview.AppendLine("To: " + recipients);
-                        mailContentPreview.AppendLine("Subject: " + mailToSend.Subject);
+                        mailContentPreview.AppendFormat("To: {0}", recipients);
+                        mailContentPreview.AppendFormat("Subject: {0}", mailToSend.Subject);
                         mailContentPreview.AppendLine();
                         mailContentPreview.AppendLine(mailToSend.Body);
                         mailContentPreview.AppendLine();
