@@ -13,7 +13,8 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsProcessXmlTriggerFile : clsLoggerBase
     {
-        // Ignore Spelling: prepend, MM-dd-yyyy, logon, Bionet
+        // ReSharper disable once CommentTypo
+        // Ignore Spelling: Bionet, logon, MM-dd-yyyy, prepend, seclogon
 
         #region "Constants and Structures"
 

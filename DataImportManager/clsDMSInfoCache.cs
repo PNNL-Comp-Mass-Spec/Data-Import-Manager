@@ -8,7 +8,7 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class DMSInfoCache : clsLoggerBase
     {
-        // Ignore Spelling: desc
+        // Ignore Spelling: desc, username
 
         #region "Structures"
         public struct InstrumentInfoType

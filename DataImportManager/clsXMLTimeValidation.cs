@@ -14,7 +14,7 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsXMLTimeValidation : clsLoggerBase
     {
-        // Ignore Spelling: bionet, fso, secfso, subfolder, pwd, prepend, AcqData, logon, Alz, Roc
+        // Ignore Spelling: AcqData, Alz, bionet, fso, logon, prepend, pwd, Roc, secfso, subfolder, username
 
         #region "Member variables"
 

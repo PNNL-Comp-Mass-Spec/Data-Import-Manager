@@ -17,7 +17,7 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsMainProcess : clsLoggerBase
     {
-        // Ignore Spelling: spam, smtp, yyyy-MM, yyyy-MM-dd hh:mm:ss tt
+        // Ignore Spelling: Proteinseqs, smtp, spam, yyyy-MM, yyyy-MM-dd hh:mm:ss tt
 
         #region "Constants and enums"
 
@@ -627,7 +627,7 @@ namespace DataImportManager
             // Verify transfer directory exists
             if (!diXferDirectory.Exists)
             {
-                // There's a serious problem if the xfer directory can't be found!!!
+                // There's a serious problem if the transfer directory can't be found!!!
                 LogErrorToDatabase("Xml transfer directory not found: " + serverXferDir);
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
