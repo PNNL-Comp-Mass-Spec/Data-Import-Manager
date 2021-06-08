@@ -33,15 +33,17 @@ namespace DataImportManager
         /// <param name="list"></param>
         public static void Shuffle<T>(this IList<T> list)
         {
-            var n = list.Count;
-            while (n > 1)
+            var index = list.Count;
+
+            while (index > 1)
             {
-                n--;
-                var k = ThreadSafeRandom.ThisThreadsRandom.Next(n + 1);
+                index--;
+                var sourceIndex = ThreadSafeRandom.ThisThreadsRandom.Next(index + 1);
+
                 //  Swap items
-                var value = list[k];
-                list[k] = list[n];
-                list[n] = value;
+                var value = list[sourceIndex];
+                list[sourceIndex] = list[index];
+                list[index] = value;
             }
         }
     }
