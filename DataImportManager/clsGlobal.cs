@@ -34,6 +34,7 @@ namespace DataImportManager
         {
             var exeDirectoryPath = GetExeDirectoryPath();
             var flagFilePath = Path.Combine(exeDirectoryPath, FLAG_FILE_NAME);
+
             try
             {
                 if (File.Exists(flagFilePath))

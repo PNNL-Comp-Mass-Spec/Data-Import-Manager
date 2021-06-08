@@ -125,7 +125,8 @@ namespace DataImportManager
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 LogTools.CreateDbLogger(dmsConnectionString, "Analysis Tool Manager: " + clsGlobal.GetHostName(), false);
 
-                mMgrSettings = new MgrSettingsDB {
+                mMgrSettings = new MgrSettingsDB
+                {
                     TraceMode = TraceMode
                 };
                 RegisterEvents(mMgrSettings);

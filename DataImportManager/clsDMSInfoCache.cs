@@ -284,7 +284,6 @@ namespace DataImportManager
                 strQueryUsername = strQueryUsername.Substring(strQueryName.Length).Trim(new char[] {' ', '(', ')'});
             }
 
-
             if (mOperators.TryGetValue(strQueryUsername.ToUpper(), out operatorInfo))
             {
                 // Match found
