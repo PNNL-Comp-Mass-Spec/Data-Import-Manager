@@ -86,12 +86,7 @@ namespace DataImportManager
         public static string GetHostName()
         {
             var hostName = System.Net.Dns.GetHostName();
-            if (string.IsNullOrWhiteSpace(hostName))
-            {
-                hostName = Environment.MachineName;
-            }
-
-            return hostName;
+            return string.IsNullOrWhiteSpace(hostName) ? Environment.MachineName : hostName;
         }
 
         /// <summary>
