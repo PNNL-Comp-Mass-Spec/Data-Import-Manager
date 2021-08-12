@@ -10,6 +10,7 @@ using PRISM;
 using PRISM.AppSettings;
 using PRISM.Logging;
 using PRISM.FileProcessor;
+using PRISMDatabaseUtils;
 using PRISMDatabaseUtils.AppSettings;
 
 namespace DataImportManager
@@ -120,10 +121,14 @@ namespace DataImportManager
                     dmsConnectionString = dmsConnectionStringFromConfig;
                 }
 
-                ShowTrace("Instantiate a DbLogger using " + dmsConnectionString);
+                var managerName = "Data_Import_Manager_" + clsGlobal.GetHostName();
+
+                var dbLoggerConnectionString = DbToolsFactory.AddApplicationNameToConnectionString(dmsConnectionString, managerName);
+
+                ShowTrace("Instantiate a DbLogger using " + dbLoggerConnectionString);
 
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                LogTools.CreateDbLogger(dmsConnectionString, "Analysis Tool Manager: " + clsGlobal.GetHostName(), false);
+                LogTools.CreateDbLogger(dbLoggerConnectionString, managerName, false);
 
                 mMgrSettings = new MgrSettingsDB
                 {
@@ -167,6 +172,8 @@ namespace DataImportManager
             }
 
             var connectionString = mMgrSettings.GetParam("ConnectionString");
+            var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
+
             var logFileBaseName = mMgrSettings.GetParam("LogFileName");
 
             try
@@ -179,7 +186,7 @@ namespace DataImportManager
                 var moduleName = mMgrSettings.GetParam("ModuleName", defaultModuleName);
 
                 LogTools.CreateFileLogger(logFileBaseName);
-                LogTools.CreateDbLogger(connectionString, moduleName);
+                LogTools.CreateDbLogger(connectionStringToUse, moduleName);
 
                 // Write the initial log and status entries
                 var appVersion = ProcessFilesOrDirectoriesBase.GetEntryOrExecutingAssembly().GetName().Version;
@@ -290,14 +297,16 @@ namespace DataImportManager
                 }
 
                 var connectionString = mMgrSettings.GetParam("ConnectionString");
+                var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
+
                 DMSInfoCache infoCache;
                 try
                 {
-                    infoCache = new DMSInfoCache(connectionString, TraceMode);
+                    infoCache = new DMSInfoCache(connectionStringToUse, TraceMode);
                 }
                 catch (Exception ex)
                 {
-                    LogError("Unable to connect to the database using " + connectionString, ex);
+                    LogError("Unable to connect to the database using " + connectionStringToUse, ex);
                     return false;
                 }
 
@@ -507,7 +516,7 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Extract the value MgrCnfgDbConnectStr fromDataImportManager.exe.config
+        /// Extract the value MgrCnfgDbConnectStr from DataImportManager.exe.config
         /// </summary>
         private string GetXmlConfigDefaultConnectionString()
         {
