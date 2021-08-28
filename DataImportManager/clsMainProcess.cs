@@ -207,8 +207,8 @@ namespace DataImportManager
         /// <summary>
         /// Look for new XML files to process
         /// </summary>
-        /// <returns>True if success, false if an error</returns>
         /// <remarks>Returns true even if no XML files are found</remarks>
+        /// <returns>True if success, false if an error</returns>
         public bool DoImport()
         {
             try
@@ -514,8 +514,8 @@ namespace DataImportManager
         /// <summary>
         /// Extract the value for the given setting from DataImportManager.exe.config
         /// </summary>
-        /// <returns>Setting value if found, otherwise an empty string</returns>
         /// <remarks>Uses a simple text reader in case the file has malformed XML</remarks>
+        /// <returns>Setting value if found, otherwise an empty string</returns>
         private string GetXmlConfigFileSetting(string settingName)
         {
             if (string.IsNullOrWhiteSpace(settingName))

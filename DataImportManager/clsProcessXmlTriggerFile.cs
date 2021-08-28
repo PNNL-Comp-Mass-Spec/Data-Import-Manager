@@ -465,12 +465,12 @@ namespace DataImportManager
         /// <summary>
         /// Process the specified XML file
         /// </summary>
-        /// <param name="triggerFileInfo">XML file to process</param>
-        /// <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
         /// <remarks>
         /// PerformValidation in clsXMLTimeValidation will monitor the dataset file (or dataset directory)
         /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
+        /// <param name="triggerFileInfo">XML file to process</param>
+        /// <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
         private bool ValidateXmlFileMain(TriggerFileInfo triggerFileInfo)
         {
             try
