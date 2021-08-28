@@ -575,6 +575,9 @@ namespace DataImportManager
             var connected = false;
             var currentTask = string.Empty;
             var ignoreInstrumentSourceErrors = mProcSettings.IgnoreInstrumentSourceErrors;
+            // method-local versions of sourcePath and capture subdirectory, to support use of alternate shares
+            var sourcePath = mSourcePath;
+            var subdirectory = CaptureSubdirectory;
 
             if (!string.IsNullOrWhiteSpace(captureShareNameInTriggerFile))
             {
@@ -582,8 +585,16 @@ namespace DataImportManager
                 var defaultShareName = mSourcePath.Substring(mSourcePath.IndexOf('\\', 2)).Trim('\\');
                 var captureShareName = captureShareNameInTriggerFile.Trim('\\', '.');
 
-                if (!defaultShareName.EndsWith(captureShareName, StringComparison.OrdinalIgnoreCase))
+                if (!defaultShareName.Trim('\\', '.').Split().Last().Equals(captureShareName, StringComparison.OrdinalIgnoreCase))
                 {
+                    // If working on a share, special handling to allow replacing the share name
+                    // .NET is smart and considers '\\server_name\share_name' as the path root, so '..\' doesn't work
+                    if (sourcePath.StartsWith("\\\\"))
+                    {
+                        var tempSource = sourcePath.Trim('\\', '.').Split('\\')[0];
+                        sourcePath = "\\\\" + Path.Combine(tempSource, captureShareName);
+                    }
+
                     captureShareName = $"..\\{captureShareName}";
 
                     // If mSourcePath specifies more than just a host name and share name (that is, it also specifies a subdirectory)
@@ -642,13 +653,13 @@ namespace DataImportManager
                 // This is done so that mDatasetPath will be defined so we can include it in a log message if a connection error occurs
                 string datasetSourcePath;
 
-                if (string.IsNullOrWhiteSpace(CaptureSubdirectory))
+                if (string.IsNullOrWhiteSpace(subdirectory))
                 {
-                    datasetSourcePath = string.Copy(mSourcePath);
+                    datasetSourcePath = string.Copy(sourcePath);
                 }
                 else
                 {
-                    datasetSourcePath = Path.Combine(mSourcePath, CaptureSubdirectory);
+                    datasetSourcePath = Path.Combine(sourcePath, subdirectory);
                 }
 
                 // Initially define this as the dataset source directory and the dataset name
@@ -669,7 +680,7 @@ namespace DataImportManager
 
                     var currentTaskBase = string.Format(
                         "Connecting to {0} using secfso, user {1}, and encoded password {2}",
-                        mSourcePath, username, encodedPwd);
+                        sourcePath, username, encodedPwd);
 
                     currentTask = currentTaskBase + "; Decoding password";
                     if (TraceMode)
@@ -686,7 +697,7 @@ namespace DataImportManager
 
                     mShareConnector = new ShareConnector(username, decodedPwd)
                     {
-                        Share = mSourcePath
+                        Share = sourcePath
                     };
 
                     currentTask = currentTaskBase + "; Connecting using ShareConnector";
@@ -704,7 +715,7 @@ namespace DataImportManager
                         currentTask = currentTaskBase + "; Error connecting";
                         ErrorMessage = string.Format(
                             "Error connecting to {0} as user {1} using 'secfso': {2}",
-                            mSourcePath, username, mShareConnector.ErrorMessage);
+                            sourcePath, username, mShareConnector.ErrorMessage);
 
                         LogError(ErrorMessage);
 
@@ -783,7 +794,7 @@ namespace DataImportManager
                     ShowTraceMessage(currentTask);
                 }
 
-                var resType = GetRawDsType(mSourcePath, CaptureSubdirectory, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrDirectoryName);
+                var resType = GetRawDsType(sourcePath, subdirectory, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrDirectoryName);
 
                 currentTask = "Validating operator name " + mOperatorUsername + " for " + mDatasetName + " at " + datasetSourcePath;
                 if (TraceMode)
@@ -795,7 +806,7 @@ namespace DataImportManager
                 {
                     if (connected)
                     {
-                        currentTask = "Operator not found; disconnecting from " + mSourcePath;
+                        currentTask = "Operator not found; disconnecting from " + sourcePath;
                         if (TraceMode)
                         {
                             ShowTraceMessage(currentTask);
@@ -820,7 +831,7 @@ namespace DataImportManager
                         // Disconnect from Bionet if necessary
                         if (connected)
                         {
-                            currentTask = "Dataset not found; disconnecting from " + mSourcePath;
+                            currentTask = "Dataset not found; disconnecting from " + sourcePath;
                             if (TraceMode)
                             {
                                 ShowTraceMessage(currentTask);
@@ -857,7 +868,7 @@ namespace DataImportManager
 
                             if (connected)
                             {
-                                currentTask = "Dataset size changed; disconnecting from " + mSourcePath;
+                                currentTask = "Dataset size changed; disconnecting from " + sourcePath;
                                 if (TraceMode)
                                 {
                                     ShowTraceMessage(currentTask);
@@ -937,7 +948,7 @@ namespace DataImportManager
 
                             if (connected)
                             {
-                                currentTask = "Dataset directory size changed; disconnecting from " + mSourcePath;
+                                currentTask = "Dataset directory size changed; disconnecting from " + sourcePath;
                                 DisconnectShare(mShareConnector);
                             }
 
@@ -963,7 +974,7 @@ namespace DataImportManager
                                 LogWarning("Dataset '" + mDatasetName + "' not ready (recent zero-byte .bin files)");
                                 if (connected)
                                 {
-                                    currentTask = "Dataset directory size changed; disconnecting from " + mSourcePath;
+                                    currentTask = "Dataset directory size changed; disconnecting from " + sourcePath;
                                     DisconnectShare(mShareConnector);
                                 }
 
@@ -976,7 +987,7 @@ namespace DataImportManager
                         clsMainProcess.LogErrorToDatabase("Invalid dataset type for " + mDatasetName + ": " + resType);
                         if (connected)
                         {
-                            currentTask = "Invalid dataset type; disconnecting from " + mSourcePath;
+                            currentTask = "Invalid dataset type; disconnecting from " + sourcePath;
                             DisconnectShare(mShareConnector);
                         }
 
