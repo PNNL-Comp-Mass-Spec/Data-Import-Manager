@@ -16,8 +16,6 @@ namespace DataImportManager
     {
         // Ignore Spelling: AcqData, Alz, bionet, fso, logon, prepend, pwd, Roc, secfso, subfolder, username
 
-        #region "Member variables"
-
         private string mDatasetName = string.Empty;
 
         private DateTime mRunFinishUtc = new(1960, 1, 1);
@@ -55,10 +53,6 @@ namespace DataImportManager
 
         private string captureShareNameInTriggerFile = string.Empty;
 
-        #endregion
-
-        #region "Properties"
-
         public string CaptureSubdirectory { get; private set; } = string.Empty;
 
         public string DatasetName => FixNull(mDatasetName);
@@ -82,10 +76,6 @@ namespace DataImportManager
         public string SourcePath => FixNull(mSourcePath);
 
         public bool TraceMode { get; set; }
-
-        #endregion
-
-        #region "Enums"
 
         /// <summary>
         /// Dataset types
@@ -120,8 +110,6 @@ namespace DataImportManager
             XML_VALIDATE_TRIGGER_FILE_MISSING = 13,
             // ReSharper restore InconsistentNaming
         }
-
-        #endregion
 
         /// <summary>
         /// Constructor

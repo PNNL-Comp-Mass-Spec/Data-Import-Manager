@@ -63,8 +63,6 @@ namespace DataImportManager
             LogTools.LogWarning(warningMessage, logToDb);
         }
 
-        #region "EventNotifier events"
-
         /// <summary>
         /// Register event handlers
         /// However, does not subscribe to .ProgressUpdate
@@ -140,7 +138,5 @@ namespace DataImportManager
         {
             LogWarning(warningMessage);
         }
-
-        #endregion
     }
 }

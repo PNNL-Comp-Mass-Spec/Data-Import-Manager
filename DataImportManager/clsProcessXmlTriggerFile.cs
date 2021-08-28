@@ -16,8 +16,6 @@ namespace DataImportManager
         // ReSharper disable once CommentTypo
         // Ignore Spelling: Bionet, logon, MM-dd-yyyy, prepend, seclogon
 
-        #region "Constants and Structures"
-
         private const string CHECK_THE_LOG_FOR_DETAILS = "Check the log for details";
 
         public struct XmlProcSettingsType
@@ -30,20 +28,12 @@ namespace DataImportManager
             public string SuccessDirectory;
         }
 
-        #endregion
-
-        #region "Properties"
-
         public XmlProcSettingsType ProcSettings { get; set; }
 
         /// <summary>
         /// Mail message(s) that need to be sent
         /// </summary>
         public ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> QueuedMail { get; }
-
-        #endregion
-
-        #region "Member Variables"
 
         private readonly MgrSettings mMgrSettings;
 
@@ -68,8 +58,6 @@ namespace DataImportManager
         private string mXmlDatasetPath = string.Empty;
 
         private string mXmlInstrumentName = string.Empty;
-
-        #endregion
 
         /// <summary>
         /// Constructor

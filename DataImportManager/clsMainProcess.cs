@@ -20,8 +20,6 @@ namespace DataImportManager
     {
         // Ignore Spelling: Proteinseqs, smtp, spam, yyyy-MM, yyyy-MM-dd hh:mm:ss tt
 
-        #region "Constants and enums"
-
         private const string DEFAULT_BASE_LOGFILE_NAME = @"Logs\DataImportManager";
 
         private const int MAX_ERROR_COUNT = 4;
@@ -33,10 +31,6 @@ namespace DataImportManager
             CLOSEOUT_SUCCESS = 0,
             CLOSEOUT_FAILED = 1
         }
-
-        #endregion
-
-        #region "Member Variables"
 
         private MgrSettingsDB mMgrSettings;
 
@@ -65,16 +59,10 @@ namespace DataImportManager
         /// </summary>
         private readonly ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> mQueuedMail;
 
-        #endregion
-
-        #region "Properties"
-
         public bool IgnoreInstrumentSourceErrors { get; set; }
         public bool MailDisabled { get; set; }
         public bool PreviewMode { get; set; }
         public bool TraceMode { get; set; }
-
-        #endregion
 
         /// <summary>
         /// Constructor

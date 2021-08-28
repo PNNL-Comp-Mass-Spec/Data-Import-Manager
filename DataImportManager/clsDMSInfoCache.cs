@@ -10,7 +10,6 @@ namespace DataImportManager
     {
         // Ignore Spelling: desc, username
 
-        #region "Structures"
         public struct InstrumentInfoType
         {
             public string InstrumentClass;
@@ -28,10 +27,6 @@ namespace DataImportManager
             public int UserId;
         }
 
-        #endregion
-
-        #region "Member Variables"
-
         private readonly bool mTraceMode;
 
         /// <summary>
@@ -48,8 +43,6 @@ namespace DataImportManager
         /// Keys in this dictionary are username; values are operator information
         /// </summary>
         private readonly Dictionary<string, OperatorInfoType> mOperators;
-
-        #endregion
 
         /// <summary>
         /// Constructor

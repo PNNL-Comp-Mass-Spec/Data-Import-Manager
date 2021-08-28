@@ -9,16 +9,10 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class clsDataImportTask : clsDBTask
     {
-        #region "Member Variables"
-
         private string mPostTaskErrorMessage = string.Empty;
         private string mDatabaseErrorMessage;
         private string mStoredProc;
         private string mXmlContents;
-
-        #endregion
-
-        #region "Properties"
 
         public string PostTaskErrorMessage
         {
@@ -51,8 +45,6 @@ namespace DataImportManager
         /// Also preview any e-mails that would be sent regarding errors
         /// </summary>
         public bool PreviewMode { get; set; }
-
-        #endregion
 
         /// <summary>
         /// Constructor
