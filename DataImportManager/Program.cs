@@ -26,10 +26,9 @@ namespace DataImportManager
                     ProgramInfo = "This program parses the instrument trigger files used for adding datasets to DMS. " +
                                   "Normal operation is to run the program without any command line switches.",
                     ContactInfo =
-                        "Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)" +
-                        Environment.NewLine +
+                        "Program written by Dave Clark and Matthew Monroe for the Department of Energy (PNNL, Richland, WA)" + Environment.NewLine +
                         "E-mail: matthew.monroe@pnnl.gov or proteomics@pnnl.gov" + Environment.NewLine +
-                        "Website: https://omics.pnl.gov/ or https://panomics.pnnl.gov/" + Environment.NewLine + Environment.NewLine +
+                        "Website: https://github.com/PNNL-Comp-Mass-Spec/ or https://panomics.pnnl.gov/ or https://www.pnnl.gov/integrative-omics" + Environment.NewLine + Environment.NewLine +
                         "Licensed under the Apache License, Version 2.0; you may not use this file except in compliance with the License. " +
                         "You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0"
                 };
