@@ -8,7 +8,7 @@ namespace DataImportManager
 {
     internal static class Program
     {
-        public const string PROGRAM_DATE = "August 28, 2021";
+        public const string PROGRAM_DATE = "November 12, 2021";
 
         /// <summary>
         /// Entry method
@@ -20,8 +20,7 @@ namespace DataImportManager
             {
                 var exeName = System.IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name);
 
-                var cmdLineParser = new CommandLineParser<CommandLineOptions>(exeName,
-                    ProcessFilesOrDirectoriesBase.GetAppVersion(PROGRAM_DATE))
+                var parser = new CommandLineParser<CommandLineOptions>(exeName, ProcessFilesOrDirectoriesBase.GetAppVersion(PROGRAM_DATE))
                 {
                     ProgramInfo = "This program parses the instrument trigger files used for adding datasets to DMS. " +
                                   "Normal operation is to run the program without any command line switches.",
@@ -33,10 +32,16 @@ namespace DataImportManager
                         "You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0"
                 };
 
-                var parsed = cmdLineParser.ParseArgs(args, false);
-                var options = parsed.ParsedResults;
-                if (args.Length > 0 && (!parsed.Success || !options.Validate()))
+                var result = parser.ParseArgs(args, false);
+                var options = result.ParsedResults;
+
+                if (args.Length > 0 && (!result.Success || !options.Validate()))
                 {
+                    if (parser.CreateParamFileProvided)
+                    {
+                        return 0;
+                    }
+
                     // Delay for 1500 msec in case the user double clicked this file from within Windows Explorer (or started the program via a shortcut)
                     Thread.Sleep(1500);
                     return -1;
