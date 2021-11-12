@@ -8,7 +8,7 @@ namespace DataImportManager
         public string InstrumentOperator { get; }
 
         /// <summary>
-        /// Semi-colon separated list of e-mail addresses
+        /// Semicolon separated list of e-mail addresses
         /// </summary>
         public string Recipients { get; }
 
