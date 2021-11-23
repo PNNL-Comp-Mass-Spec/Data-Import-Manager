@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using PRISM;
 using PRISM.AppSettings;
 using PRISM.Logging;
@@ -202,6 +203,19 @@ namespace DataImportManager
             // Get the debug level
             mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
             return true;
+        }
+
+        /// <summary>
+        /// Append text to the string builder, using the given format string and arguments
+        /// </summary>
+        /// <param name="sb"></param>
+        /// <param name="format">Message format string</param>
+        /// <param name="args">Arguments to use with formatString</param>
+        [StringFormatMethod("format")]
+        private void AppendLine(StringBuilder sb, string format, params object[] args)
+        {
+            sb.AppendFormat(format, args);
+            sb.AppendLine();
         }
 
         /// <summary>
@@ -763,7 +777,7 @@ namespace DataImportManager
 
                     if (!string.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator))
                     {
-                        mailBody.AppendFormat("Operator: {0}", firstQueuedMail.InstrumentOperator);
+                        AppendLine(mailBody, "Operator: {0}", firstQueuedMail.InstrumentOperator);
                         if (messageCount > 1)
                         {
                             mailBody.AppendLine();
@@ -845,11 +859,11 @@ namespace DataImportManager
 
                         if (affectedItems.Count > 0)
                         {
-                            mailBody.AppendFormat("{0}: ", errorEntry.Key);
+                            AppendLine(mailBody, "{0}: ", errorEntry.Key);
 
                             foreach (var affectedItem in affectedItems)
                             {
-                                mailBody.AppendFormat("  {0}", affectedItem.IssueDetail);
+                                AppendLine(mailBody, "  {0}", affectedItem.IssueDetail);
 
                                 if (string.IsNullOrWhiteSpace(affectedItem.AdditionalInfo))
                                     continue;
@@ -863,7 +877,7 @@ namespace DataImportManager
                             foreach (var infoItem in additionalInfoList)
                             {
                                 // Add the cached additional info items
-                                mailBody.AppendFormat("  {0}", infoItem);
+                                AppendLine(mailBody, "  {0}", infoItem);
                             }
                         }
                         else
@@ -882,14 +896,14 @@ namespace DataImportManager
 
                     if (instrumentFilePaths.Count == 1)
                     {
-                        mailBody.AppendFormat("Instrument file:{0}{1}", Environment.NewLine, instrumentFilePaths.First());
+                        AppendLine(mailBody, "Instrument file:{0}{1}", Environment.NewLine, instrumentFilePaths.First());
                     }
                     else if (instrumentFilePaths.Count > 1)
                     {
                         mailBody.AppendLine("Instrument files:");
                         foreach (var triggerFile in instrumentFilePaths)
                         {
-                            mailBody.AppendFormat("  {0}", triggerFile);
+                            AppendLine(mailBody, "  {0}", triggerFile);
                         }
                     }
 
@@ -913,8 +927,9 @@ namespace DataImportManager
 
                     mailBody.AppendLine();
                     mailBody.AppendLine("Log file location:");
-                    mailBody.AppendFormat("  {0}", GetLogFileSharePath());
+                    AppendLine(mailBody, "  {0}", GetLogFileSharePath());
                     mailBody.AppendLine();
+
                     mailBody.AppendLine(
                         "This message was sent from an account that is not monitored. " +
                         "If you have any questions, please reply to the list of recipients directly.");
@@ -930,8 +945,8 @@ namespace DataImportManager
                     {
                         currentTask = "Cache the mail for preview";
                         mailContentPreview.AppendLine("E-mail that would be sent:");
-                        mailContentPreview.AppendFormat("To: {0}", recipients);
-                        mailContentPreview.AppendFormat("Subject: {0}", mailToSend.Subject);
+                        AppendLine(mailContentPreview, "To: {0}", recipients);
+                        AppendLine(mailContentPreview, "Subject: {0}", mailToSend.Subject);
                         mailContentPreview.AppendLine();
                         mailContentPreview.AppendLine(mailToSend.Body);
                         mailContentPreview.AppendLine();
