@@ -41,9 +41,7 @@ namespace DataImportManager
                 var sourceIndex = ThreadSafeRandom.ThisThreadsRandom.Next(index + 1);
 
                 //  Swap items
-                var value = list[sourceIndex];
-                list[sourceIndex] = list[index];
-                list[index] = value;
+                (list[sourceIndex], list[index]) = (list[index], list[sourceIndex]);
             }
         }
     }
