@@ -7,4 +7,4 @@ xcopy Debug\DataImportManager.exe \\pnl\projects\OmicsSW\DMS_Programs\CaptureTas
 xcopy Debug\DataImportManager.pdb \\pnl\projects\OmicsSW\DMS_Programs\CaptureTaskManagerDistribution\DataImportManagerMan\ /Y /D
 xcopy Debug\*.dll \\pnl\projects\OmicsSW\DMS_Programs\CaptureTaskManagerDistribution\DataImportManagerMan\ /Y /D
 
-pause
+if not "%1"=="NoPause" pause
