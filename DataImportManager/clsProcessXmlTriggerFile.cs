@@ -176,11 +176,10 @@ namespace DataImportManager
             //    DataImportManager\Logs\DataImportManager
 
             // Prepend the computer name and share name then append the current date, giving a share path like:
-            // \\Proto-6\DMS_Programs\DataImportManager\Logs\DataImportManager_04-09-2018.txt
-            var logSharePath = @"\\" + clsGlobal.GetHostName() + @"\DMS_Programs\" + logFilePath +
-                              "_" + DateTime.Now.ToString("MM-dd-yyyy") + ".txt";
+            // \\Proto-6\DMS_Programs\DataImportManager\Logs\DataImportManager_2022-06-11.txt
 
-            return logSharePath;
+            return string.Format(@"\\{0}\DMS_Programs\{1}_{2:yyyy-MM-dd}.txt",
+                    clsGlobal.GetHostName(), logFilePath, DateTime.Now);
         }
 
         /// <summary>
