@@ -7,7 +7,7 @@ using PRISMDatabaseUtils;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsDataImportTask : clsDBTask
+    internal class DataImportTask : DBTask
     {
         private string mPostTaskErrorMessage = string.Empty;
         private string mDatabaseErrorMessage;
@@ -51,7 +51,7 @@ namespace DataImportManager
         /// </summary>
         /// <param name="mgrParams"></param>
         /// <param name="dbTools"></param>
-        public clsDataImportTask(MgrSettings mgrParams, IDBTools dbTools) : base(mgrParams, dbTools)
+        public DataImportTask(MgrSettings mgrParams, IDBTools dbTools) : base(mgrParams, dbTools)
         {
         }
 
@@ -68,7 +68,7 @@ namespace DataImportManager
             try
             {
                 // Load the XML file into memory
-                mXmlContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
+                mXmlContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
                 if (string.IsNullOrEmpty(mXmlContents))
                 {
                     return false;
@@ -88,7 +88,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogError("clsDatasetImportTask.PostTask(), Error running PostTask", ex);
+                LogError("DatasetImportTask.PostTask(), Error running PostTask", ex);
                 return false;
             }
 
@@ -120,13 +120,13 @@ namespace DataImportManager
 
                 if (PreviewMode)
                 {
-                    clsMainProcess.ShowTraceMessage("Preview: call stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
+                    MainProcess.ShowTraceMessage("Preview: call stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
                     return true;
                 }
 
                 if (TraceMode)
                 {
-                    clsMainProcess.ShowTraceMessage("Calling stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
+                    MainProcess.ShowTraceMessage("Calling stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
                 }
 
                 // Execute the stored procedure
@@ -142,14 +142,14 @@ namespace DataImportManager
                 }
 
                 mPostTaskErrorMessage = DBTools.GetString(messageParam.Value) ?? string.Empty;
-                LogError(string.Format("clsDataImportTask.ImportDataTask(), Problem posting dataset (return code {0}): {1}",
+                LogError(string.Format("DataImportTask.ImportDataTask(), Problem posting dataset (return code {0}): {1}",
                     returnParamText ?? string.Empty, mPostTaskErrorMessage));
 
                 return false;
             }
             catch (Exception ex)
             {
-                LogError("clsDataImportTask.ImportDataTask(), Error posting dataset", ex, true);
+                LogError("DataImportTask.ImportDataTask(), Error posting dataset", ex, true);
                 mDatabaseErrorMessage = Environment.NewLine + ("Database Error Message:" + ex.Message);
                 return false;
             }

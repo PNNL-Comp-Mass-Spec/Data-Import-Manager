@@ -8,7 +8,7 @@ namespace DataImportManager
     /// Class with logging methods that call PRISM.Logging.LogTools
     /// </summary>
     // ReSharper disable once InconsistentNaming
-    public abstract class clsLoggerBase
+    public abstract class LoggerBase
     {
         /// <summary>
         /// Show a status message at the console and optionally include in the log file, tagging it as a debug message

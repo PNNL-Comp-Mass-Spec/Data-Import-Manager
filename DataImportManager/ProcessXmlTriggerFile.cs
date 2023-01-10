@@ -11,7 +11,7 @@ using PRISM.Logging;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsProcessXmlTriggerFile : clsLoggerBase
+    internal class ProcessXmlTriggerFile : LoggerBase
     {
         // ReSharper disable once CommentTypo
         // Ignore Spelling: Bionet, logon, MM-dd-yyyy, prepend, seclogon
@@ -33,7 +33,7 @@ namespace DataImportManager
         /// <summary>
         /// Mail message(s) that need to be sent
         /// </summary>
-        public ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> QueuedMail { get; }
+        public ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> QueuedMail { get; }
 
         private readonly MgrSettings mMgrSettings;
 
@@ -42,7 +42,7 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private readonly DMSInfoCache mDMSInfoCache;
 
-        private clsDataImportTask mDataImportTask;
+        private DataImportTask mDataImportTask;
 
         private string mDatabaseErrorMsg;
 
@@ -66,7 +66,7 @@ namespace DataImportManager
         /// <param name="instrumentsToSkip"></param>
         /// <param name="infoCache"></param>
         /// <param name="udtSettings"></param>
-        public clsProcessXmlTriggerFile(
+        public ProcessXmlTriggerFile(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
             DMSInfoCache infoCache,
@@ -78,10 +78,10 @@ namespace DataImportManager
 
             mDMSInfoCache = infoCache;
 
-            QueuedMail = new ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>>();
+            QueuedMail = new ConcurrentDictionary<string, ConcurrentBag<QueuedMail>>();
         }
 
-        private void CacheMail(List<clsValidationError> validationErrors, string addnlRecipient, string subjectAppend)
+        private void CacheMail(List<ValidationError> validationErrors, string addnlRecipient, string subjectAppend)
         {
             var enableEmail = mMgrSettings.GetParam("EnableEmail", false);
             if (!enableEmail)
@@ -114,7 +114,7 @@ namespace DataImportManager
                 }
 
                 // Store the message and metadata
-                var messageToQueue = new clsQueuedMail(mXmlOperatorName, mailRecipients, mailSubject, validationErrors);
+                var messageToQueue = new QueuedMail(mXmlOperatorName, mailRecipients, mailSubject, validationErrors);
                 if (!string.IsNullOrEmpty(mDatabaseErrorMsg))
                 {
                     messageToQueue.DatabaseErrorMsg = mDatabaseErrorMsg;
@@ -129,7 +129,7 @@ namespace DataImportManager
                 }
                 else
                 {
-                    var newQueuedMessages = new ConcurrentBag<clsQueuedMail>
+                    var newQueuedMessages = new ConcurrentBag<QueuedMail>
                     {
                         messageToQueue
                     };
@@ -164,7 +164,7 @@ namespace DataImportManager
         /// <param name="baseLogFileName">Base name of the current log file, e.g. Logs\DataImportManager</param>
         public static string GetLogFileSharePath(string baseLogFileName)
         {
-            var exeDirectoryPath = clsGlobal.GetExeDirectoryPath();
+            var exeDirectoryPath = Global.GetExeDirectoryPath();
 
             var exeDirectoryName = Path.GetFileName(exeDirectoryPath);
 
@@ -179,7 +179,7 @@ namespace DataImportManager
             // \\Proto-6\DMS_Programs\DataImportManager\Logs\DataImportManager_2022-06-11.txt
 
             return string.Format(@"\\{0}\DMS_Programs\{1}_{2:yyyy-MM-dd}.txt",
-                    clsGlobal.GetHostName(), logFilePath, DateTime.Now);
+                    Global.GetHostName(), logFilePath, DateTime.Now);
         }
 
         /// <summary>
@@ -219,7 +219,7 @@ namespace DataImportManager
                     return false;
                 }
 
-                clsMainProcess.LogErrorToDatabase("The Secondary Logon service is not running; this is required to access files on Bionet");
+                MainProcess.LogErrorToDatabase("The Secondary Logon service is not running; this is required to access files on Bionet");
                 try
                 {
                     // Try to start it
@@ -262,7 +262,7 @@ namespace DataImportManager
 
             // Create the object that will import the Data record
             //
-            mDataImportTask = new clsDataImportTask(mMgrSettings, dbTools)
+            mDataImportTask = new DataImportTask(mMgrSettings, dbTools)
             {
                 TraceMode = ProcSettings.TraceMode,
                 PreviewMode = ProcSettings.PreviewMode
@@ -276,7 +276,7 @@ namespace DataImportManager
             if (mDatabaseErrorMsg.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
-                clsMainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + triggerFile.FullName);
+                MainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + triggerFile.FullName);
                 return false;
             }
 
@@ -320,11 +320,11 @@ namespace DataImportManager
             else
             {
                 messageType = BaseLogger.LogLevels.ERROR;
-                clsMainProcess.LogErrorToDatabase(statusMsg + ". View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
+                MainProcess.LogErrorToDatabase(statusMsg + ". View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
             }
 
-            var validationErrors = new List<clsValidationError>();
-            var newError = new clsValidationError("XML trigger file problem", moveLocPath);
+            var validationErrors = new List<ValidationError>();
+            var newError = new ValidationError("XML trigger file problem", moveLocPath);
 
             string msgTypeString;
             if (messageType == BaseLogger.LogLevels.ERROR)
@@ -465,7 +465,7 @@ namespace DataImportManager
         /// Process the specified XML file
         /// </summary>
         /// <remarks>
-        /// PerformValidation in clsXMLTimeValidation will monitor the dataset file (or dataset directory)
+        /// PerformValidation in XMLTimeValidation will monitor the dataset file (or dataset directory)
         /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
         /// <param name="triggerFileInfo">XML file to process</param>
@@ -478,7 +478,7 @@ namespace DataImportManager
                 string moveLocPath;
                 var failureDirectory = mMgrSettings.GetParam("FailureFolder");
 
-                var myDataXmlValidation = new clsXMLTimeValidation(mMgrSettings, mInstrumentsToSkip, mDMSInfoCache, ProcSettings)
+                var myDataXmlValidation = new XMLTimeValidation(mMgrSettings, mInstrumentsToSkip, mDMSInfoCache, ProcSettings)
                 {
                     TraceMode = ProcSettings.TraceMode
                 };
@@ -491,24 +491,24 @@ namespace DataImportManager
                 mXmlInstrumentName = myDataXmlValidation.InstrumentName;
 
                 var triggerFile = triggerFileInfo.TriggerFile;
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
                     LogWarning("Undefined Operator in " + moveLocPath, true);
 
-                    var validationErrors = new List<clsValidationError>();
+                    var validationErrors = new List<ValidationError>();
 
                     if (string.IsNullOrWhiteSpace(mXmlOperatorName))
                     {
-                        validationErrors.Add(new clsValidationError("Operator name not listed in the XML file", string.Empty));
+                        validationErrors.Add(new ValidationError("Operator name not listed in the XML file", string.Empty));
                     }
                     else
                     {
-                        validationErrors.Add(new clsValidationError("Operator name not defined in DMS", mXmlOperatorName));
+                        validationErrors.Add(new ValidationError("Operator name not defined in DMS", mXmlOperatorName));
                     }
 
-                    validationErrors.Add(new clsValidationError("Dataset trigger file path", moveLocPath));
+                    validationErrors.Add(new ValidationError("Dataset trigger file path", moveLocPath));
 
                     mDatabaseErrorMsg = "Operator payroll number/HID was blank";
                     var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
@@ -526,14 +526,14 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, timeValidationDirectory);
 
                     LogWarning("XML Time validation error, file " + moveLocPath);
-                    clsMainProcess.LogErrorToDatabase("Time validation error. View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
+                    MainProcess.LogErrorToDatabase("Time validation error. View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
 
-                    var validationErrors = new List<clsValidationError>
+                    var validationErrors = new List<ValidationError>
                     {
                         new("Time validation error", moveLocPath)
                     };
@@ -542,13 +542,13 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
                     LogWarning("An error was encountered during the validation process, file " + moveLocPath, true);
 
-                    var validationErrors = new List<clsValidationError>
+                    var validationErrors = new List<ValidationError>
                     {
                         new("XML error encountered during validation process", moveLocPath)
                     };
@@ -557,13 +557,13 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
                 {
                     // Logon failure; Do not move the XML file
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
                 {
                     // Network error; Do not move the XML file
                     // Furthermore, do not process any more .XML files for this instrument
@@ -571,33 +571,33 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT)
                 {
                     LogMessage(" ... skipped since m_InstrumentsToSkip contains " + mXmlInstrumentName);
                     UpdateInstrumentsToSkip(mXmlInstrumentName);
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_WAIT_FOR_FILES)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_WAIT_FOR_FILES)
                 {
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
                 {
                     // Size changed; Do not move the XML file
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
                     LogWarning("Dataset " + myDataXmlValidation.DatasetName + " not found at " + myDataXmlValidation.SourcePath, true);
 
-                    var validationErrors = new List<clsValidationError>();
+                    var validationErrors = new List<ValidationError>();
 
-                    var newError = new clsValidationError("Dataset not found on the instrument", moveLocPath);
+                    var newError = new ValidationError("Dataset not found on the instrument", moveLocPath);
                     if (string.IsNullOrEmpty(myDataXmlValidation.ErrorMessage))
                     {
                         newError.AdditionalInfo = string.Empty;
@@ -625,7 +625,7 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (xmlResult == clsXMLTimeValidation.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING)
+                if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING)
                 {
                     // The file is now missing; silently move on
                     return false;
@@ -640,14 +640,14 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                clsMainProcess.LogErrorToDatabase("Error validating Xml Data file, file " + triggerFileInfo.TriggerFile.FullName, ex);
+                MainProcess.LogErrorToDatabase("Error validating Xml Data file, file " + triggerFileInfo.TriggerFile.FullName, ex);
                 return false;
             }
         }
 
         private void ShowTraceMessage(string message)
         {
-            clsMainProcess.ShowTraceMessage(message);
+            MainProcess.ShowTraceMessage(message);
         }
     }
 }

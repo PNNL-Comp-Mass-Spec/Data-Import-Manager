@@ -4,7 +4,7 @@ using PRISMDatabaseUtils;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal abstract class clsDBTask : clsLoggerBase
+    internal abstract class DBTask : LoggerBase
     {
         /// <summary>
         /// Manager parameters
@@ -26,7 +26,7 @@ namespace DataImportManager
         /// </summary>
         /// <param name="mgrParams">Manager parameters</param>
         /// <param name="dbTools">Database tools object</param>
-        protected clsDBTask(MgrSettings mgrParams, IDBTools dbTools)
+        protected DBTask(MgrSettings mgrParams, IDBTools dbTools)
         {
             MgrParams = mgrParams;
             DBTools = dbTools;

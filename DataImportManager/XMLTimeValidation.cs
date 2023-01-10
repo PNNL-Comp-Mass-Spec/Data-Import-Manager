@@ -12,7 +12,7 @@ using PRISM.AppSettings;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsXMLTimeValidation : clsLoggerBase
+    internal class XMLTimeValidation : LoggerBase
     {
         // Ignore Spelling: AcqData, Alz, bionet, fso, logon, prepend, pwd, Roc, secfso, subfolder, username
 
@@ -43,7 +43,7 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private readonly DMSInfoCache mDMSInfoCache;
 
-        private readonly clsProcessXmlTriggerFile.XmlProcSettingsType mProcSettings;
+        private readonly ProcessXmlTriggerFile.XmlProcSettingsType mProcSettings;
 
         private readonly ConcurrentDictionary<string, int> mInstrumentsToSkip;
 
@@ -118,11 +118,11 @@ namespace DataImportManager
         /// <param name="dctInstrumentsToSkip"></param>
         /// <param name="dmsCache"></param>
         /// <param name="udtProcSettings"></param>
-        public clsXMLTimeValidation(
+        public XMLTimeValidation(
             MgrSettings mgrParams,
             ConcurrentDictionary<string, int> dctInstrumentsToSkip,
             DMSInfoCache dmsCache,
-            clsProcessXmlTriggerFile.XmlProcSettingsType udtProcSettings)
+            ProcessXmlTriggerFile.XmlProcSettingsType udtProcSettings)
         {
             mMgrParams = mgrParams;
             mFileTools = new FileTools();
@@ -440,7 +440,7 @@ namespace DataImportManager
             // initialize return value
             var validationResult = XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-            var xmlFileContents = clsGlobal.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
+            var xmlFileContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
             if (string.IsNullOrEmpty(xmlFileContents))
             {
                 return XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING;
@@ -477,7 +477,7 @@ namespace DataImportManager
                                 {
                                     // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
                                     // For safety, will blank this out, but will post a log entry to the database
-                                    var msg = "clsXMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
+                                    var msg = "XMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
                                         "this indicates a bug with Buzzard; see: " + triggerFileInfo.TriggerFile.Name;
 
                                     LogError(msg, null, true);
@@ -504,7 +504,7 @@ namespace DataImportManager
 
                 if (string.IsNullOrEmpty(InstrumentName))
                 {
-                    LogError("clsXMLTimeValidation.GetXMLParameters(), The instrument name was blank.");
+                    LogError("XMLTimeValidation.GetXMLParameters(), The instrument name was blank.");
                     return XmlValidateStatus.XML_VALIDATE_BAD_XML;
                 }
 
@@ -524,7 +524,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogError("clsXMLTimeValidation.GetXMLParameters(), Error reading XML File", ex);
+                LogError("XMLTimeValidation.GetXMLParameters(), Error reading XML File", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
         }
@@ -545,12 +545,12 @@ namespace DataImportManager
                 if (dateNow >= fileModDateDelay)
                     return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-                LogWarning("clsXMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name);
+                LogWarning("XMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name);
                 return XmlValidateStatus.XML_WAIT_FOR_FILES;
             }
             catch (Exception ex)
             {
-                LogError("clsXMLTimeValidation.InstrumentWaitDelay(), Error determining wait delay", ex);
+                LogError("XMLTimeValidation.InstrumentWaitDelay(), Error determining wait delay", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
         }
@@ -633,7 +633,7 @@ namespace DataImportManager
                             Console.WriteLine(" - - - - - - - - ");
                         }
 
-                        clsMainProcess.LogErrorToDatabase(errMsg);
+                        MainProcess.LogErrorToDatabase(errMsg);
                     }
                 }
 
@@ -655,7 +655,7 @@ namespace DataImportManager
                 mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName);
 
                 if (string.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase) &&
-                    !clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                    !Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                 {
                     // Source directory is on bionet; establish a connection
                     var username = mMgrParams.GetParam("BionetUser");
@@ -663,7 +663,7 @@ namespace DataImportManager
                     if (!username.Contains('\\'))
                     {
                         // Prepend this computer's name to the username
-                        username = clsGlobal.GetHostName() + '\\' + username;
+                        username = Global.GetHostName() + '\\' + username;
                     }
 
                     var currentTaskBase = string.Format(
@@ -874,7 +874,7 @@ namespace DataImportManager
                             ShowTraceMessage(currentTask);
                         }
 
-                        if (clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                        if (Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                         {
                             Console.WriteLine("Skipping date validation because host name starts with Monroe");
                         }
@@ -910,7 +910,7 @@ namespace DataImportManager
                                          " vs. Run Finish UTC date " + dtRunFinishWithTolerance.ToString(CultureInfo.InvariantCulture) +
                                          " (includes " + intTimeValToleranceMinutes + " minute tolerance)";
 
-                            clsMainProcess.LogErrorToDatabase(errMsg);
+                            MainProcess.LogErrorToDatabase(errMsg);
                             return XmlValidateStatus.XML_VALIDATE_FAILED;
                         }
                         break;
@@ -972,7 +972,7 @@ namespace DataImportManager
                         break;
 
                     default:
-                        clsMainProcess.LogErrorToDatabase("Invalid dataset type for " + mDatasetName + ": " + resType);
+                        MainProcess.LogErrorToDatabase("Invalid dataset type for " + mDatasetName + ": " + resType);
                         if (connected)
                         {
                             currentTask = "Invalid dataset type; disconnecting from " + sourcePath;
@@ -986,7 +986,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogError("clsXMLTimeValidation.GetInstrumentName(), Error reading XML File, current task: " + currentTask, ex);
+                LogError("XMLTimeValidation.GetInstrumentName(), Error reading XML File, current task: " + currentTask, ex);
 
                 if (ContainsIgnoreCase(ex.Message, "unknown user name or bad password"))
                 {
@@ -1051,7 +1051,7 @@ namespace DataImportManager
                 if (!mDMSInfoCache.GetInstrumentInfo(insName, out var udtInstrumentInfo))
                 {
                     LogError(
-                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
+                        "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
                         insName + " not found in data from V_Instrument_List_Export");
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                 }
@@ -1061,8 +1061,8 @@ namespace DataImportManager
 
                 if (string.IsNullOrWhiteSpace(mCaptureType))
                 {
-                    clsMainProcess.LogErrorToDatabase(
-                        "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
+                    MainProcess.LogErrorToDatabase(
+                        "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
                         insName + " has an empty value for Capture in V_Instrument_List_Export");
 
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
@@ -1071,8 +1071,8 @@ namespace DataImportManager
                 if (!string.IsNullOrWhiteSpace(mSourcePath))
                     return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-                clsMainProcess.LogErrorToDatabase(
-                    "clsXMLTimeValidation.SetDbInstrumentParameters(), Instrument " + insName +
+                MainProcess.LogErrorToDatabase(
+                    "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " + insName +
                     " has an empty value for SourcePath in V_Instrument_List_Export");
 
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
@@ -1080,7 +1080,7 @@ namespace DataImportManager
             catch (Exception ex)
             {
                 LogError(
-                    "clsXMLTimeValidation.SetDbInstrumentParameters(), " +
+                    "XMLTimeValidation.SetDbInstrumentParameters(), " +
                     "Error retrieving source path and capture type for instrument: " + insName, ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
@@ -1095,7 +1095,7 @@ namespace DataImportManager
             {
                 if (string.IsNullOrWhiteSpace(mOperatorUsername))
                 {
-                    const string logMsg = "clsXMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
+                    const string logMsg = "XMLTimeValidation.SetOperatorName: Operator field is empty (should be a network login, e.g. D3E154)";
                     LogWarning(logMsg);
                     mOperatorName = logMsg;
                     return false;
@@ -1120,7 +1120,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogError("clsXMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name", ex);
+                LogError("XMLTimeValidation.RetrieveOperatorName(), Error retrieving Operator Name", ex);
                 return false;
             }
         }
@@ -1131,7 +1131,7 @@ namespace DataImportManager
         /// <param name="message"></param>
         private void ShowTraceMessage(string message)
         {
-            clsMainProcess.ShowTraceMessage(message);
+            MainProcess.ShowTraceMessage(message);
         }
 
         /// <summary>
@@ -1188,7 +1188,7 @@ namespace DataImportManager
             catch (Exception ex)
             {
                 ErrorMessage = "Error reading the XML file " + triggerFile.Name;
-                var errMsg = "clsXMLTimeValidation.ValidateXMLFile(), " + ErrorMessage + ": " + ex.Message;
+                var errMsg = "XMLTimeValidation.ValidateXMLFile(), " + ErrorMessage + ": " + ex.Message;
                 LogError(errMsg);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
@@ -1219,7 +1219,7 @@ namespace DataImportManager
             catch (Exception ex)
             {
                 ErrorMessage = "Exception calling PerformValidation";
-                LogError("clsXMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation", ex);
+                LogError("XMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
 
@@ -1312,7 +1312,7 @@ namespace DataImportManager
                 else
                 {
                     // Note that error "The user name or password is incorrect" could be due to the Secondary Logon service not running
-                    // We check for that in clsProcessXmlTriggerFile.ProcessFile if ValidateXMLFileMain returns false
+                    // We check for that in ProcessXmlTriggerFile.ProcessFile if ValidateXMLFileMain returns false
                     throw;
                 }
             }

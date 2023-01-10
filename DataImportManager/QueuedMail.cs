@@ -3,7 +3,7 @@
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsQueuedMail
+    internal class QueuedMail
     {
         public string InstrumentOperator { get; }
 
@@ -20,7 +20,7 @@ namespace DataImportManager
         /// </summary>
         public string DatabaseErrorMsg { get; set; }
 
-        public List<clsValidationError> ValidationErrors { get; }
+        public List<ValidationError> ValidationErrors { get; }
 
         /// <summary>
         /// Tracks the path to the dataset on the instrument
@@ -34,7 +34,7 @@ namespace DataImportManager
         /// <param name="recipientList"></param>
         /// <param name="mailSubject"></param>
         /// <param name="lstValidationErrors"></param>
-        public clsQueuedMail(string operatorName, string recipientList, string mailSubject, List<clsValidationError> lstValidationErrors)
+        public QueuedMail(string operatorName, string recipientList, string mailSubject, List<ValidationError> lstValidationErrors)
         {
             InstrumentOperator = operatorName;
             Recipients = recipientList;

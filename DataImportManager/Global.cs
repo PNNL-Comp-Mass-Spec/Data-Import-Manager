@@ -10,7 +10,7 @@ namespace DataImportManager
     /// Global methods used by other classes
     /// </summary>
     // ReSharper disable once InconsistentNaming
-    public static class clsGlobal
+    public static class Global
     {
         //  Constants
         private const string FLAG_FILE_NAME = "FlagFile.txt";
@@ -100,7 +100,7 @@ namespace DataImportManager
             {
                 if (!xmlFile.Exists)
                 {
-                    LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), File: " + xmlFile.FullName + " does not exist.");
+                    LogTools.LogError("Global.LoadXmlFileContentsIntoString(), File: " + xmlFile.FullName + " does not exist.");
                     return string.Empty;
                 }
 
@@ -126,7 +126,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogTools.LogError("clsGlobal.LoadXmlFileContentsIntoString(), Error reading xml file", ex);
+                LogTools.LogError("Global.LoadXmlFileContentsIntoString(), Error reading xml file", ex);
                 return string.Empty;
             }
         }

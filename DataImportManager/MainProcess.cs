@@ -17,7 +17,7 @@ using PRISMDatabaseUtils.AppSettings;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsMainProcess : clsLoggerBase
+    internal class MainProcess : LoggerBase
     {
         // Ignore Spelling: Proteinseqs, smtp, spam, yyyy-MM, yyyy-MM-dd hh:mm:ss tt
 
@@ -58,7 +58,7 @@ namespace DataImportManager
         /// Keys in this dictionary are semicolon separated e-mail addresses
         /// Values are mail messages to send
         /// </summary>
-        private readonly ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> mQueuedMail;
+        private readonly ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> mQueuedMail;
 
         public bool IgnoreInstrumentSourceErrors { get; set; }
         public bool MailDisabled { get; set; }
@@ -69,13 +69,13 @@ namespace DataImportManager
         /// Constructor
         /// </summary>
         /// <param name="traceMode"></param>
-        public clsMainProcess(bool traceMode)
+        public MainProcess(bool traceMode)
         {
             TraceMode = traceMode;
 
             mInstrumentsToSkip = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            mQueuedMail = new ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>>(StringComparer.OrdinalIgnoreCase);
+            mQueuedMail = new ConcurrentDictionary<string, ConcurrentBag<QueuedMail>>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace DataImportManager
         /// </summary>
         public bool InitMgr()
         {
-            var defaultModuleName = "DataImportManager: " + clsGlobal.GetHostName();
+            var defaultModuleName = "DataImportManager: " + Global.GetHostName();
 
             try
             {
@@ -110,7 +110,7 @@ namespace DataImportManager
                     dmsConnectionString = dmsConnectionStringFromConfig;
                 }
 
-                var managerName = "Data_Import_Manager_" + clsGlobal.GetHostName();
+                var managerName = "Data_Import_Manager_" + Global.GetHostName();
 
                 var dbLoggerConnectionString = DbToolsFactory.AddApplicationNameToConnectionString(dmsConnectionString, managerName);
 
@@ -187,7 +187,7 @@ namespace DataImportManager
                 throw new Exception("InitMgr, " + ex.Message, ex);
             }
 
-            var exeFile = new FileInfo(clsGlobal.GetExePath());
+            var exeFile = new FileInfo(Global.GetExePath());
 
             // Set up the FileWatcher to detect setup file changes
             mFileWatcher = new FileSystemWatcher();
@@ -228,11 +228,11 @@ namespace DataImportManager
             try
             {
                 // Verify an error hasn't left the system in an odd state
-                if (clsGlobal.DetectStatusFlagFile())
+                if (Global.DetectStatusFlagFile())
                 {
                     LogWarning("Flag file exists - auto-deleting it, then closing program");
-                    clsGlobal.DeleteStatusFlagFile();
-                    if (!clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                    Global.DeleteStatusFlagFile();
+                    if (!Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -320,7 +320,7 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                LogErrorToDatabase("Exception in clsMainProcess.DoImport()", ex);
+                LogErrorToDatabase("Exception in MainProcess.DoImport()", ex);
                 return false;
             }
         }
@@ -350,7 +350,7 @@ namespace DataImportManager
                 if (result == CloseOutType.CLOSEOUT_SUCCESS && xmlFilesToImport.Count > 0)
                 {
                     // Set status file for control of future runs
-                    clsGlobal.CreateStatusFlagFile();
+                    Global.CreateStatusFlagFile();
 
                     // Add a delay
                     var importDelayText = mMgrSettings.GetParam("ImportDelay");
@@ -362,7 +362,7 @@ namespace DataImportManager
                         importDelay = 2;
                     }
 
-                    if (clsGlobal.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                    if (Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                     {
                         // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
                         importDelay = 1;
@@ -431,7 +431,7 @@ namespace DataImportManager
                 DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
 
                 // If we got to here, closeout the task as a success
-                clsGlobal.DeleteStatusFlagFile();
+                Global.DeleteStatusFlagFile();
 
                 mFailureCount = 0;
                 LogMessage("Completed task");
@@ -439,7 +439,7 @@ namespace DataImportManager
             catch (Exception ex)
             {
                 mFailureCount++;
-                LogError("Exception in clsMainProcess.DoDataImportTask", ex);
+                LogError("Exception in MainProcess.DoDataImportTask", ex);
             }
         }
 
@@ -479,7 +479,7 @@ namespace DataImportManager
         private string GetLogFileSharePath()
         {
             var logFileName = mMgrSettings.GetParam("LogFileName");
-            return clsProcessXmlTriggerFile.GetLogFileSharePath(logFileName);
+            return ProcessXmlTriggerFile.GetLogFileSharePath(logFileName);
         }
 
         /// <summary>
@@ -535,7 +535,7 @@ namespace DataImportManager
             if (string.IsNullOrWhiteSpace(settingName))
                 throw new ArgumentException("Setting name cannot be blank", nameof(settingName));
 
-            var exePath = clsGlobal.GetExePath();
+            var exePath = Global.GetExePath();
 
             var configFilePaths = new List<string>();
 
@@ -545,7 +545,7 @@ namespace DataImportManager
                 configFilePaths.Add(Path.ChangeExtension(exePath, ".exe.db.config"));
             }
 
-            configFilePaths.Add(clsGlobal.GetExePath() + ".config");
+            configFilePaths.Add(Global.GetExePath() + ".config");
 
             var mgrSettings = new MgrSettings();
             RegisterEvents(mgrSettings);
@@ -571,7 +571,7 @@ namespace DataImportManager
             ConsoleMsgUtils.SleepSeconds(waitSeconds);
 
             // Validate the xml file
-            var udtSettings = new clsProcessXmlTriggerFile.XmlProcSettingsType
+            var udtSettings = new ProcessXmlTriggerFile.XmlProcSettingsType
             {
                 DebugLevel = mDebugLevel,
                 IgnoreInstrumentSourceErrors = IgnoreInstrumentSourceErrors,
@@ -581,7 +581,7 @@ namespace DataImportManager
                 SuccessDirectory = successDirectory
             };
 
-            var triggerProcessor = new clsProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
+            var triggerProcessor = new ProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
             triggerProcessor.ProcessFile(currentFile);
             if (triggerProcessor.QueuedMail.Count > 0)
             {
@@ -593,7 +593,7 @@ namespace DataImportManager
         /// Add one or more mail messages to mQueuedMail
         /// </summary>
         /// <param name="newQueuedMail"></param>
-        private void AddToMailQueue(ConcurrentDictionary<string, ConcurrentBag<clsQueuedMail>> newQueuedMail)
+        private void AddToMailQueue(ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> newQueuedMail)
         {
             foreach (var newQueuedMessage in newQueuedMail)
             {
@@ -628,7 +628,7 @@ namespace DataImportManager
             var serverXferDir = mMgrSettings.GetParam("xferDir");
             if (string.IsNullOrWhiteSpace(serverXferDir))
             {
-                LogErrorToDatabase("Manager parameter xferDir is empty (" + clsGlobal.GetHostName() + ")");
+                LogErrorToDatabase("Manager parameter xferDir is empty (" + Global.GetHostName() + ")");
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
             }
@@ -688,7 +688,7 @@ namespace DataImportManager
                 FileInfo mailLogFile;
                 if (string.IsNullOrWhiteSpace(LogTools.CurrentLogFilePath))
                 {
-                    var exeDirectoryPath = clsGlobal.GetExeDirectoryPath();
+                    var exeDirectoryPath = Global.GetExeDirectoryPath();
                     mailLogFile = new FileInfo(Path.Combine(exeDirectoryPath, "Logs", logFileName));
                 }
                 else
@@ -729,7 +729,7 @@ namespace DataImportManager
 
                     if (messageCount < 1)
                     {
-                        ShowTrace("Empty clsQueuedMail list; this should never happen");
+                        ShowTrace("Empty QueuedMail list; this should never happen");
 
                         LogWarning("Empty mail queue for recipients " + recipients + "; nothing to do", true);
                         continue;
@@ -743,7 +743,7 @@ namespace DataImportManager
                         LogErrorToDatabase("firstQueuedMail item is null in SendQueuedMail");
 
                         var defaultRecipients = mMgrSettings.GetParam("to");
-                        firstQueuedMail = new clsQueuedMail("Unknown Operator", defaultRecipients, "Exception", new List<clsValidationError>());
+                        firstQueuedMail = new QueuedMail("Unknown Operator", defaultRecipients, "Exception", new List<ValidationError>());
                     }
 
                     // Create the mail message
@@ -785,7 +785,7 @@ namespace DataImportManager
                     }
 
                     // Summarize the validation errors
-                    var summarizedErrors = new Dictionary<string, clsValidationErrorSummary>();
+                    var summarizedErrors = new Dictionary<string, ValidationErrorSummary>();
                     var messageNumber = 0;
                     var nextSortWeight = 1;
 
@@ -819,12 +819,12 @@ namespace DataImportManager
                         {
                             if (!summarizedErrors.TryGetValue(validationError.IssueType, out var errorSummary))
                             {
-                                errorSummary = new clsValidationErrorSummary(validationError.IssueType, nextSortWeight);
+                                errorSummary = new ValidationErrorSummary(validationError.IssueType, nextSortWeight);
                                 nextSortWeight++;
                                 summarizedErrors.Add(validationError.IssueType, errorSummary);
                             }
 
-                            var affectedItem = new clsValidationErrorSummary.AffectedItemType
+                            var affectedItem = new ValidationErrorSummary.AffectedItemType
                             {
                                 IssueDetail = validationError.IssueDetail,
                                 AdditionalInfo = validationError.AdditionalInfo

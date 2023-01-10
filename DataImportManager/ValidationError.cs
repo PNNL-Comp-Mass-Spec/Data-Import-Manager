@@ -2,7 +2,7 @@
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsValidationError
+    internal class ValidationError
     {
         public string IssueType { get; }
 
@@ -13,7 +13,7 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        public clsValidationError(string issueType, string issueDetail)
+        public ValidationError(string issueType, string issueDetail)
         {
             IssueType = issueType;
             IssueDetail = issueDetail;

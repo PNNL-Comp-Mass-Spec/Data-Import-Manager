@@ -3,7 +3,7 @@
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class clsValidationErrorSummary
+    internal class ValidationErrorSummary
     {
         public struct AffectedItemType
         {
@@ -24,7 +24,7 @@ namespace DataImportManager
         /// </summary>
         /// <param name="issueType"></param>
         /// <param name="sortWeight"></param>
-        public clsValidationErrorSummary(string issueType, int sortWeight)
+        public ValidationErrorSummary(string issueType, int sortWeight)
         {
             IssueType = issueType;
             SortWeight = sortWeight;

@@ -55,10 +55,10 @@ namespace DataImportManager
                 // Initiate automated analysis
                 if (options.TraceMode)
                 {
-                    ShowTraceMessage("Instantiating clsMainProcess");
+                    ShowTraceMessage("Instantiating MainProcess");
                 }
 
-                var mainProcess = new clsMainProcess(options.TraceMode)
+                var mainProcess = new MainProcess(options.TraceMode)
                 {
                     MailDisabled = options.NoMailMode,
                     PreviewMode = options.PreviewMode,
@@ -109,7 +109,7 @@ namespace DataImportManager
 
         private static void ShowTraceMessage(string message)
         {
-            clsMainProcess.ShowTraceMessage(message);
+            MainProcess.ShowTraceMessage(message);
         }
     }
 }

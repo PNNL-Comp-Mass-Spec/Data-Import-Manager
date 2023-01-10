@@ -6,7 +6,7 @@ using PRISMDatabaseUtils;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class DMSInfoCache : clsLoggerBase
+    internal class DMSInfoCache : LoggerBase
     {
         // Ignore Spelling: desc, username
 
@@ -370,7 +370,7 @@ namespace DataImportManager
 
         private void ShowTraceMessage(string message)
         {
-            clsMainProcess.ShowTraceMessage(message);
+            MainProcess.ShowTraceMessage(message);
         }
     }
 }
