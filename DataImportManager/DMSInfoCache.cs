@@ -138,9 +138,9 @@ namespace DataImportManager
 
             // Get a list of error messages in T_DIM_Error_Solution
             const string sqlQuery =
-                "SELECT Error_Text, Solution " +
+                "SELECT error_text, solution " +
                 "FROM T_DIM_Error_Solution " +
-                "ORDER BY Error_Text";
+                "ORDER BY error_text";
 
             if (mTraceMode)
                 ShowTraceMessage("Getting error messages and solutions using " + sqlQuery);
@@ -169,9 +169,9 @@ namespace DataImportManager
 
             // Get a list of instruments in V_Instrument_List_Export
             const string sqlQuery =
-                "SELECT Name, Class, RawDataType, Capture, SourcePath " +
-                "FROM dbo.V_Instrument_List_Export " +
-                "ORDER BY Name";
+                "SELECT name, class, raw_data_type, capture, source_path " +
+                "FROM V_Instrument_List_Export " +
+                "ORDER BY name";
 
             if (mTraceMode)
                 ShowTraceMessage("Getting instruments using " + sqlQuery);
@@ -210,9 +210,9 @@ namespace DataImportManager
 
             // Get a list of all users in the database
             const string sqlQuery =
-                "SELECT U_Name, U_email, U_PRN, ID, U_Status " +
-                "FROM dbo.T_Users " +
-                "ORDER BY ID Desc";
+                "SELECT name, email, username, id, status " +
+                "FROM V_Users_Export " +
+                "ORDER BY id Desc";
 
             if (mTraceMode)
                 ShowTraceMessage("Getting DMS users using " + sqlQuery);
@@ -349,7 +349,7 @@ namespace DataImportManager
                 }
 
                 operatorInfo = query2.FirstOrDefault();
-                var logMsg = "LookupOperatorName: Ambiguous match found for '" + strQueryName + "' in T_Users; will e-mail '" + operatorInfo.Email + "'";
+                var logMsg = "LookupOperatorName: Ambiguous match found for '" + strQueryName + "' in V_Users_Export; will e-mail '" + operatorInfo.Email + "'";
                 LogWarning(logMsg);
 
                 operatorInfo.Name = "Ambiguous match found for operator (" + strQueryName + "); use network login instead, e.g. D3E154";
@@ -360,10 +360,10 @@ namespace DataImportManager
             else
             {
                 // No match
-                var logMsg = "LookupOperatorName: Operator not found in T_Users.U_PRN: " + operatorUsernameToFind;
+                var logMsg = "LookupOperatorName: Operator not found in V_Users_Export.username: " + operatorUsernameToFind;
                 LogWarning(logMsg);
 
-                operatorInfo.Name = "Operator [" + operatorUsernameToFind + "] not found in T_Users; should be network login name (D3E154) or full name (Moore, Ronald J)";
+                operatorInfo.Name = "Operator [" + operatorUsernameToFind + "] not found in V_Users_Export; should be network login name (D3E154) or full name (Moore, Ronald J)";
                 return false;
             }
         }
