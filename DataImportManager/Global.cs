@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.IO;
 using System.Text;
+using PRISM;
 using PRISM.Logging;
 
 namespace DataImportManager
@@ -77,7 +78,7 @@ namespace DataImportManager
         /// </summary>
         public static string GetExePath()
         {
-            return PRISM.FileProcessor.ProcessFilesOrDirectoriesBase.GetAppPath();
+            return AppUtils.GetAppPath();
         }
 
         /// <summary>

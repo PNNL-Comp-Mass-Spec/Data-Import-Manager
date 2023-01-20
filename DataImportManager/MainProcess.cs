@@ -10,7 +10,6 @@ using JetBrains.Annotations;
 using PRISM;
 using PRISM.AppSettings;
 using PRISM.Logging;
-using PRISM.FileProcessor;
 using PRISMDatabaseUtils;
 using PRISMDatabaseUtils.AppSettings;
 
@@ -178,7 +177,7 @@ namespace DataImportManager
                 LogTools.CreateDbLogger(connectionStringToUse, moduleName);
 
                 // Write the initial log and status entries
-                var appVersion = ProcessFilesOrDirectoriesBase.GetEntryOrExecutingAssembly().GetName().Version;
+                var appVersion = AppUtils.GetEntryOrExecutingAssembly().GetName().Version;
                 LogTools.WriteLog(LogTools.LoggerTypes.LogFile, BaseLogger.LogLevels.INFO,
                     "===== Started Data Import Manager V" + appVersion + " =====");
             }
@@ -314,7 +313,7 @@ namespace DataImportManager
 
                 // Check to see if there are any data import files ready
                 DoDataImportTask(infoCache);
-                ProgRunner.SleepMilliseconds(250);
+                AppUtils.SleepMilliseconds(250);
 
                 return true;
             }
@@ -453,7 +452,7 @@ namespace DataImportManager
                 {MgrSettings.MGR_PARAM_USING_DEFAULTS, Properties.Settings.Default.UsingDefaults.ToString()}
             };
 
-            var mgrExePath = ProcessFilesOrDirectoriesBase.GetAppPath();
+            var mgrExePath = AppUtils.GetAppPath();
             var localSettings = mMgrSettings.LoadMgrSettingsFromFile(mgrExePath + ".config");
 
             if (localSettings == null)
@@ -957,7 +956,7 @@ namespace DataImportManager
                         var smtp = new SmtpClient(mailServer);
                         smtp.Send(mailToSend);
 
-                        ProgRunner.SleepMilliseconds(100);
+                        AppUtils.SleepMilliseconds(100);
                     }
 
                     if (newLogFile)
