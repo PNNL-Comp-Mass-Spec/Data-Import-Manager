@@ -676,7 +676,7 @@ namespace DataImportManager
                         ShowTraceMessage(currentTask);
                     }
 
-                    var decodedPwd = Pacifica.Core.Utilities.DecodePassword(encodedPwd);
+                    var decodedPwd = AppUtils.DecodeShiftCipher(encodedPwd);
                     currentTask = currentTaskBase + "; Instantiating ShareConnector";
                     if (TraceMode)
                     {
