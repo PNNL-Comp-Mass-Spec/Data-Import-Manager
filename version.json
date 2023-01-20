@@ -1,0 +1,13 @@
+{ // Monolithic/shared versioning config file
+  "$schema": "https://raw.githubusercontent.com/dotnet/Nerdbank.GitVersioning/main/src/NerdBank.GitVersioning/version.schema.json",
+  "version": "1.4",
+  "assemblyVersion": {
+    "precision": "build"
+  },
+  "pathFilters": [
+    ":/DataImportManager/" // Consider all committed file changes in the project folder for version increases
+  ],
+  "publicReleaseRefSpec": [
+    "^refs/heads/master$" // we release out of master
+  ]
+}

@@ -7,7 +7,12 @@ namespace DataImportManager
 {
     internal static class Program
     {
-        public const string PROGRAM_DATE = "January 11, 2023";
+        public static readonly string ProgramDate;
+
+        static Program()
+        {
+            ProgramDate = ThisAssembly.GitCommitDate.ToString("MMMM dd, yyyy");
+        }
 
         /// <summary>
         /// Entry method
@@ -19,7 +24,7 @@ namespace DataImportManager
             {
                 var exeName = System.IO.Path.GetFileName(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name);
 
-                var parser = new CommandLineParser<CommandLineOptions>(exeName, AppUtils.GetAppVersion(PROGRAM_DATE))
+                var parser = new CommandLineParser<CommandLineOptions>(exeName, AppUtils.GetAppVersion(ProgramDate))
                 {
                     ProgramInfo = "This program parses the instrument trigger files used for adding datasets to DMS. " +
                                   "Normal operation is to run the program without any command line switches.",
