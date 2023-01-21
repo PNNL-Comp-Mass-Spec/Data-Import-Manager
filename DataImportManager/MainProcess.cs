@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.XPath;
 using JetBrains.Annotations;
 using PRISM;
 using PRISM.AppSettings;
@@ -16,7 +18,7 @@ using PRISMDatabaseUtils.AppSettings;
 namespace DataImportManager
 {
     // ReSharper disable once InconsistentNaming
-    internal class MainProcess : LoggerBase
+    public class MainProcess : LoggerBase
     {
         // Ignore Spelling: Proteinseqs, smtp, spam, yyyy-MM, yyyy-MM-dd hh:mm:ss tt
 
@@ -26,7 +28,7 @@ namespace DataImportManager
 
         private const string MGR_PARAM_MGR_ACTIVE = "MgrActive";
 
-        internal enum CloseOutType
+        public enum CloseOutType
         {
             CLOSEOUT_SUCCESS = 0,
             CLOSEOUT_FAILED = 1
@@ -386,6 +388,8 @@ namespace DataImportManager
                     while (xmlFilesToImport.Count > 0)
                     {
                         var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
+                        // Prevent duplicate entries in T_Storage_Path due to a race condition
+                        EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
 
                         var itemCount = currentChunk.Count;
                         if (itemCount > 1)
@@ -439,6 +443,110 @@ namespace DataImportManager
             {
                 mFailureCount++;
                 LogError("Exception in MainProcess.DoDataImportTask", ex);
+            }
+        }
+
+        /// <summary>
+        /// Call stored procedure DMS5.GetInstrumentStoragePathForNewDatasets on all instruments with multiple trigger files
+        /// to avoid a race condition in the database that leads to identical single-use entries in T_Storage_Path
+        /// </summary>
+        /// <param name="xmlFiles"></param>
+        /// <param name="dbTools"></param>
+        private void EnsureInstrumentDataStorageDirectories(List<FileInfo> xmlFiles, IDBTools dbTools)
+        {
+            const string instrumentStorageStoredProcedure = "GetInstrumentStoragePathForNewDatasets";
+            var counts = GetFileCountsForInstruments(xmlFiles);
+            foreach (var instrument in counts.Where(x => x.Value > 1).Select(x => x.Key))
+            {
+                try
+                {
+                    var commandText = $"SELECT id FROM V_Instrument_List_Export WHERE name = '{instrument}'";
+                    var success = dbTools.GetQueryScalar(commandText, out var queryResult);
+                    if (!success || queryResult is not int instrumentId)
+                    {
+                        continue;
+                    }
+
+                    // Prepare to call the stored procedure (GetInstrumentStoragePathForNewDatasets)
+                    var command = dbTools.CreateCommand(instrumentStorageStoredProcedure, CommandType.StoredProcedure);
+                    command.CommandTimeout = 45;
+
+                    // Define parameter for stored procedure's return value
+                    var returnParam = dbTools.AddParameter(command, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
+                    dbTools.AddParameter(command, "@InstrumentID", SqlType.Int, 1, instrumentId);
+
+                    if (PreviewMode)
+                    {
+                        ShowTraceMessage("Preview: call stored procedure " + instrumentStorageStoredProcedure + " in database " + dbTools.DatabaseName);
+                        return;
+                    }
+
+                    if (TraceMode)
+                    {
+                        ShowTraceMessage("Calling stored procedure " + instrumentStorageStoredProcedure + " in database " + dbTools.DatabaseName);
+                    }
+
+                    // Execute the stored procedure
+                    var pathId = dbTools.ExecuteSP(command);
+
+                    if (TraceMode)
+                    {
+                        ShowTraceMessage("Stored procedure " + instrumentStorageStoredProcedure + ": Got storage path id " + pathId + " for instrument " + instrument);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // If an error occurs, it's likely a database communication error, and this is not a critical step, so just exit the method
+                    LogError("MainProcess.EnsureInstrumentDataStorageDirectories(), Error ensuring dataset storage directories", ex, true);
+                    return;
+                }
+            }
+        }
+
+        public static Dictionary<string, int> GetFileCountsForInstruments(List<FileInfo> xmlFiles)
+        {
+            var counts = new Dictionary<string, int>();
+
+            foreach (var file in xmlFiles)
+            {
+                var instrument = GetInstrumentFromXmlFile(file);
+                if (!string.IsNullOrWhiteSpace(instrument))
+                {
+                    if (!counts.ContainsKey(instrument))
+                    {
+                        counts.Add(instrument, 0);
+                    }
+
+                    counts[instrument]++;
+                }
+            }
+
+            return counts;
+        }
+
+        private static string GetInstrumentFromXmlFile(FileInfo file)
+        {
+            if (file == null || !file.Exists)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var xDoc = new XPathDocument(file.FullName);
+                var xNav = xDoc.CreateNavigator();
+
+                var xPathNode = xNav.SelectSingleNode(@"//Dataset/Parameter[@Name='Instrument Name']/@Value");
+                if (xPathNode != null && xPathNode.IsNode)
+                {
+                    return xPathNode.Value;
+                }
+
+                return string.Empty;
+            }
+            catch (Exception)
+            {
+                return string.Empty;
             }
         }
 
