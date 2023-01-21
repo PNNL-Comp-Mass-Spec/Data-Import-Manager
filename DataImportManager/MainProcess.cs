@@ -335,11 +335,9 @@ namespace DataImportManager
         /// Return an empty string if value is 1; otherwise return "s"
         /// </summary>
         /// <param name="value"></param>
-        private string CheckPlural(int value)
+        private static string CheckPlural(int value)
         {
-            if (value == 1) return string.Empty;
-
-            return "s";
+            return value == 1 ? string.Empty : "s";
         }
 
         private void DoDataImportTask(DMSInfoCache infoCache)
@@ -536,9 +534,9 @@ namespace DataImportManager
             return counts;
         }
 
-        private static string GetInstrumentFromXmlFile(FileInfo file)
+        private static string GetInstrumentFromXmlFile(FileSystemInfo file)
         {
-            if (file == null || !file.Exists)
+            if (file?.Exists != true)
             {
                 return string.Empty;
             }
@@ -548,13 +546,9 @@ namespace DataImportManager
                 var xDoc = new XPathDocument(file.FullName);
                 var xNav = xDoc.CreateNavigator();
 
-                var xPathNode = xNav.SelectSingleNode(@"//Dataset/Parameter[@Name='Instrument Name']/@Value");
-                if (xPathNode != null && xPathNode.IsNode)
-                {
-                    return xPathNode.Value;
-                }
+                var xPathNode = xNav.SelectSingleNode("//Dataset/Parameter[@Name='Instrument Name']/@Value");
 
-                return string.Empty;
+                return xPathNode?.IsNode == true ? xPathNode.Value : string.Empty;
             }
             catch (Exception)
             {
@@ -670,10 +664,7 @@ namespace DataImportManager
             RegisterEvents(mgrSettings);
 
             var valueFound = mgrSettings.GetXmlConfigFileSetting(configFilePaths, settingName, out var settingValue);
-            if (valueFound)
-                return settingValue;
-
-            return string.Empty;
+            return valueFound ? settingValue : string.Empty;
         }
 
         public static void LogErrorToDatabase(string message, Exception ex = null)
@@ -881,8 +872,7 @@ namespace DataImportManager
                         From = new MailAddress(mMgrSettings.GetParam("from"))
                     };
 
-                    var mailRecipientsList = firstQueuedMail.Recipients.Split(';').Distinct().ToList();
-                    foreach (var emailAddress in mailRecipientsList)
+                    foreach (var emailAddress in firstQueuedMail.Recipients.Split(';').Distinct().ToList())
                     {
                         mailToSend.To.Add(emailAddress);
                     }
@@ -1159,9 +1149,7 @@ namespace DataImportManager
 
             try
             {
-                var xmlFiles = workingDirectory.GetFiles("*.xml").ToList();
-
-                foreach (var xmlFile in xmlFiles)
+                foreach (var xmlFile in workingDirectory.GetFiles("*.xml"))
                 {
                     var fileDate = xmlFile.LastWriteTimeUtc;
                     var daysDiff = DateTime.UtcNow.Subtract(fileDate).Days;

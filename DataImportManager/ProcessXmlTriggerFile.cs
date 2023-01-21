@@ -333,15 +333,7 @@ namespace DataImportManager
             var validationErrors = new List<ValidationError>();
             var newError = new ValidationError("XML trigger file problem", moveLocPath);
 
-            string msgTypeString;
-            if (messageType == BaseLogger.LogLevels.ERROR)
-            {
-                msgTypeString = "Error";
-            }
-            else
-            {
-                msgTypeString = "Warning";
-            }
+            var msgTypeString = messageType == BaseLogger.LogLevels.ERROR ? "Error" : "Warning";
 
             if (string.IsNullOrWhiteSpace(mDataImportTask.PostTaskErrorMessage))
             {

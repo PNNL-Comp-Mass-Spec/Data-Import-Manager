@@ -228,15 +228,7 @@ namespace DataImportManager
             {
                 var baseName = Path.GetFileNameWithoutExtension(remoteDirectory.Name);
 
-                string remoteDirectoryName;
-                if (replaceInvalidCharacters)
-                {
-                    remoteDirectoryName = ReplaceInvalidChars(baseName);
-                }
-                else
-                {
-                    remoteDirectoryName = baseName;
-                }
+                var remoteDirectoryName = replaceInvalidCharacters ? ReplaceInvalidChars(baseName) : baseName;
 
                 if (!string.Equals(remoteDirectoryName, datasetName, StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -285,15 +277,7 @@ namespace DataImportManager
             {
                 var baseName = Path.GetFileNameWithoutExtension(remoteFile.Name);
 
-                string remoteFileName;
-                if (replaceInvalidCharacters)
-                {
-                    remoteFileName = ReplaceInvalidChars(baseName);
-                }
-                else
-                {
-                    remoteFileName = baseName;
-                }
+                var remoteFileName = replaceInvalidCharacters ? ReplaceInvalidChars(baseName) : baseName;
 
                 if (!string.Equals(remoteFileName, datasetName, StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -319,14 +303,9 @@ namespace DataImportManager
         /// If textToCheck is null or empty, return an empty string
         /// </summary>
         /// <param name="textToCheck"></param>
-        private string FixNull(string textToCheck)
+        private static string FixNull(string textToCheck)
         {
-            if (string.IsNullOrEmpty(textToCheck))
-            {
-                return string.Empty;
-            }
-
-            return textToCheck;
+            return string.IsNullOrEmpty(textToCheck) ? string.Empty : textToCheck;
         }
 
         /// <summary>

@@ -67,10 +67,8 @@ namespace DataImportManager
         public static string GetExeDirectoryPath()
         {
             var exeFile = new FileInfo(GetExePath());
-            if (exeFile.Directory == null)
-                return "";
 
-            return exeFile.DirectoryName;
+            return exeFile.Directory == null ? string.Empty : exeFile.DirectoryName;
         }
 
         /// <summary>
