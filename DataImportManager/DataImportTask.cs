@@ -65,10 +65,12 @@ namespace DataImportManager
             mDatabaseErrorMessage = string.Empty;
 
             bool fileImported;
+
             try
             {
                 // Load the XML file into memory
                 mXmlContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
+
                 if (string.IsNullOrEmpty(mXmlContents))
                 {
                     return false;

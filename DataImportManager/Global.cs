@@ -112,6 +112,7 @@ namespace DataImportManager
                 while (!reader.EndOfStream)
                 {
                     var input = reader.ReadLine();
+
                     if (string.IsNullOrWhiteSpace(input))
                         continue;
 

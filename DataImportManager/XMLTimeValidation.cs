@@ -156,6 +156,7 @@ namespace DataImportManager
         private bool DirectoryHasRecentZeroByteFiles(string directoryPath, IReadOnlyCollection<string> extensionsToCheck, int recentTimeMinutes)
         {
             var dataDirectory = new DirectoryInfo(directoryPath);
+
             if (!dataDirectory.Exists)
             {
                 return false;
@@ -346,6 +347,7 @@ namespace DataImportManager
         {
             // Verify instrument source directory exists
             var sourceDirectory = new DirectoryInfo(instrumentSourcePath);
+
             if (TraceMode)
             {
                 ShowTraceMessage("Instantiated sourceDirectory with " + instrumentSourcePath);
@@ -354,6 +356,7 @@ namespace DataImportManager
             if (!sourceDirectory.Exists)
             {
                 var msg = "Source directory not found for dataset " + currentDataset + ": " + sourceDirectory.FullName;
+
                 if (TraceMode)
                 {
                     ShowTraceMessage(msg);
@@ -386,6 +389,7 @@ namespace DataImportManager
                 }
 
                 var subdirectory = new DirectoryInfo(Path.Combine(sourceDirectory.FullName, captureSubFolderName));
+
                 if (!subdirectory.Exists)
                 {
                     ErrorMessage = string.Format(
@@ -441,6 +445,7 @@ namespace DataImportManager
             var validationResult = XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
             var xmlFileContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
+
             if (string.IsNullOrEmpty(xmlFileContents))
             {
                 return XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING;
@@ -448,6 +453,7 @@ namespace DataImportManager
 
             // Load into a string reader after '&' was fixed
             TextReader xmlStringReader = new StringReader(xmlFileContents);
+
             try
             {
                 var xmlDataSet = new DataSet();
@@ -473,6 +479,7 @@ namespace DataImportManager
                             case "Capture Subfolder":
                             case "Capture Subdirectory":
                                 CaptureSubdirectory = row["Value"].ToString();
+
                                 if (Path.IsPathRooted(CaptureSubdirectory))
                                 {
                                     // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
@@ -588,6 +595,7 @@ namespace DataImportManager
                     // If mSourcePath specifies more than just a host name and share name (that is, it also specifies a subdirectory)
                     // we need to add additional directory backups
                     var extraDirectoryBackups = defaultShareName.Count(x => x == '\\');
+
                     for (var i = 0; i < extraDirectoryBackups; i++)
                     {
                         captureShareName = $"..\\{captureShareName}";
@@ -620,6 +628,7 @@ namespace DataImportManager
                     {
                         // Auto-change mCaptureType to "fso", and log an error in the database
                         mCaptureType = "fso";
+
                         var errMsg = string.Format("Instrument {0} is configured to use 'secfso' " +
                                                    "yet its source directory is {1}, which appears to be a domain path; " +
                                                    "auto-changing the capture_method to 'fso' for now, but the configuration " +
@@ -660,6 +669,7 @@ namespace DataImportManager
                     // Source directory is on bionet; establish a connection
                     var username = mMgrParams.GetParam("BionetUser");
                     var encodedPwd = mMgrParams.GetParam("BionetPwd");
+
                     if (!username.Contains('\\'))
                     {
                         // Prepend this computer's name to the username
@@ -671,13 +681,16 @@ namespace DataImportManager
                         sourcePath, username, encodedPwd);
 
                     currentTask = currentTaskBase + "; Decoding password";
+
                     if (TraceMode)
                     {
                         ShowTraceMessage(currentTask);
                     }
 
                     var decodedPwd = AppUtils.DecodeShiftCipher(encodedPwd);
+
                     currentTask = currentTaskBase + "; Instantiating ShareConnector";
+
                     if (TraceMode)
                     {
                         ShowTraceMessage(currentTask);
@@ -689,6 +702,7 @@ namespace DataImportManager
                     };
 
                     currentTask = currentTaskBase + "; Connecting using ShareConnector";
+
                     if (TraceMode)
                     {
                         ShowTraceMessage(currentTask);
@@ -777,6 +791,7 @@ namespace DataImportManager
 
                 // Determine dataset type
                 currentTask = "Determining dataset type for " + mDatasetName + " at " + datasetSourcePath;
+
                 if (TraceMode)
                 {
                     ShowTraceMessage(currentTask);
@@ -785,6 +800,7 @@ namespace DataImportManager
                 var resType = GetRawDsType(sourcePath, subdirectory, mDatasetName, ignoreInstrumentSourceErrors, out var instrumentFileOrDirectoryName);
 
                 currentTask = "Validating operator name " + mOperatorUsername + " for " + mDatasetName + " at " + datasetSourcePath;
+
                 if (TraceMode)
                 {
                     ShowTraceMessage(currentTask);
@@ -795,6 +811,7 @@ namespace DataImportManager
                     if (connected)
                     {
                         currentTask = "Operator not found; disconnecting from " + sourcePath;
+
                         if (TraceMode)
                         {
                             ShowTraceMessage(currentTask);
@@ -811,6 +828,7 @@ namespace DataImportManager
                     case RawDsTypes.None:
                         // No raw dataset file or directory found
                         currentTask = "Dataset not found at " + datasetSourcePath;
+
                         if (TraceMode)
                         {
                             ShowTraceMessage(currentTask);
@@ -820,6 +838,7 @@ namespace DataImportManager
                         if (connected)
                         {
                             currentTask = "Dataset not found; disconnecting from " + sourcePath;
+
                             if (TraceMode)
                             {
                                 ShowTraceMessage(currentTask);
@@ -834,6 +853,7 @@ namespace DataImportManager
                         // Dataset file found
                         // Check the file size
                         currentTask = "Dataset found at " + datasetSourcePath + "; verifying file size is constant";
+
                         if (TraceMode)
                         {
                             ShowTraceMessage(currentTask);
@@ -857,6 +877,7 @@ namespace DataImportManager
                             if (connected)
                             {
                                 currentTask = "Dataset size changed; disconnecting from " + sourcePath;
+
                                 if (TraceMode)
                                 {
                                     ShowTraceMessage(currentTask);
@@ -869,6 +890,7 @@ namespace DataImportManager
                         }
 
                         currentTask = "Dataset found at " + datasetSourcePath + " and is unchanged";
+
                         if (TraceMode)
                         {
                             ShowTraceMessage(currentTask);
@@ -923,7 +945,9 @@ namespace DataImportManager
 
                         // Update the dataset path to include the instrument file or directory name
                         mDatasetPath = Path.Combine(datasetSourcePath, instrumentFileOrDirectoryName);
+
                         currentTask += mDatasetPath;
+
                         if (TraceMode)
                         {
                             ShowTraceMessage(currentTask);
@@ -957,9 +981,11 @@ namespace DataImportManager
                             };
 
                             currentTask = "Checking for zero byte .bin files in " + acqDataPath;
+
                             if (DirectoryHasRecentZeroByteFiles(acqDataPath, extensionsToCheck, 60))
                             {
                                 LogWarning("Dataset '" + mDatasetName + "' not ready (recent zero-byte .bin files)");
+
                                 if (connected)
                                 {
                                     currentTask = "Dataset directory size changed; disconnecting from " + sourcePath;
@@ -973,6 +999,7 @@ namespace DataImportManager
 
                     default:
                         MainProcess.LogErrorToDatabase("Invalid dataset type for " + mDatasetName + ": " + resType);
+
                         if (connected)
                         {
                             currentTask = "Invalid dataset type; disconnecting from " + sourcePath;
@@ -1206,6 +1233,7 @@ namespace DataImportManager
             try
             {
                 validationResult = SetDbInstrumentParameters(InstrumentName);
+
                 if (validationResult == XmlValidateStatus.XML_VALIDATE_CONTINUE)
                 {
                     validationResult = PerformValidation();
@@ -1277,6 +1305,7 @@ namespace DataImportManager
             }
 
             logonFailure = false;
+
             try
             {
                 // Get the initial size of the file

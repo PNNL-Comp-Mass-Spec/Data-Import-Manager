@@ -84,6 +84,7 @@ namespace DataImportManager
         private void CacheMail(List<ValidationError> validationErrors, string addnlRecipient, string subjectAppend)
         {
             var enableEmail = mMgrSettings.GetParam("EnableEmail", false);
+
             if (!enableEmail)
             {
                 return;
@@ -102,6 +103,7 @@ namespace DataImportManager
 
                 // Define the Subject
                 string mailSubject;
+
                 if (string.IsNullOrEmpty(subjectAppend))
                 {
                     // Data Import Manager
@@ -115,6 +117,7 @@ namespace DataImportManager
 
                 // Store the message and metadata
                 var messageToQueue = new QueuedMail(mXmlOperatorName, mailRecipients, mailSubject, validationErrors);
+
                 if (!string.IsNullOrEmpty(mDatabaseErrorMsg))
                 {
                     messageToQueue.DatabaseErrorMsg = mDatabaseErrorMsg;
@@ -192,6 +195,7 @@ namespace DataImportManager
             mDatabaseErrorMsg = string.Empty;
 
             var statusMsg = "Starting data import task for dataset: " + triggerFile.FullName;
+
             if (ProcSettings.TraceMode)
             {
                 Console.WriteLine();
@@ -201,6 +205,7 @@ namespace DataImportManager
             LogMessage(statusMsg);
 
             var triggerFileInfo = new TriggerFileInfo(triggerFile);
+
             if (!ValidateXmlFileMain(triggerFileInfo))
             {
                 if (mSecondaryLogonServiceChecked)
@@ -214,12 +219,14 @@ namespace DataImportManager
 
                 // ReSharper disable once StringLiteralTypo
                 var sc = new ServiceController("seclogon");
+
                 if (sc.Status == ServiceControllerStatus.Running)
                 {
                     return false;
                 }
 
                 MainProcess.LogErrorToDatabase("The Secondary Logon service is not running; this is required to access files on Bionet");
+
                 try
                 {
                     // Try to start it
@@ -349,6 +356,7 @@ namespace DataImportManager
 
             // Check whether there is a suggested solution in table T_DIM_Error_Solution for the error
             var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
+
             if (!string.IsNullOrWhiteSpace(errorSolution))
             {
                 // Store the solution in the database error message variable so that it gets included in the message body
@@ -386,12 +394,14 @@ namespace DataImportManager
                 }
 
                 var targetFilePath = Path.Combine(targetDirectory, triggerFile.Name);
+
                 if (ProcSettings.TraceMode)
                 {
                     ShowTraceMessage("Instantiating file info var for " + targetFilePath);
                 }
 
                 var xmlFileNewLoc = new FileInfo(targetFilePath);
+
                 if (xmlFileNewLoc.Exists)
                 {
                     if (ProcSettings.PreviewMode)
@@ -491,6 +501,7 @@ namespace DataImportManager
                 mXmlInstrumentName = myDataXmlValidation.InstrumentName;
 
                 var triggerFile = triggerFileInfo.TriggerFile;
+
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
                 {
                     moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
@@ -598,6 +609,7 @@ namespace DataImportManager
                     var validationErrors = new List<ValidationError>();
 
                     var newError = new ValidationError("Dataset not found on the instrument", moveLocPath);
+
                     if (string.IsNullOrEmpty(myDataXmlValidation.ErrorMessage))
                     {
                         newError.AdditionalInfo = string.Empty;
@@ -610,7 +622,9 @@ namespace DataImportManager
                     validationErrors.Add(newError);
 
                     mDatabaseErrorMsg = "The dataset data is not available for capture";
+
                     var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
+
                     if (string.IsNullOrWhiteSpace(errorSolution))
                     {
                         mDatabaseErrorMsg = string.Empty;

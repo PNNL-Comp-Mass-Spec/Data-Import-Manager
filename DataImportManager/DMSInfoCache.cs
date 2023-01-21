@@ -146,6 +146,7 @@ namespace DataImportManager
                 ShowTraceMessage("Getting error messages and solutions using " + sqlQuery);
 
             var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+
             if (!success)
                 LogWarning("GetQueryResults returned false querying T_DIM_Error_Solution");
 
@@ -177,6 +178,7 @@ namespace DataImportManager
                 ShowTraceMessage("Getting instruments using " + sqlQuery);
 
             var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+
             if (!success)
                 LogWarning("GetQueryResults returned false querying V_Instrument_List_Export");
 
@@ -218,6 +220,7 @@ namespace DataImportManager
                 ShowTraceMessage("Getting DMS users using " + sqlQuery);
 
             var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+
             if (!success)
                 LogWarning("GetQueryResults returned false querying T_Users");
 
@@ -300,6 +303,7 @@ namespace DataImportManager
                 operatorInfo = query1.FirstOrDefault();
                 var logMsg = "Matched "  + operatorInfo.Username + " using LINQ (the lookup with .TryGetValue(" + strQueryUsername + ") failed)";
                 LogWarning(logMsg);
+
                 if (mTraceMode)
                 {
                     ShowTraceMessage(logMsg);
@@ -319,6 +323,7 @@ namespace DataImportManager
                 select item).ToList();
 
             userCountMatched = query2.Count;
+
             if (userCountMatched == 1)
             {
                 // We matched a single user
@@ -330,6 +335,7 @@ namespace DataImportManager
             if (userCountMatched > 1)
             {
                 var nonObsolete = query2.Where(item => !item.Obsolete).ToList();
+
                 if (nonObsolete.Count == 1)
                 {
                     // We only matched a single non-obsolete user
@@ -338,8 +344,8 @@ namespace DataImportManager
                     return true;
                 }
 
-                var exactMatch = nonObsolete
-                    .Where(item => item.Name.Equals(strQueryName, StringComparison.OrdinalIgnoreCase)).ToList();
+                var exactMatch = nonObsolete.Where(item => item.Name.Equals(queryName, StringComparison.OrdinalIgnoreCase)).ToList();
+
                 if (exactMatch.Count == 1)
                 {
                     // We do have an exact match to a single non-obsolete user

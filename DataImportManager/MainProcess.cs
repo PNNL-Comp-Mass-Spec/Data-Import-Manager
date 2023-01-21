@@ -133,6 +133,7 @@ namespace DataImportManager
                 mMgrSettings.ValidatePgPass(localSettings);
 
                 var success = mMgrSettings.LoadSettings(localSettings, true);
+
                 if (!success)
                 {
                     if (string.Equals(mMgrSettings.ErrMsg, MgrSettings.DEACTIVATED_LOCALLY))
@@ -150,6 +151,7 @@ namespace DataImportManager
                 }
 
                 var mgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
+
                 if (!mgrActive)
                 {
                     ShowTrace("Manager parameter " + MGR_PARAM_MGR_ACTIVE + " is false");
@@ -233,6 +235,7 @@ namespace DataImportManager
                 {
                     LogWarning("Flag file exists - auto-deleting it, then closing program");
                     Global.DeleteStatusFlagFile();
+
                     if (!Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
@@ -265,6 +268,7 @@ namespace DataImportManager
                     var localSettings = GetLocalManagerSettings();
 
                     var success = mMgrSettings.LoadSettings(localSettings, true);
+
                     if (!success)
                     {
                         if (!string.IsNullOrEmpty(mMgrSettings.ErrMsg))
@@ -303,6 +307,7 @@ namespace DataImportManager
                 var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
 
                 DMSInfoCache infoCache;
+
                 try
                 {
                     infoCache = new DMSInfoCache(connectionStringToUse, TraceMode);
@@ -392,6 +397,7 @@ namespace DataImportManager
                         EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
 
                         var itemCount = currentChunk.Count;
+
                         if (itemCount > 1)
                         {
                             LogMessage("Processing " + itemCount + " XML files in parallel");
@@ -456,12 +462,15 @@ namespace DataImportManager
         {
             const string instrumentStorageStoredProcedure = "GetInstrumentStoragePathForNewDatasets";
             var counts = GetFileCountsForInstruments(xmlFiles);
+
             foreach (var instrument in counts.Where(x => x.Value > 1).Select(x => x.Key))
             {
                 try
                 {
                     var commandText = $"SELECT id FROM V_Instrument_List_Export WHERE name = '{instrument}'";
+
                     var success = dbTools.GetQueryScalar(commandText, out var queryResult);
+
                     if (!success || queryResult is not int instrumentId)
                     {
                         continue;
@@ -510,6 +519,7 @@ namespace DataImportManager
             foreach (var file in xmlFiles)
             {
                 var instrument = GetInstrumentFromXmlFile(file);
+
                 if (!string.IsNullOrWhiteSpace(instrument))
                 {
                     if (!counts.ContainsKey(instrument))
@@ -689,7 +699,9 @@ namespace DataImportManager
             };
 
             var triggerProcessor = new ProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
+
             triggerProcessor.ProcessFile(currentFile);
+
             if (triggerProcessor.QueuedMail.Count > 0)
             {
                 AddToMailQueue(triggerProcessor.QueuedMail);
@@ -733,6 +745,7 @@ namespace DataImportManager
         {
             // Copies the results to the transfer directory
             var serverXferDir = mMgrSettings.GetParam("xferDir");
+
             if (string.IsNullOrWhiteSpace(serverXferDir))
             {
                 LogErrorToDatabase("Manager parameter xferDir is empty (" + Global.GetHostName() + ")");
@@ -778,10 +791,13 @@ namespace DataImportManager
         private void SendQueuedMail()
         {
             var currentTask = "Initializing";
+
             try
             {
                 currentTask = "Get SmtpServer param";
+
                 var mailServer = mMgrSettings.GetParam("SmtpServer");
+
                 if (string.IsNullOrEmpty(mailServer))
                 {
                     LogError("Manager parameter SmtpServer is empty; cannot send mail");
@@ -793,6 +809,7 @@ namespace DataImportManager
                 var logFileName = "MailLog_" + DateTime.Now.ToString("yyyy-MM") + ".txt";
 
                 FileInfo mailLogFile;
+
                 if (string.IsNullOrWhiteSpace(LogTools.CurrentLogFilePath))
                 {
                     var exeDirectoryPath = Global.GetExeDirectoryPath();
@@ -804,6 +821,7 @@ namespace DataImportManager
                     var currentLogFile = new FileInfo(LogTools.CurrentLogFilePath);
 
                     currentTask = "Get new log file path";
+
                     if (currentLogFile.Directory == null)
                         mailLogFile = new FileInfo(logFileName);
                     else
@@ -829,6 +847,7 @@ namespace DataImportManager
                 };
 
                 currentTask = "Iterate over mQueuedMail";
+
                 foreach (var queuedMailContainer in mQueuedMail)
                 {
                     var recipients = queuedMailContainer.Key;
@@ -845,6 +864,7 @@ namespace DataImportManager
                     currentTask = "Get first queued mail";
 
                     var firstQueuedMail = queuedMailContainer.Value.First();
+
                     if (firstQueuedMail == null)
                     {
                         LogErrorToDatabase("firstQueuedMail item is null in SendQueuedMail");
@@ -885,6 +905,7 @@ namespace DataImportManager
                     if (!string.IsNullOrWhiteSpace(firstQueuedMail.InstrumentOperator))
                     {
                         AppendLine(mailBody, "Operator: {0}", firstQueuedMail.InstrumentOperator);
+
                         if (messageCount > 1)
                         {
                             mailBody.AppendLine();
@@ -897,6 +918,7 @@ namespace DataImportManager
                     var nextSortWeight = 1;
 
                     currentTask = "Summarize validation errors in queuedMailContainer.Value";
+
                     foreach (var queuedMailItem in queuedMailContainer.Value)
                     {
                         if (queuedMailItem == null)
@@ -907,6 +929,7 @@ namespace DataImportManager
 
                         messageNumber++;
                         string statusMsg;
+
                         if (string.IsNullOrWhiteSpace(queuedMailItem.InstrumentDatasetPath))
                         {
                             statusMsg = string.Format("XML File {0}: queuedMailItem.InstrumentDatasetPath is empty", messageNumber);
@@ -914,6 +937,7 @@ namespace DataImportManager
                         else
                         {
                             statusMsg = string.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath);
+
                             if (!instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath))
                             {
                                 instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath);
@@ -922,6 +946,7 @@ namespace DataImportManager
 
                         LogDebug(statusMsg);
                         currentTask = "Iterate over queuedMailItem.ValidationErrors, message " + messageNumber;
+
                         foreach (var validationError in queuedMailItem.ValidationErrors)
                         {
                             if (!summarizedErrors.TryGetValue(validationError.IssueType, out var errorSummary))
@@ -936,6 +961,7 @@ namespace DataImportManager
                                 IssueDetail = validationError.IssueDetail,
                                 AdditionalInfo = validationError.AdditionalInfo
                             };
+
                             errorSummary.AffectedItems.Add(affectedItem);
 
                             if (string.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg))
@@ -1008,6 +1034,7 @@ namespace DataImportManager
                     else if (instrumentFilePaths.Count > 1)
                     {
                         mailBody.AppendLine("Instrument files:");
+
                         foreach (var triggerFile in instrumentFilePaths)
                         {
                             AppendLine(mailBody, "  {0}", triggerFile);
@@ -1015,6 +1042,7 @@ namespace DataImportManager
                     }
 
                     currentTask = "Examine subject";
+
                     if (subjectList.Count > 1)
                     {
                         // Possibly update the subject of the e-mail
@@ -1048,6 +1076,7 @@ namespace DataImportManager
                     }
 
                     mailToSend.Body = mailBody.ToString();
+
                     if (MailDisabled)
                     {
                         currentTask = "Cache the mail for preview";
@@ -1086,6 +1115,7 @@ namespace DataImportManager
                 } // for each queuedMailContainer
 
                 currentTask = "Preview cached messages";
+
                 if (MailDisabled && mailContentPreview.Length > 0)
                 {
                     ShowTraceMessage("Mail content preview" + Environment.NewLine + mailContentPreview);
@@ -1102,6 +1132,7 @@ namespace DataImportManager
         private void FileWatcher_Changed(object sender, FileSystemEventArgs e)
         {
             mConfigChanged = true;
+
             if (mDebugLevel > 3)
             {
                 LogDebug("Config file changed");
@@ -1123,6 +1154,7 @@ namespace DataImportManager
             }
 
             var deleteFailureCount = 0;
+
             try
             {
                 var xmlFiles = workingDirectory.GetFiles("*.xml").ToList();
@@ -1131,6 +1163,7 @@ namespace DataImportManager
                 {
                     var fileDate = xmlFile.LastWriteTimeUtc;
                     var daysDiff = DateTime.UtcNow.Subtract(fileDate).Days;
+
                     if (daysDiff <= fileAgeDays)
                         continue;
 
@@ -1157,7 +1190,8 @@ namespace DataImportManager
                 return;
             }
 
-            if (deleteFailureCount <= 0) return;
+            if (deleteFailureCount == 0)
+                return;
 
             var errMsg = "Error deleting " + deleteFailureCount + " XML files at " + directoryPath +
                          " -- for a detailed list, see log file " + GetLogFileSharePath();
