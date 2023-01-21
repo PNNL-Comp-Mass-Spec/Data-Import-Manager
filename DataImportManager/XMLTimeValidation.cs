@@ -914,13 +914,14 @@ namespace DataImportManager
 
                             var dtFileModDate = File.GetLastWriteTimeUtc(mDatasetPath);
 
-                            var strValue = mMgrParams.GetParam("TimeValidationTolerance");
-                            if (!int.TryParse(strValue, out var intTimeValToleranceMinutes))
+                            var value = mMgrParams.GetParam("TimeValidationTolerance");
+
+                            if (!int.TryParse(value, out var timeValToleranceMinutes))
                             {
-                                intTimeValToleranceMinutes = 800;
+                                timeValToleranceMinutes = 800;
                             }
 
-                            var dtRunFinishWithTolerance = mRunFinishUtc.AddMinutes(intTimeValToleranceMinutes);
+                            var dtRunFinishWithTolerance = mRunFinishUtc.AddMinutes(timeValToleranceMinutes);
 
                             if (dtFileModDate <= dtRunFinishWithTolerance)
                             {
@@ -930,7 +931,7 @@ namespace DataImportManager
                             var errMsg = "Time validation Error For " + mDatasetName +
                                          " File modification date (UTC): " + dtFileModDate.ToString(CultureInfo.InvariantCulture) +
                                          " vs. Run Finish UTC date " + dtRunFinishWithTolerance.ToString(CultureInfo.InvariantCulture) +
-                                         " (includes " + intTimeValToleranceMinutes + " minute tolerance)";
+                                         " (includes " + timeValToleranceMinutes + " minute tolerance)";
 
                             MainProcess.LogErrorToDatabase(errMsg);
                             return XmlValidateStatus.XML_VALIDATE_FAILED;

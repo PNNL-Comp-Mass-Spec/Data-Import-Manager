@@ -96,9 +96,9 @@ namespace DataImportManager
                 LoadOperatorsFromDMS(DBTools);
             }
 
-            var blnSuccess = LookupOperatorName(operatorUsername, out var operatorInfo, out userCountMatched);
+            var success = LookupOperatorName(operatorUsername, out var operatorInfo, out userCountMatched);
 
-            if (blnSuccess && !string.IsNullOrEmpty(operatorInfo.Name))
+            if (success && !string.IsNullOrEmpty(operatorInfo.Name))
             {
                 // Uncomment to debug
                 //if (mTraceMode && false)
@@ -267,20 +267,21 @@ namespace DataImportManager
 
             // operatorUsernameToFind may contain the person's name instead of their PRN; check for this
             // In other words, operatorUsernameToFind may be "Baker, Erin M" instead of "D3P347"
-            var strQueryName = string.Copy(operatorUsernameToFind);
-            var strQueryUsername = string.Copy(operatorUsernameToFind);
-            if (strQueryName.IndexOf('(') > 0)
+            var queryName = string.Copy(operatorUsernameToFind);
+            var queryUsername = string.Copy(operatorUsernameToFind);
+
+            if (queryName.IndexOf('(') > 0)
             {
                 // Name likely is something like: Baker, Erin M (D3P347)
                 // Truncate any text after the parenthesis for the name
-                strQueryName = strQueryName.Substring(0, strQueryName.IndexOf('(')).Trim();
+                queryName = queryName.Substring(0, queryName.IndexOf('(')).Trim();
 
                 // Only keep what's inside the parentheses for the username
                 // This is not a comprehensive check; it assumes there is nothing in the string after the user's name besides the username, surrounded by parentheses and spaces
-                strQueryUsername = strQueryUsername.Substring(strQueryName.Length).Trim(new char[] {' ', '(', ')'});
+                queryUsername = queryUsername.Substring(queryName.Length).Trim(' ', '(', ')');
             }
 
-            if (mOperators.TryGetValue(strQueryUsername.ToUpper(), out operatorInfo))
+            if (mOperators.TryGetValue(queryUsername.ToUpper(), out operatorInfo))
             {
                 // Match found
                 if (mTraceMode)
@@ -295,13 +296,13 @@ namespace DataImportManager
             var query1 = (
                 from item in mOperators.Values
                 orderby item.UserId descending
-                where item.Username.StartsWith(strQueryUsername, StringComparison.OrdinalIgnoreCase)
+                where item.Username.StartsWith(queryUsername, StringComparison.OrdinalIgnoreCase)
                 select item).ToList();
 
             if (query1.Count == 1)
             {
                 operatorInfo = query1.FirstOrDefault();
-                var logMsg = "Matched "  + operatorInfo.Username + " using LINQ (the lookup with .TryGetValue(" + strQueryUsername + ") failed)";
+                var logMsg = "Matched "  + operatorInfo.Username + " using LINQ (the lookup with .TryGetValue(" + queryUsername + ") failed)";
                 LogWarning(logMsg);
 
                 if (mTraceMode)
@@ -319,7 +320,7 @@ namespace DataImportManager
             var query2 = (
                 from item in mOperators.Values
                 orderby item.UserId descending
-                where item.Name.StartsWith(strQueryName, StringComparison.OrdinalIgnoreCase)
+                where item.Name.StartsWith(queryName, StringComparison.OrdinalIgnoreCase)
                 select item).ToList();
 
             userCountMatched = query2.Count;
@@ -355,10 +356,10 @@ namespace DataImportManager
                 }
 
                 operatorInfo = query2.FirstOrDefault();
-                var logMsg = "LookupOperatorName: Ambiguous match found for '" + strQueryName + "' in V_Users_Export; will e-mail '" + operatorInfo.Email + "'";
+                var logMsg = "LookupOperatorName: Ambiguous match found for '" + queryName + "' in V_Users_Export; will e-mail '" + operatorInfo.Email + "'";
                 LogWarning(logMsg);
 
-                operatorInfo.Name = "Ambiguous match found for operator (" + strQueryName + "); use network login instead, e.g. D3E154";
+                operatorInfo.Name = "Ambiguous match found for operator (" + queryName + "); use network login instead, e.g. D3E154";
 
                 // Note that the notification e-mail will get sent to operatorInfo.email
                 return false;

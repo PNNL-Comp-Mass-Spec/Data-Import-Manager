@@ -424,13 +424,15 @@ namespace DataImportManager
 
                 foreach (var kvItem in mInstrumentsToSkip)
                 {
-                    var strMessage = "Skipped " + kvItem.Value + " dataset";
+                    var message = "Skipped " + kvItem.Value + " dataset";
+
                     if (kvItem.Value != 1)
                     {
-                        strMessage += "s";
+                        message += "s";
                     }
-                    strMessage += " for instrument " + kvItem.Key + " due to network errors";
-                    LogMessage(strMessage);
+
+                    message += " for instrument " + kvItem.Key + " due to network errors";
+                    LogMessage(message);
                 }
 
                 // Remove successful XML files older than x days
