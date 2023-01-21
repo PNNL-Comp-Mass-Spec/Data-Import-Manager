@@ -222,7 +222,7 @@ namespace DataImportManager
             var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
 
             if (!success)
-                LogWarning("GetQueryResults returned false querying T_Users");
+                LogWarning("GetQueryResults returned false querying V_Users_Export");
 
             foreach (var row in results)
             {

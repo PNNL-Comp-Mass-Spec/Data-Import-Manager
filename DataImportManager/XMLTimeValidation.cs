@@ -1117,7 +1117,7 @@ namespace DataImportManager
 
                 if (userCountMatched == 1)
                 {
-                    // We matched a single user using strQueryName
+                    // We matched a single user
                     return true;
                 }
 
