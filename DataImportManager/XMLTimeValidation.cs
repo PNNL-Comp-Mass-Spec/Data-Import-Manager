@@ -550,6 +550,7 @@ namespace DataImportManager
             var connected = false;
             var currentTask = string.Empty;
             var ignoreInstrumentSourceErrors = mProcSettings.IgnoreInstrumentSourceErrors;
+
             // method-local versions of sourcePath and capture subdirectory, to support use of alternate shares
             var sourcePath = mSourcePath;
             var subdirectory = CaptureSubdirectory;

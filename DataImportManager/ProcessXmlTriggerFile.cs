@@ -504,16 +504,17 @@ namespace DataImportManager
 
                     if (string.IsNullOrWhiteSpace(mXmlOperatorName))
                     {
+                        mDatabaseErrorMsg = "Operator username not listed in the XML file";
                         validationErrors.Add(new ValidationError("Operator name not listed in the XML file", string.Empty));
                     }
                     else
                     {
+                        mDatabaseErrorMsg = "Operator username not defined in DMS (or ambiguous): " + mXmlOperatorName;
                         validationErrors.Add(new ValidationError("Operator name not defined in DMS", mXmlOperatorName));
                     }
 
                     validationErrors.Add(new ValidationError("Dataset trigger file path", moveLocPath));
 
-                    mDatabaseErrorMsg = "Operator payroll number/HID was blank";
                     var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
 
                     if (string.IsNullOrWhiteSpace(errorSolution))
