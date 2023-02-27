@@ -481,6 +481,7 @@ namespace DataImportManager
                                 mRunFinishUtc = DateTime.Parse(row["Value"].ToString());
                                 break;
 
+                            case "Operator (Username)":
                             case "Operator (PRN)":
                                 mOperatorUsername = row["Value"].ToString();
                                 break;
