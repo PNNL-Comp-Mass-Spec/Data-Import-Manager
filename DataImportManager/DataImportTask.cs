@@ -85,7 +85,7 @@ namespace DataImportManager
                     LogMessage($"Replaced capture subdirectory \"{triggerFileInfo.OriginalCaptureSubdirectory}\" with \"{triggerFileInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
                 }
 
-                // Call the stored procedure (typically AddNewDataset)
+                // Call the stored procedure (typically add_new_dataset)
                 fileImported = ImportDataTask();
             }
             catch (Exception ex)
@@ -98,7 +98,7 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Posts the given XML to DMS5 using stored procedure AddNewDataset
+        /// Posts the given XML to DMS5 using stored procedure add_new_dataset
         /// </summary>
         /// <returns>True if success, false if an error</returns>
         private bool ImportDataTask()
@@ -108,7 +108,8 @@ namespace DataImportManager
                 // Initialize database error message
                 mDatabaseErrorMessage = string.Empty;
 
-                // Prepare to call the stored procedure (typically AddNewDataset in DMS5, which in turn calls AddUpdateDataset)
+                // Prepare to call the stored procedure, typically named add_new_dataset in DMS5, which in turn calls add_update_dataset
+                // (old procedure names: AddNewDataset and AddUpdateDataset)
                 mStoredProc = MgrParams.GetParam("StoredProcedure");
 
                 var cmd = DBTools.CreateCommand(mStoredProc, CommandType.StoredProcedure);
