@@ -16,6 +16,11 @@ namespace DataImportManager
             public string RawDataType;
             public string CaptureType;
             public string SourcePath;
+
+            public override string ToString()
+            {
+                return string.Format("{0}", InstrumentClass ?? "Undefined instrument class name");
+            }
         }
 
         public struct OperatorInfoType
@@ -25,6 +30,11 @@ namespace DataImportManager
             public string Username;
             public bool Obsolete;
             public int UserId;
+
+            public override string ToString()
+            {
+                return string.Format("{0} ({1})", Name ?? "Undefined name", Username ?? "Undefined username");
+            }
         }
 
         private readonly bool mTraceMode;
