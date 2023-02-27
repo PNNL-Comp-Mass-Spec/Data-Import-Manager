@@ -460,7 +460,7 @@ namespace DataImportManager
         /// <param name="dbTools"></param>
         private void EnsureInstrumentDataStorageDirectories(List<FileInfo> xmlFiles, IDBTools dbTools)
         {
-            const string instrumentStorageStoredProcedure = "GetInstrumentStoragePathForNewDatasets";
+            const string instrumentStorageStoredProcedure = "get_instrument_storage_path_for_new_datasets";
             var counts = GetFileCountsForInstruments(xmlFiles);
 
             foreach (var instrument in counts.Where(x => x.Value > 1).Select(x => x.Key))
@@ -476,7 +476,7 @@ namespace DataImportManager
                         continue;
                     }
 
-                    // Prepare to call the stored procedure (GetInstrumentStoragePathForNewDatasets)
+                    // Prepare to call the stored procedure (get_instrument_storage_path_for_new_datasets)
                     var command = dbTools.CreateCommand(instrumentStorageStoredProcedure, CommandType.StoredProcedure);
                     command.CommandTimeout = 45;
 
