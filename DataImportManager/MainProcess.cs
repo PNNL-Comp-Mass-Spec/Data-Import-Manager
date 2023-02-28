@@ -453,7 +453,7 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Call stored procedure DMS5.GetInstrumentStoragePathForNewDatasets on all instruments with multiple trigger files
+        /// Call stored procedure DMS5.get_instrument_storage_path_for_new_datasets on all instruments with multiple trigger files
         /// to avoid a race condition in the database that leads to identical single-use entries in T_Storage_Path
         /// </summary>
         /// <param name="xmlFiles"></param>
