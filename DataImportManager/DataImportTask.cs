@@ -115,8 +115,10 @@ namespace DataImportManager
                 var cmd = DBTools.CreateCommand(mStoredProc, CommandType.StoredProcedure);
                 cmd.CommandTimeout = 45;
 
-                // Define parameter for stored procedure's return value
+                // Define parameter for procedure's return value
+                // If querying a Postgres DB, DBTools will auto-change "@return" to "_returnCode"
                 var returnParam = DBTools.AddParameter(cmd, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
+
                 DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, mXmlContents);
                 DBTools.AddParameter(cmd, "@mode", SqlType.VarChar, 24, "add");
                 var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.Output);
@@ -133,10 +135,10 @@ namespace DataImportManager
                 }
 
                 // Execute the stored procedure
-                var returnCode = DBTools.ExecuteSP(cmd);
+                DBTools.ExecuteSP(cmd);
 
                 // Get return code
-                var returnParamText = DBTools.GetString(returnParam.Value);
+                var returnCode = DBToolsBase.GetReturnCode(returnParam);
 
                 if (returnCode == 0)
                 {
@@ -146,7 +148,7 @@ namespace DataImportManager
 
                 mPostTaskErrorMessage = DBTools.GetString(messageParam.Value) ?? string.Empty;
                 LogError(string.Format("DataImportTask.ImportDataTask(), Problem posting dataset (return code {0}): {1}",
-                    returnParamText ?? string.Empty, mPostTaskErrorMessage));
+                    (string)returnParam.Value ?? string.Empty, mPostTaskErrorMessage));
 
                 return false;
             }
