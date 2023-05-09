@@ -146,9 +146,10 @@ namespace DataImportManager
                     return true;
                 }
 
-                mPostTaskErrorMessage = DBTools.GetString(messageParam.Value) ?? string.Empty;
+                mPostTaskErrorMessage = messageParam.Value.CastDBVal<string>();
+
                 LogError(string.Format("DataImportTask.ImportDataTask(), Problem posting dataset (return code {0}): {1}",
-                    (string)returnParam.Value ?? string.Empty, mPostTaskErrorMessage));
+                    returnParam.Value.CastDBVal<string>(), mPostTaskErrorMessage));
 
                 return false;
             }
