@@ -471,12 +471,19 @@ namespace DataImportManager
             {
                 try
                 {
-                    var commandText = $"SELECT id FROM V_Instrument_List_Export WHERE name = '{instrument}'";
+                    var query = $"SELECT id FROM V_Instrument_List_Export WHERE name = '{instrument}'";
 
-                    var success = dbTools.GetQueryScalar(commandText, out var queryResult);
+                    var success = dbTools.GetQueryScalar(query, out var queryResult);
 
-                    if (!success || queryResult is not int instrumentId)
+                    if (!success)
                     {
+                        LogWarning(string.Format("GetQueryScalar returned false for query: {0}", query));
+                        continue;
+                    }
+
+                    if (queryResult is not int instrumentId)
+                    {
+                        LogWarning(string.Format("Query did not return an integer: {0}", query));
                         continue;
                     }
 
@@ -527,7 +534,7 @@ namespace DataImportManager
 
             if (!storagePathSuccess)
             {
-                LogWarning(string.Format("GetQueryScalar returned false for query {0}", query));
+                LogWarning(string.Format("GetQueryScalar returned false for query: {0}", query));
                 return;
             }
 
