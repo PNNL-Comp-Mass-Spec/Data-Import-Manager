@@ -1,12 +1,12 @@
 # Data Import Manager
 
 The Data Import Manager is a part of PRISM, the Proteomics Research Information and Management System.
-The Data Import Manager monitors a central folder for new dataset trigger files, which are
+The Data Import Manager monitors a server share for new dataset trigger files, which are
 XML files that specify metadata for new datasets to import into the Data Management System (DMS).
 
 The Data Import Manager validates the metadata in the XML trigger file, notifying the instrument
 operator by e-mail if invalid metadata is encountered.  After processing each XML trigger file, 
-the file is moved into either a success or failure folder.
+the file is moved into either a success or failure directory.
 
 ## Example XML Trigger File
 
@@ -35,6 +35,23 @@ the file is moved into either a success or failure folder.
   <Parameter Name="Run Finish" Value="11/14/2017 15:52:03" />
 </Dataset>
 ```
+
+## Syntax 
+
+```
+DataImportManager.exe [/NoMail] [/Preview] [/Trace] [/ISE]
+```
+
+## Command Line Arguments
+
+Use `/NoMail` to disable sending e-mail when errors are encountered
+
+Use `/Preview` to enable preview mode, where the program reports any trigger files found, but does not post them to DMS and does not move them to the failure directory if there is an error
+* Using `/Preview` forces `/NoMail` and `/Trace` to both be enabled
+
+Use `/Trace` to display additional debug messages
+
+Use `/ISE` to ignore instrument source check errors (e.g., cannot access bionet)
 
 ## Contacts
 
