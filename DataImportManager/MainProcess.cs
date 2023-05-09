@@ -306,7 +306,12 @@ namespace DataImportManager
                 }
 
                 var connectionString = mMgrSettings.GetParam("ConnectionString");
+
                 var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
+
+                // Example connection strings after adding the application name:
+                //   Data Source=gigasax;Initial Catalog=DMS5;Integrated Security=True;Application Name=Proto-6_DIM
+                //   Host=prismdb1;Port=5432;Database=dms;Username=svc-dms;Application Name=Proto-6_DIM
 
                 DMSInfoCache infoCache;
 
