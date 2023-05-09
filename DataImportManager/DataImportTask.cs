@@ -121,7 +121,7 @@ namespace DataImportManager
 
                 DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, mXmlContents);
                 DBTools.AddParameter(cmd, "@mode", SqlType.VarChar, 24, "add");
-                var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.Output);
+                var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.InputOutput);
 
                 if (PreviewMode)
                 {
