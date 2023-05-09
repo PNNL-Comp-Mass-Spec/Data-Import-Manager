@@ -645,7 +645,7 @@ namespace DataImportManager
                 mDatasetPath = Path.Combine(datasetSourcePath, mDatasetName);
 
                 if (string.Equals(mCaptureType, "secfso", StringComparison.OrdinalIgnoreCase) &&
-                    !Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                    !Global.GetHostName().Equals(MainProcess.DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
                 {
                     // Source directory is on bionet; establish a connection
                     var username = mMgrParams.GetParam("BionetUser");
@@ -877,9 +877,9 @@ namespace DataImportManager
                             ShowTraceMessage(currentTask);
                         }
 
-                        if (Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                        if (Global.GetHostName().Equals(MainProcess.DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
                         {
-                            Console.WriteLine("Skipping date validation because host name starts with Monroe");
+                            Console.WriteLine("Skipping date validation because host name starts with {0}", MainProcess.DEVELOPER_COMPUTER_NAME);
                         }
                         else if (mRunFinishUtc != new DateTime(1960, 1, 1))
                         {

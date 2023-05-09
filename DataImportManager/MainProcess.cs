@@ -24,6 +24,8 @@ namespace DataImportManager
 
         private const string DEFAULT_BASE_LOGFILE_NAME = @"Logs\DataImportManager";
 
+        internal const string DEVELOPER_COMPUTER_NAME = "WE43320";
+
         private const int MAX_ERROR_COUNT = 4;
 
         private const string MGR_PARAM_MGR_ACTIVE = "MgrActive";
@@ -236,7 +238,7 @@ namespace DataImportManager
                     LogWarning("Flag file exists - auto-deleting it, then closing program");
                     Global.DeleteStatusFlagFile();
 
-                    if (!Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                    if (!Global.GetHostName().Equals(DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -366,9 +368,9 @@ namespace DataImportManager
                         importDelay = 2;
                     }
 
-                    if (Global.GetHostName().StartsWith("monroe", StringComparison.OrdinalIgnoreCase))
+                    if (Global.GetHostName().Equals(DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host starts with Monroe")
+                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host is {0}", DEVELOPER_COMPUTER_NAME)
                         importDelay = 1;
                     }
                     else if (PreviewMode)
