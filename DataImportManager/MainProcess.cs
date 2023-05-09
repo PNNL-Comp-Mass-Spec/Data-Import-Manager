@@ -995,10 +995,8 @@ namespace DataImportManager
                         {
                             statusMsg = string.Format("XML File {0}: {1}", messageNumber, queuedMailItem.InstrumentDatasetPath);
 
-                            if (!instrumentFilePaths.Contains(queuedMailItem.InstrumentDatasetPath))
-                            {
-                                instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath);
-                            }
+                            // Add the instrument dataset path (if not yet present)
+                            instrumentFilePaths.Add(queuedMailItem.InstrumentDatasetPath);
                         }
 
                         LogDebug(statusMsg);
@@ -1031,10 +1029,7 @@ namespace DataImportManager
                             errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
                         } // for each validationError
 
-                        if (!subjectList.Contains(queuedMailItem.Subject))
-                        {
-                            subjectList.Add(queuedMailItem.Subject);
-                        }
+                        subjectList.Add(queuedMailItem.Subject);
                     } // for each queuedMailItem
 
                     currentTask = "Iterate over summarizedErrors, sorted by SortWeight";
