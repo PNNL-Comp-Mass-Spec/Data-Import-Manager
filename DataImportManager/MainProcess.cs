@@ -391,6 +391,7 @@ namespace DataImportManager
                     while (xmlFilesToImport.Count > 0)
                     {
                         var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
+
                         // Prevent duplicate entries in T_Storage_Path due to a race condition
                         EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
 
@@ -453,15 +454,16 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Call stored procedure DMS5.get_instrument_storage_path_for_new_datasets on all instruments with multiple trigger files
+        /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple trigger files
         /// to avoid a race condition in the database that leads to identical single-use entries in T_Storage_Path
         /// </summary>
         /// <param name="xmlFiles"></param>
         /// <param name="dbTools"></param>
         private void EnsureInstrumentDataStorageDirectories(List<FileInfo> xmlFiles, IDBTools dbTools)
         {
-            const string instrumentStorageStoredProcedure = "get_instrument_storage_path_for_new_datasets";
             var counts = GetFileCountsForInstruments(xmlFiles);
+
+            var serverType = DbToolsFactory.GetServerTypeFromConnectionString(dbTools.ConnectStr);
 
             foreach (var instrument in counts.Where(x => x.Value > 1).Select(x => x.Key))
             {
@@ -476,32 +478,13 @@ namespace DataImportManager
                         continue;
                     }
 
-                    // Prepare to call the stored procedure (get_instrument_storage_path_for_new_datasets)
-                    var command = dbTools.CreateCommand(instrumentStorageStoredProcedure, CommandType.StoredProcedure);
-                    command.CommandTimeout = 45;
-
-                    // Define parameter for stored procedure's return value
-                    var returnParam = dbTools.AddParameter(command, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
-                    dbTools.AddParameter(command, "@InstrumentID", SqlType.Int, 1, instrumentId);
-
-                    if (PreviewMode)
+                    if (serverType == DbServerTypes.PostgreSQL)
                     {
-                        ShowTraceMessage("Preview: call stored procedure " + instrumentStorageStoredProcedure + " in database " + dbTools.DatabaseName);
-                        return;
+                        EnsureInstrumentDataStorageDirectoryPostgres(dbTools, instrumentId, instrument);
+                        continue;
                     }
 
-                    if (TraceMode)
-                    {
-                        ShowTraceMessage("Calling stored procedure " + instrumentStorageStoredProcedure + " in database " + dbTools.DatabaseName);
-                    }
-
-                    // Execute the stored procedure
-                    var pathId = dbTools.ExecuteSP(command);
-
-                    if (TraceMode)
-                    {
-                        ShowTraceMessage("Stored procedure " + instrumentStorageStoredProcedure + ": Got storage path id " + pathId + " for instrument " + instrument);
-                    }
+                    EnsureInstrumentDataStorageDirectorySqlServer(dbTools, instrumentId, instrument);
                 }
                 catch (Exception ex)
                 {
@@ -509,6 +492,88 @@ namespace DataImportManager
                     LogError("MainProcess.EnsureInstrumentDataStorageDirectories(), Error ensuring dataset storage directories", ex, true);
                     return;
                 }
+            }
+        }
+
+        private void EnsureInstrumentDataStorageDirectoryPostgres(IDBTools dbTools, int instrumentId, string instrument)
+        {
+            const string instrumentStorageFunction = "get_instrument_storage_path_for_new_datasets";
+
+            // Prepare to query the function
+            // The function will create a new storage path if the auto-defined path does not exist in t_storage_path
+
+            var query = string.Format("SELECT * FROM {0}({1}) AS storage_path_id", instrumentStorageFunction, instrumentId);
+
+            if (PreviewMode)
+            {
+                ShowTraceMessage(string.Format(
+                    "Preview: run query in database {0}: {1}",
+                    dbTools.DatabaseName, query));
+
+                return;
+            }
+
+            if (TraceMode)
+            {
+                ShowTraceMessage(string.Format(
+                    "Running query in database {0}: {1}",
+                    dbTools.DatabaseName, query));
+            }
+
+            // Run the query
+            var storagePathSuccess = dbTools.GetQueryScalar(query, out var storagePathID);
+
+            if (!storagePathSuccess)
+            {
+                LogWarning(string.Format("GetQueryScalar returned false for query {0}", query));
+                return;
+            }
+
+            if (TraceMode)
+            {
+                ShowTraceMessage(string.Format(
+                    "Function {0} returned storage path ID {1} for instrument {2}",
+                    instrumentStorageFunction, storagePathID, instrument));
+            }
+        }
+
+        private void EnsureInstrumentDataStorageDirectorySqlServer(IDBTools dbTools, int instrumentId, string instrument)
+        {
+            const string instrumentStorageProcedure = "get_instrument_storage_path_for_new_datasets";
+
+            // Prepare to call the stored procedure
+            // The procedure will create a new storage path if the auto-defined path does not exist in T_Storage_Path
+
+            var command = dbTools.CreateCommand(instrumentStorageProcedure, CommandType.StoredProcedure);
+            command.CommandTimeout = 45;
+
+            dbTools.AddParameter(command, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
+            dbTools.AddParameter(command, "@InstrumentID", SqlType.Int, 1, instrumentId);
+
+            if (PreviewMode)
+            {
+                ShowTraceMessage(string.Format(
+                    "Preview: call stored procedure {0} in database {1}",
+                    instrumentStorageProcedure, dbTools.DatabaseName));
+
+                return;
+            }
+
+            if (TraceMode)
+            {
+                ShowTraceMessage(string.Format(
+                    "Calling stored procedure {0} in database {1}",
+                    instrumentStorageProcedure, dbTools.DatabaseName));
+            }
+
+            // Execute the stored procedure
+            var storagePathID = dbTools.ExecuteSP(command);
+
+            if (TraceMode)
+            {
+                ShowTraceMessage(string.Format(
+                    "Stored procedure {0}: returned storage path ID {1} for instrument {2}",
+                    instrumentStorageProcedure, storagePathID, instrument));
             }
         }
 
