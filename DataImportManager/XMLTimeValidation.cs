@@ -524,6 +524,8 @@ namespace DataImportManager
         {
             try
             {
+                // Manager parameter XMLFileDelay is the number of minutes to wait until a newly created file will be processed; typically 10 minutes
+
                 var delayValue = int.Parse(mMgrParams.GetParam("XMLFileDelay"));
                 var fileModDate = triggerFile.LastWriteTimeUtc;
                 var fileModDateDelay = fileModDate.AddMinutes(delayValue);
