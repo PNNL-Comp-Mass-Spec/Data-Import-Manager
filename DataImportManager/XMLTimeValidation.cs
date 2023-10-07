@@ -532,12 +532,15 @@ namespace DataImportManager
                 if (dateNow >= fileModDateDelay)
                     return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
-                LogWarning("XMLTimeValidation.InstrumentWaitDelay(), The dataset import is being delayed for XML File: " + triggerFile.Name);
+                LogWarning(string.Format(
+                    "XMLTimeValidation.InstrumentWaitDelay(), dataset import is being delayed until {0:hh:mm:ss tt} for XML File: {1}",
+                    triggerFile.LastWriteTime.AddMinutes(delayValue), triggerFile.Name));
+
                 return XmlValidateStatus.XML_WAIT_FOR_FILES;
             }
             catch (Exception ex)
             {
-                LogError("XMLTimeValidation.InstrumentWaitDelay(), Error determining wait delay", ex);
+                LogError("XMLTimeValidation.InstrumentWaitDelay(), error determining wait delay", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
         }
