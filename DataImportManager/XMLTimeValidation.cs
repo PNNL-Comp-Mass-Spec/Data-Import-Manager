@@ -420,9 +420,6 @@ namespace DataImportManager
         /// <param name="triggerFileInfo"></param>
         private XmlValidateStatus GetXmlParameters(TriggerFileInfo triggerFileInfo)
         {
-            // initialize return value
-            var validationResult = XmlValidateStatus.XML_VALIDATE_CONTINUE;
-
             var xmlFileContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
 
             if (string.IsNullOrEmpty(xmlFileContents))
@@ -495,17 +492,21 @@ namespace DataImportManager
                     return XmlValidateStatus.XML_VALIDATE_BAD_XML;
                 }
 
-                if (InstrumentName.StartsWith("9T") ||
-                    InstrumentName.StartsWith("11T") ||
-                    InstrumentName.StartsWith("12T"))
-                {
-                    validationResult = InstrumentWaitDelay(triggerFileInfo.TriggerFile);
-                }
+                // Prior to October 2023, this program would wait 10 minutes before processing XML trigger files for certain instruments
 
-                if (validationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
-                {
-                    return validationResult;
-                }
+                // var validationResult = XmlValidateStatus.XML_VALIDATE_CONTINUE;
+
+                // if (InstrumentName.StartsWith("9T") ||
+                //     InstrumentName.StartsWith("11T") ||
+                //     InstrumentName.StartsWith("12T"))
+                // {
+                //     validationResult = InstrumentWaitDelay(triggerFileInfo.TriggerFile);
+                // }
+
+                // if (validationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                // {
+                //     return validationResult;
+                // }
 
                 return XmlValidateStatus.XML_VALIDATE_CONTINUE;
             }
@@ -520,6 +521,7 @@ namespace DataImportManager
         /// Examine the date of the trigger file; if less than XMLFileDelay minutes old, delay processing trigger file
         /// </summary>
         /// <param name="triggerFile"></param>
+        // ReSharper disable once UnusedMember.Local
         private XmlValidateStatus InstrumentWaitDelay(FileSystemInfo triggerFile)
         {
             try
