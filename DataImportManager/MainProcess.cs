@@ -192,119 +192,6 @@ namespace DataImportManager
             LogErrorToDatabase(errMsg);
         }
 
-        private void DoDataImportTask(DMSInfoCache infoCache)
-        {
-            var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
-            var delGoodXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteGoodXmlFiles", 30));
-            var successDirectory = mMgrSettings.GetParam("SuccessFolder");
-            var failureDirectory = mMgrSettings.GetParam("FailureFolder");
-
-            try
-            {
-                var result = ScanXferDirectory(out var xmlFilesToImport);
-
-                if (result == CloseOutType.CLOSEOUT_SUCCESS && xmlFilesToImport.Count > 0)
-                {
-                    // Set status file for control of future runs
-                    Global.CreateStatusFlagFile();
-
-                    // Add a delay
-                    var importDelayText = mMgrSettings.GetParam("ImportDelay");
-
-                    if (!int.TryParse(importDelayText, out var importDelay))
-                    {
-                        var statusMsg = "Manager parameter ImportDelay was not numeric: " + importDelayText;
-                        LogMessage(statusMsg);
-                        importDelay = 2;
-                    }
-
-                    if (Global.GetHostName().Equals(DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host is {0}", DEVELOPER_COMPUTER_NAME)
-                        importDelay = 1;
-                    }
-                    else if (PreviewMode)
-                    {
-                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
-                        importDelay = 1;
-                    }
-
-                    ShowTrace(string.Format("ImportDelay, sleep for {0} second{1}", importDelay, CheckPlural(importDelay)));
-                    ConsoleMsgUtils.SleepSeconds(importDelay);
-
-                    // Load information from DMS
-                    infoCache.LoadDMSInfo();
-
-                    // Randomize order of files in m_XmlFilesToLoad
-                    xmlFilesToImport.Shuffle();
-                    ShowTrace(string.Format("Processing {0} XML file{1}", xmlFilesToImport.Count, CheckPlural(xmlFilesToImport.Count)));
-
-                    // Process the files in parallel, in groups of 50 at a time
-                    while (xmlFilesToImport.Count > 0)
-                    {
-                        var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
-
-                        // Prevent duplicate entries in T_Storage_Path due to a race condition
-                        EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
-
-                        var itemCount = currentChunk.Count;
-
-                        if (itemCount > 1)
-                        {
-                            LogMessage("Processing " + itemCount + " XML files in parallel");
-                        }
-
-                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
-                    }
-                }
-                else
-                {
-                    if (mDebugLevel > 4 || TraceMode)
-                    {
-                        LogDebug("No data files to import");
-                    }
-
-                    return;
-                }
-
-                // Send any queued mail
-                if (mQueuedMail.Count > 0)
-                {
-                    SendQueuedMail();
-                }
-
-                foreach (var kvItem in mInstrumentsToSkip)
-                {
-                    var message = "Skipped " + kvItem.Value + " dataset";
-
-                    if (kvItem.Value != 1)
-                    {
-                        message += "s";
-                    }
-
-                    message += " for instrument " + kvItem.Key + " due to network errors";
-                    LogMessage(message);
-                }
-
-                // Remove successful XML files older than x days
-                DeleteXmlFiles(successDirectory, delGoodXmlFilesDays);
-
-                // Remove failed XML files older than x days
-                DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
-
-                // If we got to here, closeout the task as a success
-                Global.DeleteStatusFlagFile();
-
-                mFailureCount = 0;
-                LogMessage("Completed task");
-            }
-            catch (Exception ex)
-            {
-                mFailureCount++;
-                LogError("Exception in MainProcess.DoDataImportTask", ex);
-            }
-        }
-
         /// <summary>
         /// Look for new XML files to process
         /// </summary>
@@ -878,6 +765,119 @@ namespace DataImportManager
             if (triggerProcessor.QueuedMail.Count > 0)
             {
                 AddToMailQueue(triggerProcessor.QueuedMail);
+            }
+        }
+
+        private void DoDataImportTask(DMSInfoCache infoCache)
+        {
+            var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
+            var delGoodXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteGoodXmlFiles", 30));
+            var successDirectory = mMgrSettings.GetParam("SuccessFolder");
+            var failureDirectory = mMgrSettings.GetParam("FailureFolder");
+
+            try
+            {
+                var result = ScanXferDirectory(out var xmlFilesToImport);
+
+                if (result == CloseOutType.CLOSEOUT_SUCCESS && xmlFilesToImport.Count > 0)
+                {
+                    // Set status file for control of future runs
+                    Global.CreateStatusFlagFile();
+
+                    // Add a delay
+                    var importDelayText = mMgrSettings.GetParam("ImportDelay");
+
+                    if (!int.TryParse(importDelayText, out var importDelay))
+                    {
+                        var statusMsg = "Manager parameter ImportDelay was not numeric: " + importDelayText;
+                        LogMessage(statusMsg);
+                        importDelay = 2;
+                    }
+
+                    if (Global.GetHostName().Equals(DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host is {0}", DEVELOPER_COMPUTER_NAME)
+                        importDelay = 1;
+                    }
+                    else if (PreviewMode)
+                    {
+                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
+                        importDelay = 1;
+                    }
+
+                    ShowTrace(string.Format("ImportDelay, sleep for {0} second{1}", importDelay, CheckPlural(importDelay)));
+                    ConsoleMsgUtils.SleepSeconds(importDelay);
+
+                    // Load information from DMS
+                    infoCache.LoadDMSInfo();
+
+                    // Randomize order of files in m_XmlFilesToLoad
+                    xmlFilesToImport.Shuffle();
+                    ShowTrace(string.Format("Processing {0} XML file{1}", xmlFilesToImport.Count, CheckPlural(xmlFilesToImport.Count)));
+
+                    // Process the files in parallel, in groups of 50 at a time
+                    while (xmlFilesToImport.Count > 0)
+                    {
+                        var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
+
+                        // Prevent duplicate entries in T_Storage_Path due to a race condition
+                        EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
+
+                        var itemCount = currentChunk.Count;
+
+                        if (itemCount > 1)
+                        {
+                            LogMessage("Processing " + itemCount + " XML files in parallel");
+                        }
+
+                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
+                    }
+                }
+                else
+                {
+                    if (mDebugLevel > 4 || TraceMode)
+                    {
+                        LogDebug("No data files to import");
+                    }
+
+                    return;
+                }
+
+                // Send any queued mail
+                if (mQueuedMail.Count > 0)
+                {
+                    SendQueuedMail();
+                }
+
+                foreach (var kvItem in mInstrumentsToSkip)
+                {
+                    var message = "Skipped " + kvItem.Value + " dataset";
+
+                    if (kvItem.Value != 1)
+                    {
+                        message += "s";
+                    }
+
+                    message += " for instrument " + kvItem.Key + " due to network errors";
+                    LogMessage(message);
+                }
+
+                // Remove successful XML files older than x days
+                DeleteXmlFiles(successDirectory, delGoodXmlFilesDays);
+
+                // Remove failed XML files older than x days
+                DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
+
+                // If we got to here, closeout the task as a success
+                Global.DeleteStatusFlagFile();
+
+                mFailureCount = 0;
+                LogMessage("Completed task");
+            }
+            catch (Exception ex)
+            {
+                mFailureCount++;
+                LogError("Exception in MainProcess.DoDataImportTask", ex);
             }
         }
 
