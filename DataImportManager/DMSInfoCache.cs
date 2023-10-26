@@ -88,6 +88,13 @@ namespace DataImportManager
             }
         }
 
+        // ReSharper disable once InconsistentNaming
+
+        /// <summary>
+        /// This is set to true after LoadDMSInfo is called
+        /// </summary>
+        public bool DMSInfoLoaded { get; private set; }
+
         private readonly bool mTraceMode;
 
         /// <summary>
@@ -112,6 +119,8 @@ namespace DataImportManager
         {
             DBTools = DbToolsFactory.GetDBTools(connectionString, debugMode: traceMode);
             RegisterEvents(DBTools);
+
+            DMSInfoLoaded = false;
 
             mTraceMode = traceMode;
             mErrorSolutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
