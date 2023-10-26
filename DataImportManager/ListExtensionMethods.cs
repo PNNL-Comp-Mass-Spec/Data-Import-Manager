@@ -40,7 +40,7 @@ namespace DataImportManager
                 index--;
                 var sourceIndex = ThreadSafeRandom.ThisThreadsRandom.Next(index + 1);
 
-                //  Swap items
+                // Swap items
                 (list[sourceIndex], list[index]) = (list[index], list[sourceIndex]);
             }
         }

@@ -17,7 +17,7 @@ namespace DataImportManager
         private const string FLAG_FILE_NAME = "FlagFile.txt";
 
         /// <summary>
-        /// Creates a dummy file in the application directory to be used for controlling task request bypass
+        /// Creates a flag file in the application directory to indicate that the manager is actively adding new datasets to the database
         /// </summary>
         public static void CreateStatusFlagFile()
         {
