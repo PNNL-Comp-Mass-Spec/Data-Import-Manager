@@ -1117,7 +1117,7 @@ namespace DataImportManager
                     return false;
                 }
 
-                var operatorInfo = mDMSInfoCache.GetOperatorName(mOperatorUsername, out var userCountMatched);
+                var operatorInfo = mDMSInfoCache.GetUserInfo(mOperatorUsername, out var userCountMatched);
 
                 // Update the operator name, e-mail, and PRN
                 mOperatorName = operatorInfo.Name;

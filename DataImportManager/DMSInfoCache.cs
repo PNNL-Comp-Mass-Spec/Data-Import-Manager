@@ -10,27 +10,78 @@ namespace DataImportManager
     {
         // Ignore Spelling: desc, username
 
+        /// <summary>
+        /// Instrument info
+        /// </summary>
         public struct InstrumentInfoType
         {
+            /// <summary>
+            /// Instrument class
+            /// </summary>
+            /// <remarks>Examples: LTQ_FT, Triple_Quad, BrukerFT_BAF</remarks>
             public string InstrumentClass;
+
+            /// <summary>
+            /// Raw data type
+            /// </summary>
+            /// <remarks>Examples: dot_raw_files, dot_d_folders, dot_uimf_files, </remarks>
             public string RawDataType;
+
+            /// <summary>
+            /// Capture type
+            /// </summary>
+            /// <remarks>secfso for an instrument on bionet; fso for an instrument on the pnl.gov domain</remarks>
             public string CaptureType;
+
+            /// <summary>
+            /// Source path
+            /// </summary>
+            /// <remarks>Examples: \\Lumos02.bionet\ProteomicsData\ and \\Proto-2\External_Lumos_Xfer\</remarks>
             public string SourcePath;
 
+            /// <summary>
+            /// Show the instrument class name
+            /// </summary>
+            /// <returns></returns>
             public override string ToString()
             {
                 return string.Format("{0}", InstrumentClass ?? "Undefined instrument class name");
             }
         }
 
-        public struct OperatorInfoType
+        /// <summary>
+        /// DMS user info
+        /// </summary>
+        public struct UserInfoType
         {
+            /// <summary>
+            /// DMS user's given name
+            /// </summary>
             public string Name;
+
+            /// <summary>
+            /// DMS user's given e-mail
+            /// </summary>
             public string Email;
+
+            /// <summary>
+            /// DMS user's given username
+            /// </summary>
             public string Username;
+
+            /// <summary>
+            /// This is true if the DMS user's status is "Obsolete"
+            /// </summary>
             public bool Obsolete;
+
+            /// <summary>
+            /// DMS User ID
+            /// </summary>
             public int UserId;
 
+            /// <summary>
+            /// Show the DMS user's name and username
+            /// </summary>
             public override string ToString()
             {
                 return string.Format("{0} ({1})", Name ?? "Undefined name", Username ?? "Undefined username");
@@ -50,9 +101,9 @@ namespace DataImportManager
         private readonly Dictionary<string, InstrumentInfoType> mInstruments;
 
         /// <summary>
-        /// Keys in this dictionary are username; values are operator information
+        /// Keys in this dictionary are username; values are DMS user information
         /// </summary>
-        private readonly Dictionary<string, OperatorInfoType> mOperators;
+        private readonly Dictionary<string, UserInfoType> mDmsUsers;
 
         /// <summary>
         /// Constructor
@@ -65,9 +116,14 @@ namespace DataImportManager
             mTraceMode = traceMode;
             mErrorSolutions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             mInstruments = new Dictionary<string, InstrumentInfoType>(StringComparer.OrdinalIgnoreCase);
-            mOperators = new Dictionary<string, OperatorInfoType>(StringComparer.OrdinalIgnoreCase);
+            mDmsUsers = new Dictionary<string, UserInfoType>(StringComparer.OrdinalIgnoreCase);
         }
 
+        // ReSharper disable once InconsistentNaming
+
+        /// <summary>
+        /// Instance of DbToolsFactory for querying the database
+        /// </summary>
         public IDBTools DBTools { get; }
 
         public string GetDbErrorSolution(string errorText)
@@ -99,34 +155,39 @@ namespace DataImportManager
             return false;
         }
 
-        public OperatorInfoType GetOperatorName(string operatorUsername, out int userCountMatched)
+        /// <summary>
+        /// Determine a DMS user given a username
+        /// </summary>
+        /// <param name="usernameToFind">Typically username, but could be a person's real name</param>
+        /// <param name="userCountMatched">Output: Number of users matched by usernameToFind</param>
+        /// <returns>DMS user info</returns>
+        public UserInfoType GetUserInfo(string usernameToFind, out int userCountMatched)
         {
-            if (mOperators.Count == 0)
+            if (mDmsUsers.Count == 0)
             {
-                LoadOperatorsFromDMS(DBTools);
+                LoadUsersFromDMS(DBTools);
             }
 
-            var success = LookupOperatorName(operatorUsername, out var operatorInfo, out userCountMatched);
+            var success = LookupUserInfo(usernameToFind, out var userInfo, out userCountMatched);
 
-            if (success && !string.IsNullOrEmpty(operatorInfo.Name))
+            if (success && !string.IsNullOrEmpty(userInfo.Name))
             {
                 // Uncomment to debug
                 //if (mTraceMode && false)
                 //{
-                //    ShowTraceMessage("  Operator: " + operatorInfo.Name);
-                //    ShowTraceMessage("  EMail: " + operatorInfo.Email);
-                //    ShowTraceMessage("  Username: " + operatorInfo.Username);
+                //    ShowTraceMessage("  User: " + userInfo.Name);
+                //    ShowTraceMessage("  EMail: " + userInfo.Email);
+                //    ShowTraceMessage("  Username: " + userInfo.Username);
                 //}
 
-                return operatorInfo;
+                return userInfo;
             }
 
-            // No match; make sure the operator info is blank
-            operatorInfo = new OperatorInfoType();
+            // No match
 
-            ShowTraceMessage("  Warning: operator not found: " + operatorUsername);
+            ShowTraceMessage("  Warning: user not found: " + userInfo);
 
-            return operatorInfo;
+            return new UserInfoType(); ;
         }
 
         /// <summary>
@@ -135,9 +196,14 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         public void LoadDMSInfo()
         {
+            if (DMSInfoLoaded)
+                return;
+
             LoadErrorSolutionsFromDMS(DBTools);
             LoadInstrumentsFromDMS(DBTools);
-            LoadOperatorsFromDMS(DBTools);
+            LoadUsersFromDMS(DBTools);
+
+            DMSInfoLoaded = true;
         }
 
         // ReSharper disable once InconsistentNaming
@@ -213,7 +279,7 @@ namespace DataImportManager
         }
 
         // ReSharper disable once InconsistentNaming
-        private void LoadOperatorsFromDMS(IDBTools dbTools)
+        private void LoadUsersFromDMS(IDBTools dbTools)
         {
             const int timeoutSeconds = 5;
 
@@ -238,7 +304,7 @@ namespace DataImportManager
                     userId = 0;
                 }
 
-                var udtOperator = new OperatorInfoType
+                var udtUser = new UserInfoType
                 {
                     Name = row[0],
                     Email = row[1],
@@ -247,35 +313,35 @@ namespace DataImportManager
                     Obsolete = string.Equals(row[4], "Obsolete", StringComparison.OrdinalIgnoreCase)
                 };
 
-                if (!string.IsNullOrWhiteSpace(udtOperator.Username) && !mOperators.ContainsKey(udtOperator.Username.ToUpper()))
+                if (!string.IsNullOrWhiteSpace(udtUser.Username) && !mDmsUsers.ContainsKey(udtUser.Username.ToUpper()))
                 {
-                    mOperators.Add(udtOperator.Username.ToUpper(), udtOperator);
+                    mDmsUsers.Add(udtUser.Username.ToUpper(), udtUser);
                 }
             }
 
             if (mTraceMode)
-                ShowTraceMessage(" ... retrieved " + mOperators.Count + " users");
+                ShowTraceMessage(" ... retrieved " + mDmsUsers.Count + " users");
         }
 
         /// <summary>
-        /// Lookup the operator information given operatorUsernameToFind
+        /// Lookup the user information given usernameToFind
         /// </summary>
-        /// <param name="operatorUsernameToFind">Typically username, but could be a person's real name</param>
-        /// <param name="operatorInfo">Output: Matching operator info</param>
-        /// <param name="userCountMatched">Output: Number of users matched by operatorUsernameToFind</param>
+        /// <param name="usernameToFind">Typically username, but could be a person's real name</param>
+        /// <param name="userInfo">Output: Matching user info</param>
+        /// <param name="userCountMatched">Output: Number of users matched by usernameToFind</param>
         /// <returns>True if success, otherwise false</returns>
-        private bool LookupOperatorName(string operatorUsernameToFind, out OperatorInfoType operatorInfo, out int userCountMatched)
+        private bool LookupUserInfo(string usernameToFind, out UserInfoType userInfo, out int userCountMatched)
         {
-            // Get a list of all operators (hopefully just one) matching the user operator username
+            // Get a list of all users (hopefully just one) matching the user's username
             if (mTraceMode)
             {
-                ShowTraceMessage("Looking for operator by username: " + operatorUsernameToFind);
+                ShowTraceMessage("Looking for DMS user by username: " + usernameToFind);
             }
 
-            // operatorUsernameToFind may contain the person's name instead of their PRN; check for this
-            // In other words, operatorUsernameToFind may be "Baker, Erin M" instead of "D3P347"
-            var queryName = string.Copy(operatorUsernameToFind);
-            var queryUsername = string.Copy(operatorUsernameToFind);
+            // usernameToFind may contain the person's name instead of their PRN; check for this
+            // In other words, usernameToFind may be "Baker, Erin M" instead of "D3P347"
+            var queryName = string.Copy(usernameToFind);
+            var queryUsername = string.Copy(usernameToFind);
 
             if (queryName.IndexOf('(') > 0)
             {
@@ -288,12 +354,12 @@ namespace DataImportManager
                 queryUsername = queryUsername.Substring(queryName.Length).Trim(' ', '(', ')');
             }
 
-            if (mOperators.TryGetValue(queryUsername.ToUpper(), out operatorInfo))
+            if (mDmsUsers.TryGetValue(queryUsername.ToUpper(), out userInfo))
             {
                 // Match found
                 if (mTraceMode)
                 {
-                    ShowTraceMessage("Matched " + operatorInfo.Name + " using TryGetValue");
+                    ShowTraceMessage("Matched " + userInfo.Name + " using TryGetValue");
                 }
 
                 userCountMatched = 1;
@@ -301,15 +367,15 @@ namespace DataImportManager
             }
 
             var query1 = (
-                from item in mOperators.Values
+                from item in mDmsUsers.Values
                 orderby item.UserId descending
                 where item.Username.StartsWith(queryUsername, StringComparison.OrdinalIgnoreCase)
                 select item).ToList();
 
             if (query1.Count == 1)
             {
-                operatorInfo = query1.FirstOrDefault();
-                var logMsg = "Matched "  + operatorInfo.Username + " using LINQ (the lookup with .TryGetValue(" + queryUsername + ") failed)";
+                userInfo = query1.FirstOrDefault();
+                var logMsg = "Matched "  + userInfo.Username + " using LINQ (the lookup with .TryGetValue(" + queryUsername + ") failed)";
                 LogWarning(logMsg);
 
                 if (mTraceMode)
@@ -321,11 +387,11 @@ namespace DataImportManager
                 return true;
             }
 
-            // No match to an operator with username operatorUsernameToFind
+            // No match to a DMS user with username usernameToFind
             // See if a user's name was supplied instead
 
             var query2 = (
-                from item in mOperators.Values
+                from item in mDmsUsers.Values
                 orderby item.UserId descending
                 where item.Name.StartsWith(queryName, StringComparison.OrdinalIgnoreCase)
                 select item).ToList();
@@ -335,8 +401,8 @@ namespace DataImportManager
             if (userCountMatched == 1)
             {
                 // We matched a single user
-                // Update the operator name, e-mail, and PRN
-                operatorInfo = query2.FirstOrDefault();
+                // Update the user's name, e-mail, and username
+                userInfo = query2.FirstOrDefault();
                 return true;
             }
 
@@ -347,8 +413,8 @@ namespace DataImportManager
                 if (nonObsolete.Count == 1)
                 {
                     // We only matched a single non-obsolete user
-                    // Update the operator name, e-mail, and PRN
-                    operatorInfo = nonObsolete.FirstOrDefault();
+                    // Update the user's name, e-mail, and username
+                    userInfo = nonObsolete.FirstOrDefault();
                     return true;
                 }
 
@@ -357,27 +423,27 @@ namespace DataImportManager
                 if (exactMatch.Count == 1)
                 {
                     // We do have an exact match to a single non-obsolete user
-                    // Update the operator name, e-mail, and PRN
-                    operatorInfo = exactMatch.FirstOrDefault();
+                    // Update the user's name, e-mail, and username
+                    userInfo = exactMatch.FirstOrDefault();
                     return true;
                 }
 
-                operatorInfo = query2.FirstOrDefault();
-                var logMsg = "LookupOperatorName: Ambiguous match found for '" + queryName + "' in V_Users_Export; will e-mail '" + operatorInfo.Email + "'";
+                userInfo = query2.FirstOrDefault();
+                var logMsg = "LookupUserInfo: Ambiguous match found for '" + queryName + "' in V_Users_Export; will e-mail '" + userInfo.Email + "'";
                 LogWarning(logMsg);
 
-                operatorInfo.Name = "Ambiguous match found for operator (" + queryName + "); use network login instead, e.g. D3E154";
+                userInfo.Name = "Ambiguous match found for user (" + queryName + "); use network login instead, e.g. D3E154";
 
-                // Note that the notification e-mail will get sent to operatorInfo.email
+                // Note that the notification e-mail will get sent to userInfo.email
                 return false;
             }
             else
             {
                 // No match
-                var logMsg = "LookupOperatorName: Operator not found in V_Users_Export.username: " + operatorUsernameToFind;
+                var logMsg = "LookupUserInfo: User not found in V_Users_Export.username: " + usernameToFind;
                 LogWarning(logMsg);
 
-                operatorInfo.Name = "Operator [" + operatorUsernameToFind + "] not found in V_Users_Export; should be network login name (D3E154) or full name (Moore, Ronald J)";
+                userInfo.Name = "User [" + usernameToFind + "] not found in V_Users_Export; should be network login name (D3E154) or full name (Moore, Ronald J)";
                 return false;
             }
         }
