@@ -143,7 +143,6 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private void LoadErrorSolutionsFromDMS(IDBTools dbTools)
         {
-            const short retryCount = 3;
             const int timeoutSeconds = 5;
 
             // Get a list of error messages in T_DIM_Error_Solution
@@ -155,7 +154,7 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting error messages and solutions using " + sqlQuery);
 
-            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, timeoutSeconds: timeoutSeconds);
 
             if (!success)
                 LogWarning("GetQueryResults returned false querying T_DIM_Error_Solution");
@@ -175,7 +174,6 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private void LoadInstrumentsFromDMS(IDBTools dbTools)
         {
-            const short retryCount = 3;
             const int timeoutSeconds = 5;
 
             // Get a list of instruments in V_Instrument_List_Export
@@ -187,7 +185,7 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting instruments using " + sqlQuery);
 
-            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, timeoutSeconds: timeoutSeconds);
 
             if (!success)
                 LogWarning("GetQueryResults returned false querying V_Instrument_List_Export");
@@ -217,7 +215,6 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private void LoadOperatorsFromDMS(IDBTools dbTools)
         {
-            const short retryCount = 3;
             const int timeoutSeconds = 5;
 
             // Get a list of all users in the database
@@ -229,7 +226,7 @@ namespace DataImportManager
             if (mTraceMode)
                 ShowTraceMessage("Getting DMS users using " + sqlQuery);
 
-            var success = dbTools.GetQueryResults(sqlQuery, out var results, retryCount, timeoutSeconds: timeoutSeconds);
+            var success = dbTools.GetQueryResults(sqlQuery, out var results, timeoutSeconds: timeoutSeconds);
 
             if (!success)
                 LogWarning("GetQueryResults returned false querying V_Users_Export");
