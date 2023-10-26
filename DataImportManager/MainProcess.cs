@@ -82,132 +82,36 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Load the manager settings
+        /// Add one or more mail messages to mQueuedMail
         /// </summary>
-        public bool InitMgr()
+        /// <param name="newQueuedMail"></param>
+        private void AddToMailQueue(ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> newQueuedMail)
         {
-            var defaultModuleName = "DataImportManager: " + Global.GetHostName();
-
-            try
+            foreach (var newQueuedMessage in newQueuedMail)
             {
-                // Define the default logging info
-                // This will get updated below
-                LogTools.CreateFileLogger(DEFAULT_BASE_LOGFILE_NAME);
+                var recipients = newQueuedMessage.Key;
 
-                // Create a database logger connected to the Manager_Control database
-                // Once the initial parameters have been successfully read,
-                // we update the dbLogger to use the connection string read from the Manager Control DB
-                string dmsConnectionString;
-
-                // Open DataImportManager.exe.config to look for setting MgrCnfgDbConnectStr, so we know which server to log to by default
-                var dmsConnectionStringFromConfig = GetXmlConfigDefaultConnectionString();
-
-                if (string.IsNullOrWhiteSpace(dmsConnectionStringFromConfig))
+                if (mQueuedMail.TryGetValue(recipients, out var queuedMessages))
                 {
-                    // Use the hard-coded default that points to Proteinseqs
-                    dmsConnectionString = Properties.Settings.Default.MgrCnfgDbConnectStr;
-                }
-                else
-                {
-                    // Use the connection string from DataImportManager.exe.config
-                    dmsConnectionString = dmsConnectionStringFromConfig;
+                    foreach (var msg in newQueuedMessage.Value)
+                    {
+                        queuedMessages.Add(msg);
+                    }
+
+                    continue;
                 }
 
-                var managerName = "Data_Import_Manager_" + Global.GetHostName();
+                if (mQueuedMail.TryAdd(recipients, newQueuedMessage.Value))
+                    continue;
 
-                var dbLoggerConnectionString = DbToolsFactory.AddApplicationNameToConnectionString(dmsConnectionString, managerName);
-
-                ShowTrace("Instantiate a DbLogger using " + dbLoggerConnectionString);
-
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                LogTools.CreateDbLogger(dbLoggerConnectionString, managerName, false);
-
-                mMgrSettings = new MgrSettingsDB
+                if (mQueuedMail.TryGetValue(recipients, out var queuedMessagesRetry))
                 {
-                    TraceMode = TraceMode
-                };
-                RegisterEvents(mMgrSettings);
-                mMgrSettings.CriticalErrorEvent += ErrorEventHandler;
-
-                var localSettings = GetLocalManagerSettings();
-
-                Console.WriteLine();
-                mMgrSettings.ValidatePgPass(localSettings);
-
-                var success = mMgrSettings.LoadSettings(localSettings, true);
-
-                if (!success)
-                {
-                    if (string.Equals(mMgrSettings.ErrMsg, MgrSettings.DEACTIVATED_LOCALLY))
-                        throw new ApplicationException(MgrSettings.DEACTIVATED_LOCALLY);
-
-                    throw new ApplicationException("Unable to initialize manager settings class: " + mMgrSettings.ErrMsg);
-                }
-
-                var mgrActiveLocal = mMgrSettings.GetParam(MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL, false);
-
-                if (!mgrActiveLocal)
-                {
-                    ShowTrace(MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL + " is false in the .exe.config file");
-                    return false;
-                }
-
-                var mgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
-
-                if (!mgrActive)
-                {
-                    ShowTrace("Manager parameter " + MGR_PARAM_MGR_ACTIVE + " is false");
-                    return false;
+                    foreach (var msg in newQueuedMessage.Value)
+                    {
+                        queuedMessagesRetry.Add(msg);
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                throw new Exception("InitMgr, " + ex.Message, ex);
-            }
-
-            var connectionString = mMgrSettings.GetParam("ConnectionString");
-            var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
-
-            var logFileBaseName = mMgrSettings.GetParam("LogFileName");
-
-            try
-            {
-                // Load initial settings
-                mMgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
-                mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
-
-                // Create the object that will manage the logging
-                var moduleName = mMgrSettings.GetParam("ModuleName", defaultModuleName);
-
-                LogTools.CreateFileLogger(logFileBaseName);
-                LogTools.CreateDbLogger(connectionStringToUse, moduleName);
-
-                // Write the initial log and status entries
-                var appVersion = AppUtils.GetEntryOrExecutingAssembly().GetName().Version;
-                LogTools.WriteLog(LogTools.LoggerTypes.LogFile, BaseLogger.LogLevels.INFO,
-                    "===== Started Data Import Manager V" + appVersion + " =====");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("InitMgr, " + ex.Message, ex);
-            }
-
-            var exeFile = new FileInfo(Global.GetExePath());
-
-            // Set up the FileWatcher to detect setup file changes
-            mFileWatcher = new FileSystemWatcher();
-            mFileWatcher.BeginInit();
-            mFileWatcher.Path = exeFile.DirectoryName;
-            mFileWatcher.IncludeSubdirectories = false;
-            mFileWatcher.Filter = mMgrSettings.GetParam("ConfigFileName");
-            mFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size;
-            mFileWatcher.EndInit();
-            mFileWatcher.EnableRaisingEvents = true;
-            mFileWatcher.Changed += FileWatcher_Changed;
-
-            // Get the debug level
-            mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
-            return true;
         }
 
         /// <summary>
@@ -221,6 +125,184 @@ namespace DataImportManager
         {
             sb.AppendFormat(format, args);
             sb.AppendLine();
+        }
+
+        /// <summary>
+        /// Return an empty string if value is 1; otherwise return "s"
+        /// </summary>
+        /// <param name="value"></param>
+        private static string CheckPlural(int value)
+        {
+            return value == 1 ? string.Empty : "s";
+        }
+
+        private void DeleteXmlFiles(string directoryPath, int fileAgeDays)
+        {
+            var workingDirectory = new DirectoryInfo(directoryPath);
+
+            // Verify directory exists
+            if (!workingDirectory.Exists)
+            {
+                // There's a serious problem if the success/failure directory can't be found!!!
+                LogErrorToDatabase("Xml success/failure directory not found: " + directoryPath);
+                return;
+            }
+
+            var deleteFailureCount = 0;
+
+            try
+            {
+                foreach (var xmlFile in workingDirectory.GetFiles("*.xml"))
+                {
+                    var fileDate = xmlFile.LastWriteTimeUtc;
+                    var daysDiff = DateTime.UtcNow.Subtract(fileDate).Days;
+
+                    if (daysDiff <= fileAgeDays)
+                        continue;
+
+                    if (PreviewMode)
+                    {
+                        Console.WriteLine("Preview: delete old file: " + xmlFile.FullName);
+                        continue;
+                    }
+
+                    try
+                    {
+                        xmlFile.Delete();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError("Error deleting old Xml Data file " + xmlFile.FullName, ex);
+                        deleteFailureCount++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogErrorToDatabase("Error deleting old Xml Data files at " + directoryPath, ex);
+                return;
+            }
+
+            if (deleteFailureCount == 0)
+                return;
+
+            var errMsg = "Error deleting " + deleteFailureCount + " XML files at " + directoryPath +
+                         " -- for a detailed list, see log file " + GetLogFileSharePath();
+
+            LogErrorToDatabase(errMsg);
+        }
+
+        private void DoDataImportTask(DMSInfoCache infoCache)
+        {
+            var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
+            var delGoodXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteGoodXmlFiles", 30));
+            var successDirectory = mMgrSettings.GetParam("SuccessFolder");
+            var failureDirectory = mMgrSettings.GetParam("FailureFolder");
+
+            try
+            {
+                var result = ScanXferDirectory(out var xmlFilesToImport);
+
+                if (result == CloseOutType.CLOSEOUT_SUCCESS && xmlFilesToImport.Count > 0)
+                {
+                    // Set status file for control of future runs
+                    Global.CreateStatusFlagFile();
+
+                    // Add a delay
+                    var importDelayText = mMgrSettings.GetParam("ImportDelay");
+
+                    if (!int.TryParse(importDelayText, out var importDelay))
+                    {
+                        var statusMsg = "Manager parameter ImportDelay was not numeric: " + importDelayText;
+                        LogMessage(statusMsg);
+                        importDelay = 2;
+                    }
+
+                    if (Global.GetHostName().Equals(DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host is {0}", DEVELOPER_COMPUTER_NAME)
+                        importDelay = 1;
+                    }
+                    else if (PreviewMode)
+                    {
+                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
+                        importDelay = 1;
+                    }
+
+                    ShowTrace(string.Format("ImportDelay, sleep for {0} second{1}", importDelay, CheckPlural(importDelay)));
+                    ConsoleMsgUtils.SleepSeconds(importDelay);
+
+                    // Load information from DMS
+                    infoCache.LoadDMSInfo();
+
+                    // Randomize order of files in m_XmlFilesToLoad
+                    xmlFilesToImport.Shuffle();
+                    ShowTrace(string.Format("Processing {0} XML file{1}", xmlFilesToImport.Count, CheckPlural(xmlFilesToImport.Count)));
+
+                    // Process the files in parallel, in groups of 50 at a time
+                    while (xmlFilesToImport.Count > 0)
+                    {
+                        var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
+
+                        // Prevent duplicate entries in T_Storage_Path due to a race condition
+                        EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
+
+                        var itemCount = currentChunk.Count;
+
+                        if (itemCount > 1)
+                        {
+                            LogMessage("Processing " + itemCount + " XML files in parallel");
+                        }
+
+                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
+                    }
+                }
+                else
+                {
+                    if (mDebugLevel > 4 || TraceMode)
+                    {
+                        LogDebug("No data files to import");
+                    }
+
+                    return;
+                }
+
+                // Send any queued mail
+                if (mQueuedMail.Count > 0)
+                {
+                    SendQueuedMail();
+                }
+
+                foreach (var kvItem in mInstrumentsToSkip)
+                {
+                    var message = "Skipped " + kvItem.Value + " dataset";
+
+                    if (kvItem.Value != 1)
+                    {
+                        message += "s";
+                    }
+
+                    message += " for instrument " + kvItem.Key + " due to network errors";
+                    LogMessage(message);
+                }
+
+                // Remove successful XML files older than x days
+                DeleteXmlFiles(successDirectory, delGoodXmlFilesDays);
+
+                // Remove failed XML files older than x days
+                DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
+
+                // If we got to here, closeout the task as a success
+                Global.DeleteStatusFlagFile();
+
+                mFailureCount = 0;
+                LogMessage("Completed task");
+            }
+            catch (Exception ex)
+            {
+                mFailureCount++;
+                LogError("Exception in MainProcess.DoDataImportTask", ex);
+            }
         }
 
         /// <summary>
@@ -335,128 +417,6 @@ namespace DataImportManager
             {
                 LogErrorToDatabase("Exception in MainProcess.DoImport()", ex);
                 return false;
-            }
-        }
-
-        /// <summary>
-        /// Return an empty string if value is 1; otherwise return "s"
-        /// </summary>
-        /// <param name="value"></param>
-        private static string CheckPlural(int value)
-        {
-            return value == 1 ? string.Empty : "s";
-        }
-
-        private void DoDataImportTask(DMSInfoCache infoCache)
-        {
-            var delBadXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteBadXmlFiles", 180));
-            var delGoodXmlFilesDays = Math.Max(7, mMgrSettings.GetParam("DeleteGoodXmlFiles", 30));
-            var successDirectory = mMgrSettings.GetParam("SuccessFolder");
-            var failureDirectory = mMgrSettings.GetParam("FailureFolder");
-
-            try
-            {
-                var result = ScanXferDirectory(out var xmlFilesToImport);
-
-                if (result == CloseOutType.CLOSEOUT_SUCCESS && xmlFilesToImport.Count > 0)
-                {
-                    // Set status file for control of future runs
-                    Global.CreateStatusFlagFile();
-
-                    // Add a delay
-                    var importDelayText = mMgrSettings.GetParam("ImportDelay");
-
-                    if (!int.TryParse(importDelayText, out var importDelay))
-                    {
-                        var statusMsg = "Manager parameter ImportDelay was not numeric: " + importDelayText;
-                        LogMessage(statusMsg);
-                        importDelay = 2;
-                    }
-
-                    if (Global.GetHostName().Equals(DEVELOPER_COMPUTER_NAME, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since host is {0}", DEVELOPER_COMPUTER_NAME)
-                        importDelay = 1;
-                    }
-                    else if (PreviewMode)
-                    {
-                        // Console.WriteLine("Changing importDelay from " & importDelay & " seconds to 1 second since PreviewMode is enabled")
-                        importDelay = 1;
-                    }
-
-                    ShowTrace(string.Format("ImportDelay, sleep for {0} second{1}", importDelay, CheckPlural(importDelay)));
-                    ConsoleMsgUtils.SleepSeconds(importDelay);
-
-                    // Load information from DMS
-                    infoCache.LoadDMSInfo();
-
-                    // Randomize order of files in m_XmlFilesToLoad
-                    xmlFilesToImport.Shuffle();
-                    ShowTrace(string.Format("Processing {0} XML file{1}", xmlFilesToImport.Count, CheckPlural(xmlFilesToImport.Count)));
-
-                    // Process the files in parallel, in groups of 50 at a time
-                    while (xmlFilesToImport.Count > 0)
-                    {
-                        var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
-
-                        // Prevent duplicate entries in T_Storage_Path due to a race condition
-                        EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
-
-                        var itemCount = currentChunk.Count;
-
-                        if (itemCount > 1)
-                        {
-                            LogMessage("Processing " + itemCount + " XML files in parallel");
-                        }
-
-                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
-                    }
-                }
-                else
-                {
-                    if (mDebugLevel > 4 || TraceMode)
-                    {
-                        LogDebug("No data files to import");
-                    }
-
-                    return;
-                }
-
-                // Send any queued mail
-                if (mQueuedMail.Count > 0)
-                {
-                    SendQueuedMail();
-                }
-
-                foreach (var kvItem in mInstrumentsToSkip)
-                {
-                    var message = "Skipped " + kvItem.Value + " dataset";
-
-                    if (kvItem.Value != 1)
-                    {
-                        message += "s";
-                    }
-
-                    message += " for instrument " + kvItem.Key + " due to network errors";
-                    LogMessage(message);
-                }
-
-                // Remove successful XML files older than x days
-                DeleteXmlFiles(successDirectory, delGoodXmlFilesDays);
-
-                // Remove failed XML files older than x days
-                DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
-
-                // If we got to here, closeout the task as a success
-                Global.DeleteStatusFlagFile();
-
-                mFailureCount = 0;
-                LogMessage("Completed task");
-            }
-            catch (Exception ex)
-            {
-                mFailureCount++;
-                LogError("Exception in MainProcess.DoDataImportTask", ex);
             }
         }
 
@@ -589,6 +549,18 @@ namespace DataImportManager
                     "Stored procedure {0}: returned storage path ID {1} for instrument {2}",
                     instrumentStorageProcedure, storagePathID, instrument));
             }
+        }
+
+        private void FileWatcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            mConfigChanged = true;
+
+            if (mDebugLevel > 3)
+            {
+                LogDebug("Config file changed");
+            }
+
+            mFileWatcher.EnableRaisingEvents = false;
         }
 
         public static Dictionary<string, int> GetFileCountsForInstruments(List<FileInfo> xmlFiles)
@@ -746,6 +718,135 @@ namespace DataImportManager
             return valueFound ? settingValue : string.Empty;
         }
 
+        /// <summary>
+        /// Load the manager settings
+        /// </summary>
+        public bool InitMgr()
+        {
+            var defaultModuleName = "DataImportManager: " + Global.GetHostName();
+
+            try
+            {
+                // Define the default logging info
+                // This will get updated below
+                LogTools.CreateFileLogger(DEFAULT_BASE_LOGFILE_NAME);
+
+                // Create a database logger connected to the Manager_Control database
+                // Once the initial parameters have been successfully read,
+                // we update the dbLogger to use the connection string read from the Manager Control DB
+                string dmsConnectionString;
+
+                // Open DataImportManager.exe.config to look for setting MgrCnfgDbConnectStr, so we know which server to log to by default
+                var dmsConnectionStringFromConfig = GetXmlConfigDefaultConnectionString();
+
+                if (string.IsNullOrWhiteSpace(dmsConnectionStringFromConfig))
+                {
+                    // Use the hard-coded default that points to Proteinseqs
+                    dmsConnectionString = Properties.Settings.Default.MgrCnfgDbConnectStr;
+                }
+                else
+                {
+                    // Use the connection string from DataImportManager.exe.config
+                    dmsConnectionString = dmsConnectionStringFromConfig;
+                }
+
+                var managerName = "Data_Import_Manager_" + Global.GetHostName();
+
+                var dbLoggerConnectionString = DbToolsFactory.AddApplicationNameToConnectionString(dmsConnectionString, managerName);
+
+                ShowTrace("Instantiate a DbLogger using " + dbLoggerConnectionString);
+
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+                LogTools.CreateDbLogger(dbLoggerConnectionString, managerName, false);
+
+                mMgrSettings = new MgrSettingsDB
+                {
+                    TraceMode = TraceMode
+                };
+                RegisterEvents(mMgrSettings);
+                mMgrSettings.CriticalErrorEvent += ErrorEventHandler;
+
+                var localSettings = GetLocalManagerSettings();
+
+                Console.WriteLine();
+                mMgrSettings.ValidatePgPass(localSettings);
+
+                var success = mMgrSettings.LoadSettings(localSettings, true);
+
+                if (!success)
+                {
+                    if (string.Equals(mMgrSettings.ErrMsg, MgrSettings.DEACTIVATED_LOCALLY))
+                        throw new ApplicationException(MgrSettings.DEACTIVATED_LOCALLY);
+
+                    throw new ApplicationException("Unable to initialize manager settings class: " + mMgrSettings.ErrMsg);
+                }
+
+                var mgrActiveLocal = mMgrSettings.GetParam(MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL, false);
+
+                if (!mgrActiveLocal)
+                {
+                    ShowTrace(MgrSettings.MGR_PARAM_MGR_ACTIVE_LOCAL + " is false in the .exe.config file");
+                    return false;
+                }
+
+                var mgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
+
+                if (!mgrActive)
+                {
+                    ShowTrace("Manager parameter " + MGR_PARAM_MGR_ACTIVE + " is false");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("InitMgr, " + ex.Message, ex);
+            }
+
+            var connectionString = mMgrSettings.GetParam("ConnectionString");
+            var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
+
+            var logFileBaseName = mMgrSettings.GetParam("LogFileName");
+
+            try
+            {
+                // Load initial settings
+                mMgrActive = mMgrSettings.GetParam(MGR_PARAM_MGR_ACTIVE, false);
+                mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
+
+                // Create the object that will manage the logging
+                var moduleName = mMgrSettings.GetParam("ModuleName", defaultModuleName);
+
+                LogTools.CreateFileLogger(logFileBaseName);
+                LogTools.CreateDbLogger(connectionStringToUse, moduleName);
+
+                // Write the initial log and status entries
+                var appVersion = AppUtils.GetEntryOrExecutingAssembly().GetName().Version;
+                LogTools.WriteLog(LogTools.LoggerTypes.LogFile, BaseLogger.LogLevels.INFO,
+                    "===== Started Data Import Manager V" + appVersion + " =====");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("InitMgr, " + ex.Message, ex);
+            }
+
+            var exeFile = new FileInfo(Global.GetExePath());
+
+            // Set up the FileWatcher to detect setup file changes
+            mFileWatcher = new FileSystemWatcher();
+            mFileWatcher.BeginInit();
+            mFileWatcher.Path = exeFile.DirectoryName;
+            mFileWatcher.IncludeSubdirectories = false;
+            mFileWatcher.Filter = mMgrSettings.GetParam("ConfigFileName");
+            mFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size;
+            mFileWatcher.EndInit();
+            mFileWatcher.EnableRaisingEvents = true;
+            mFileWatcher.Changed += FileWatcher_Changed;
+
+            // Get the debug level
+            mDebugLevel = mMgrSettings.GetParam("DebugLevel", 2);
+            return true;
+        }
+
         public static void LogErrorToDatabase(string message, Exception ex = null)
         {
             LogError(message, ex, true);
@@ -777,39 +878,6 @@ namespace DataImportManager
             if (triggerProcessor.QueuedMail.Count > 0)
             {
                 AddToMailQueue(triggerProcessor.QueuedMail);
-            }
-        }
-
-        /// <summary>
-        /// Add one or more mail messages to mQueuedMail
-        /// </summary>
-        /// <param name="newQueuedMail"></param>
-        private void AddToMailQueue(ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> newQueuedMail)
-        {
-            foreach (var newQueuedMessage in newQueuedMail)
-            {
-                var recipients = newQueuedMessage.Key;
-
-                if (mQueuedMail.TryGetValue(recipients, out var queuedMessages))
-                {
-                    foreach (var msg in newQueuedMessage.Value)
-                    {
-                        queuedMessages.Add(msg);
-                    }
-
-                    continue;
-                }
-
-                if (mQueuedMail.TryAdd(recipients, newQueuedMessage.Value))
-                    continue;
-
-                if (mQueuedMail.TryGetValue(recipients, out var queuedMessagesRetry))
-                {
-                    foreach (var msg in newQueuedMessage.Value)
-                    {
-                        queuedMessagesRetry.Add(msg);
-                    }
-                }
             }
         }
 
@@ -1194,75 +1262,6 @@ namespace DataImportManager
                 throw new Exception(msg, ex);
             }
         }
-
-        private void FileWatcher_Changed(object sender, FileSystemEventArgs e)
-        {
-            mConfigChanged = true;
-
-            if (mDebugLevel > 3)
-            {
-                LogDebug("Config file changed");
-            }
-
-            mFileWatcher.EnableRaisingEvents = false;
-        }
-
-        private void DeleteXmlFiles(string directoryPath, int fileAgeDays)
-        {
-            var workingDirectory = new DirectoryInfo(directoryPath);
-
-            // Verify directory exists
-            if (!workingDirectory.Exists)
-            {
-                // There's a serious problem if the success/failure directory can't be found!!!
-                LogErrorToDatabase("Xml success/failure directory not found: " + directoryPath);
-                return;
-            }
-
-            var deleteFailureCount = 0;
-
-            try
-            {
-                foreach (var xmlFile in workingDirectory.GetFiles("*.xml"))
-                {
-                    var fileDate = xmlFile.LastWriteTimeUtc;
-                    var daysDiff = DateTime.UtcNow.Subtract(fileDate).Days;
-
-                    if (daysDiff <= fileAgeDays)
-                        continue;
-
-                    if (PreviewMode)
-                    {
-                        Console.WriteLine("Preview: delete old file: " + xmlFile.FullName);
-                        continue;
-                    }
-
-                    try
-                    {
-                        xmlFile.Delete();
-                    }
-                    catch (Exception ex)
-                    {
-                        LogError("Error deleting old Xml Data file " + xmlFile.FullName, ex);
-                        deleteFailureCount++;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogErrorToDatabase("Error deleting old Xml Data files at " + directoryPath, ex);
-                return;
-            }
-
-            if (deleteFailureCount == 0)
-                return;
-
-            var errMsg = "Error deleting " + deleteFailureCount + " XML files at " + directoryPath +
-                         " -- for a detailed list, see log file " + GetLogFileSharePath();
-
-            LogErrorToDatabase(errMsg);
-        }
-
         /// <summary>
         /// Show a message at the console, preceded by a time stamp
         /// </summary>
