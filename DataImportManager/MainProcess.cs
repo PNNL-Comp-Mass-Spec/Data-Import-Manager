@@ -1077,10 +1077,9 @@ namespace DataImportManager
 
                 currentTask = "Create the mail logger";
 
-                using var mailLogger = new StreamWriter(new FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
-                {
-                    AutoFlush = true
-                };
+                using var mailLogger = new StreamWriter(new FileStream(mailLogFile.FullName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
+
+                mailLogger.AutoFlush = true;
 
                 currentTask = "Iterate over mQueuedMail";
 
