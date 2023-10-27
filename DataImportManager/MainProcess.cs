@@ -300,8 +300,19 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple trigger files
-        /// to avoid a race condition in the database that leads to identical single-use entries in T_Storage_Path
+        /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple datasets to add to DMS
+        /// </summary>
+        /// <param name="xmlParameters"></param>
+        /// <param name="dbTools"></param>
+        private void EnsureInstrumentDataStorageDirectories(List<string> xmlParameters, IDBTools dbTools)
+        {
+            var counts = GetCreateTaskCountsForInstruments(xmlParameters);
+
+            EnsureInstrumentDataStorageDirectories(counts, dbTools);
+        }
+
+        /// <summary>
+        /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple datasets to add to DMS
         /// </summary>
         /// <param name="xmlFiles"></param>
         /// <param name="dbTools"></param>
@@ -309,6 +320,19 @@ namespace DataImportManager
         {
             var counts = GetFileCountsForInstruments(xmlFiles);
 
+            EnsureInstrumentDataStorageDirectories(counts, dbTools);
+        }
+
+        /// <summary>
+        /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple datasets to add to DMS
+        /// </summary>
+        /// <remarks>
+        /// The purpose is to avoid a race condition in the database that leads to identical single-use entries in T_Storage_Path
+        /// </remarks>
+        /// <param name="counts">File or create task counts, by instrument</param>
+        /// <param name="dbTools"></param>
+        private void EnsureInstrumentDataStorageDirectories(Dictionary<string, int> counts, IDBTools dbTools)
+        {
             var serverType = DbToolsFactory.GetServerTypeFromConnectionString(dbTools.ConnectStr);
 
             foreach (var instrument in counts.Where(x => x.Value > 1).Select(x => x.Key))
@@ -442,35 +466,86 @@ namespace DataImportManager
             mFileWatcher.EnableRaisingEvents = false;
         }
 
+        public static Dictionary<string, int> GetCreateTaskCountsForInstruments(List<string> xmlParameters)
+        {
+            var instrumentNames = new List<string>();
+
+            // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var item in xmlParameters)
+            {
+                var instrument = GetInstrumentFromDatasetCreateTaskParameters(item);
+                instrumentNames.Add(instrument);
+            }
+
+            return GetDatasetsCountsByInstrument(instrumentNames);
+        }
+
         public static Dictionary<string, int> GetFileCountsForInstruments(List<FileInfo> xmlFiles)
         {
-            var counts = new Dictionary<string, int>();
+            var instrumentNames = new List<string>();
 
+            // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
             foreach (var file in xmlFiles)
             {
                 var instrument = GetInstrumentFromXmlFile(file);
+                instrumentNames.Add(instrument);
+            }
 
-                if (!string.IsNullOrWhiteSpace(instrument))
+            return GetDatasetsCountsByInstrument(instrumentNames);
+        }
+
+        public static Dictionary<string, int> GetDatasetsCountsByInstrument(List<string> instrumentNames)
+        {
+            var counts = new Dictionary<string, int>();
+
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var instrument in instrumentNames)
+            {
+                if (string.IsNullOrWhiteSpace(instrument))
+                    continue;
+
+                if (!counts.ContainsKey(instrument))
                 {
-                    if (!counts.ContainsKey(instrument))
-                    {
-                        counts.Add(instrument, 0);
-                    }
-
-                    counts[instrument]++;
+                    counts.Add(instrument, 0);
                 }
+
+                counts[instrument]++;
             }
 
             return counts;
         }
 
-        private static string GetInstrumentFromXmlFile(FileSystemInfo file)
+        private static string GetInstrumentFromDatasetCreateTaskParameters(string xmlParameters)
         {
-            if (file?.Exists != true)
+            try
+            {
+                if (string.IsNullOrWhiteSpace(xmlParameters))
+                {
+                    return string.Empty;
+                }
+
+                var doc = new XDocument(xmlParameters);
+
+                // Determine the instrument name by looking for the following XML node
+
+                // <root>
+                //   <instrument>Lumos03</instrument>
+
+                foreach (var element in doc.Elements("root").Elements("instrument"))
+                {
+                    return string.IsNullOrWhiteSpace(element.Value) ? string.Empty : element.Value;
+                }
+
+                return string.Empty;
+            }
+            catch (Exception)
             {
                 return string.Empty;
             }
+        }
 
+        private static string GetInstrumentFromXmlFile(FileSystemInfo file)
+        {
             try
             {
                 var xDoc = new XPathDocument(file.FullName);
