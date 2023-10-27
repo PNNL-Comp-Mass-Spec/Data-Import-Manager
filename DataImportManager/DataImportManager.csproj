@@ -45,10 +45,13 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="DataImportTask.cs" />
+    <Compile Include="DatasetCaptureInfo.cs" />
+    <Compile Include="DatasetCreateTaskInfo.cs" />
     <Compile Include="DBTask.cs" />
     <Compile Include="DMSInfoCache.cs" />
     <Compile Include="Global.cs" />
@@ -56,6 +59,8 @@
     <Compile Include="ListExtensionMethods.cs" />
     <Compile Include="LoggerBase.cs" />
     <Compile Include="MainProcess.cs" />
+    <Compile Include="ProcessDatasetCreateTask.cs" />
+    <Compile Include="ProcessDatasetInfoBase.cs" />
     <Compile Include="ProcessXmlTriggerFile.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

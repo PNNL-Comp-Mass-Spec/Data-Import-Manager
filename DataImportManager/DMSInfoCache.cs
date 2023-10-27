@@ -42,8 +42,7 @@ namespace DataImportManager
             /// <summary>
             /// Show the instrument class name
             /// </summary>
-            /// <returns></returns>
-            public override string ToString()
+            public readonly override string ToString()
             {
                 return string.Format("{0}", InstrumentClass ?? "Undefined instrument class name");
             }
@@ -82,7 +81,7 @@ namespace DataImportManager
             /// <summary>
             /// Show the DMS user's name and username
             /// </summary>
-            public override string ToString()
+            public readonly override string ToString()
             {
                 return string.Format("{0} ({1})", Name ?? "Undefined name", Username ?? "Undefined username");
             }
@@ -196,7 +195,7 @@ namespace DataImportManager
 
             ShowTraceMessage("  Warning: user not found: " + userInfo);
 
-            return new UserInfoType(); ;
+            return new UserInfoType();
         }
 
         /// <summary>

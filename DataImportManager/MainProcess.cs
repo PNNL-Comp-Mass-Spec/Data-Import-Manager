@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.XPath;
 using JetBrains.Annotations;
 using PRISM;
@@ -14,6 +15,7 @@ using PRISM.AppSettings;
 using PRISM.Logging;
 using PRISMDatabaseUtils;
 using PRISMDatabaseUtils.AppSettings;
+using static DataImportManager.ProcessDatasetInfoBase;
 
 namespace DataImportManager
 {
@@ -531,7 +533,7 @@ namespace DataImportManager
         private string GetLogFileSharePath()
         {
             var logFileName = mMgrSettings.GetParam("LogFileName");
-            return ProcessXmlTriggerFile.GetLogFileSharePath(logFileName);
+            return ProcessDatasetInfoBase.GetLogFileSharePath(logFileName);
         }
 
         /// <summary>
@@ -567,6 +569,19 @@ namespace DataImportManager
             }
 
             return nextChunk;
+        }
+
+        private XmlProcSettingsType GetProcessingSettings(string failureDirectory = "", string successDirectory = "")
+        {
+            return new ProcessDatasetInfoBase.XmlProcSettingsType
+            {
+                DebugLevel = mDebugLevel,
+                IgnoreInstrumentSourceErrors = IgnoreInstrumentSourceErrors,
+                PreviewMode = PreviewMode,
+                TraceMode = TraceMode,
+                FailureDirectory = failureDirectory,
+                SuccessDirectory = successDirectory
+            };
         }
 
         /// <summary>
@@ -625,7 +640,6 @@ namespace DataImportManager
 
                 // If we got to here, delete the status flag file and exit the method
                 Global.DeleteStatusFlagFile();
-
             }
             catch (Exception ex)
             {
@@ -633,7 +647,6 @@ namespace DataImportManager
                 LogError("Exception in MainProcess.ImportNewDatasets", ex);
             }
         }
-
 
         /// <summary>
         /// Load the manager settings
@@ -777,17 +790,7 @@ namespace DataImportManager
             var waitSeconds = objRand.Next(1, 15);
             ConsoleMsgUtils.SleepSeconds(waitSeconds);
 
-            // Validate the xml file
-            var udtSettings = new ProcessXmlTriggerFile.XmlProcSettingsType
-            {
-                DebugLevel = mDebugLevel,
-                IgnoreInstrumentSourceErrors = IgnoreInstrumentSourceErrors,
-                PreviewMode = PreviewMode,
-                TraceMode = TraceMode,
-                FailureDirectory = failureDirectory,
-                SuccessDirectory = successDirectory
-            };
-
+            var udtSettings = GetProcessingSettings(failureDirectory, successDirectory);
             var triggerProcessor = new ProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
 
             triggerProcessor.ProcessFile(currentFile);
@@ -868,8 +871,20 @@ namespace DataImportManager
                         // Load information from DMS
                         infoCache.LoadDMSInfo();
                     }
-                }
 
+                    var udtSettings = GetProcessingSettings();
+                    var triggerProcessor = new ProcessDatasetCreateTask(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
+
+                    triggerProcessor.ProcessXmlParameters(entryID, xmlParameters);
+
+                    if (triggerProcessor.QueuedMail.Count > 0)
+                    {
+                        AddToMailQueue(triggerProcessor.QueuedMail);
+                    }
+
+                    // ToDo: Call procedure set_dataset_create_task_complete
+
+                }
             }
             catch (Exception ex)
             {

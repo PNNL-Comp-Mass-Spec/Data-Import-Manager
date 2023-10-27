@@ -12,7 +12,6 @@ namespace DataImportManager
         private string mPostTaskErrorMessage = string.Empty;
         private string mDatabaseErrorMessage;
         private string mStoredProc;
-        private string mXmlContents;
 
         public string PostTaskErrorMessage
         {
@@ -56,52 +55,70 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Send the contents of an XML trigger file to the database to create a new dataset
+        /// Send XML trigger file data to the database to create a new dataset
         /// </summary>
-        /// <param name="triggerFileInfo"></param>
-        public bool PostTask(TriggerFileInfo triggerFileInfo)
+        /// <param name="captureInfo">Dataset capture info</param>
+        public bool PostTask(DatasetCaptureInfo captureInfo)
         {
             mPostTaskErrorMessage = string.Empty;
             mDatabaseErrorMessage = string.Empty;
 
-            bool fileImported;
-
             try
             {
-                // Load the XML file into memory
-                mXmlContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
+                string triggerFileXML;
 
-                if (string.IsNullOrEmpty(mXmlContents))
+                if (captureInfo is TriggerFileInfo xmlTriggerFileInfo)
+                {
+                    // Load the XML file into memory
+                    triggerFileXML = Global.LoadXmlFileContentsIntoString(xmlTriggerFileInfo.TriggerFile);
+                }
+                else if(captureInfo is DatasetCreateTaskInfo createTaskInfo)
+                {
+                    // Obtain the trigger file XML for the dataset creation task
+
+                    if (!createTaskInfo.GetXmlTriggerFileParameters(out triggerFileXML))
+                        return false;
+                }
+                else
+                {
+                    LogError("DatasetImportTask.PostTask(), captureInfo is not a recognized derived class");
+                    return false;
+                }
+
+                if (string.IsNullOrEmpty(triggerFileXML))
                 {
                     return false;
                 }
 
                 // Check and modify contents if needed. Also report any replacements to the log file.
-                if (triggerFileInfo.NeedsCaptureSubdirectoryReplacement)
+                if (captureInfo.NeedsCaptureSubdirectoryReplacement)
                 {
                     // <Parameter Name="Capture Subdirectory" Value="2020ESI_new.PRO\Data" />
-                    var pattern = "(Parameter Name=\"Capture Sub(directory|folder)\" Value=\")" + Regex.Escape(triggerFileInfo.OriginalCaptureSubdirectory) + "\"";
-                    mXmlContents = Regex.Replace(mXmlContents, pattern, $"$1{triggerFileInfo.FinalCaptureSubdirectory}\"", RegexOptions.IgnoreCase);
-                    LogMessage($"Replaced capture subdirectory \"{triggerFileInfo.OriginalCaptureSubdirectory}\" with \"{triggerFileInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
+                    var pattern = "(Parameter Name=\"Capture Sub(directory|folder)\" Value=\")" + Regex.Escape(captureInfo.OriginalCaptureSubdirectory) + "\"";
+                    var updatedTriggerFileXML = Regex.Replace(triggerFileXML, pattern, $"$1{captureInfo.FinalCaptureSubdirectory}\"", RegexOptions.IgnoreCase);
+
+                    LogMessage($"Replaced capture subdirectory \"{captureInfo.OriginalCaptureSubdirectory}\" with \"{captureInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
+
+                    // Call the stored procedure (typically add_new_dataset)
+                    return ImportDataTask(updatedTriggerFileXML);
                 }
 
                 // Call the stored procedure (typically add_new_dataset)
-                fileImported = ImportDataTask();
+                return ImportDataTask(triggerFileXML);
             }
             catch (Exception ex)
             {
                 LogError("DatasetImportTask.PostTask(), Error running PostTask", ex);
                 return false;
             }
-
-            return fileImported;
         }
 
         /// <summary>
         /// Posts the given XML to DMS5 using stored procedure add_new_dataset
         /// </summary>
+        /// <param name="triggerFileXML"></param>
         /// <returns>True if success, false if an error</returns>
-        private bool ImportDataTask()
+        private bool ImportDataTask(string triggerFileXML)
         {
             try
             {
@@ -119,7 +136,7 @@ namespace DataImportManager
                 // If querying a Postgres DB, DBTools will auto-change "@return" to "_returnCode"
                 var returnParam = DBTools.AddParameter(cmd, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
 
-                DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, mXmlContents);
+                DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, triggerFileXML);
                 DBTools.AddParameter(cmd, "@mode", SqlType.VarChar, 24, "add");
                 var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.InputOutput);
 

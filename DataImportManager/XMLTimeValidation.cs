@@ -427,6 +427,16 @@ namespace DataImportManager
                 return XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING;
             }
 
+            return GetXmlParameters(triggerFileInfo, xmlFileContents);
+        }
+
+        /// <summary>
+        /// Extract certain settings from dataset capture XML
+        /// </summary>
+        /// <param name="captureInfo">Dataset capture info</param>
+        /// <param name="xmlFileContents"></param>
+        private XmlValidateStatus GetXmlParameters(DatasetCaptureInfo captureInfo, string xmlFileContents)
+        {
             // Load into a string reader after '&' was fixed
             TextReader xmlStringReader = new StringReader(xmlFileContents);
 
@@ -449,7 +459,7 @@ namespace DataImportManager
 
                             case "Capture Share Name":
                                 captureShareNameInTriggerFile = row["Value"].ToString();
-                                triggerFileInfo.CaptureShareName = captureShareNameInTriggerFile;
+                                captureInfo.CaptureShareName = captureShareNameInTriggerFile;
                                 break;
 
                             case "Capture Subfolder":
@@ -461,13 +471,13 @@ namespace DataImportManager
                                     // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
                                     // For safety, will blank this out, but will post a log entry to the database
                                     var msg = "XMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
-                                        "this indicates a bug with Buzzard; see: " + triggerFileInfo.TriggerFile.Name;
+                                              "this indicates a bug with Buzzard; see: " + captureInfo.GetSourceDescription();
 
                                     LogError(msg, null, true);
                                     CaptureSubdirectory = string.Empty;
                                 }
 
-                                triggerFileInfo.OriginalCaptureSubdirectory = CaptureSubdirectory;
+                                captureInfo.OriginalCaptureSubdirectory = CaptureSubdirectory;
                                 break;
 
                             case "Dataset Name":
@@ -522,6 +532,7 @@ namespace DataImportManager
         /// </summary>
         /// <param name="triggerFile"></param>
         // ReSharper disable once UnusedMember.Local
+        [Obsolete("Unused")]
         private XmlValidateStatus InstrumentWaitDelay(FileSystemInfo triggerFile)
         {
             try
@@ -1188,7 +1199,6 @@ namespace DataImportManager
         /// <param name="triggerFileInfo">XML file to process</param>
         public XmlValidateStatus ValidateXmlFile(TriggerFileInfo triggerFileInfo)
         {
-            XmlValidateStatus validationResult;
             ErrorMessage = string.Empty;
             var triggerFile = triggerFileInfo.TriggerFile;
 
@@ -1199,7 +1209,12 @@ namespace DataImportManager
                     ShowTraceMessage("Reading " + triggerFile.FullName);
                 }
 
-                validationResult = GetXmlParameters(triggerFileInfo);
+                var xmlLoadResult = GetXmlParameters(triggerFileInfo);
+
+                if (xmlLoadResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                {
+                    return xmlLoadResult;
+                }
             }
             catch (Exception ex)
             {
@@ -1209,11 +1224,15 @@ namespace DataImportManager
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
 
-            if (validationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
-            {
-                return validationResult;
-            }
+            return ValidateXmlFile(triggerFileInfo);
+        }
 
+        /// <summary>
+        /// Process XML that defines a new dataset to add to DMS
+        /// </summary>
+        /// <param name="captureInfo">Dataset capture info</param>
+        public XmlValidateStatus ValidateXmlFile(DatasetCaptureInfo captureInfo)
+        {
             if (mInstrumentsToSkip.ContainsKey(InstrumentName))
             {
                 return XmlValidateStatus.XML_VALIDATE_SKIP_INSTRUMENT;
@@ -1221,17 +1240,17 @@ namespace DataImportManager
 
             try
             {
-                validationResult = SetDbInstrumentParameters(InstrumentName);
+                var instrumentValidationResult = SetDbInstrumentParameters(InstrumentName);
 
-                if (validationResult == XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                if (instrumentValidationResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
                 {
-                    validationResult = PerformValidation();
-                    triggerFileInfo.FinalCaptureSubdirectory = CaptureSubdirectory;
+                    return instrumentValidationResult;
                 }
-                else
-                {
-                    return validationResult;
-                }
+
+                var validationResult = PerformValidation();
+                captureInfo.FinalCaptureSubdirectory = CaptureSubdirectory;
+
+                return validationResult;
             }
             catch (Exception ex)
             {
@@ -1239,8 +1258,6 @@ namespace DataImportManager
                 LogError("XMLTimeValidation.ValidateXMLFile(), Error calling PerformValidation", ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
-
-            return validationResult;
         }
 
         /// <summary>
@@ -1330,7 +1347,7 @@ namespace DataImportManager
                 else
                 {
                     // Note that error "The user name or password is incorrect" could be due to the Secondary Logon service not running
-                    // We check for that in ProcessXmlTriggerFile.ProcessFile if ValidateXMLFileMain returns false
+                    // We check for that in ProcessXmlTriggerFile.ProcessFile if ValidateXmlInfoMain returns false
                     throw;
                 }
             }
