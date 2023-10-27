@@ -7,8 +7,7 @@ using System.Linq;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.XPath;
+using System.Xml.Linq;
 using JetBrains.Annotations;
 using PRISM;
 using PRISM.AppSettings;
@@ -548,12 +547,24 @@ namespace DataImportManager
         {
             try
             {
-                var xDoc = new XPathDocument(file.FullName);
-                var xNav = xDoc.CreateNavigator();
+                if (file?.Exists != true)
+                {
+                    return string.Empty;
+                }
 
-                var xPathNode = xNav.SelectSingleNode("//Dataset/Parameter[@Name='Instrument Name']/@Value");
+                var doc = new XDocument(file.FullName);
 
-                return xPathNode?.IsNode == true ? xPathNode.Value : string.Empty;
+                // Determine the instrument name by looking for the following XML node
+
+                // <Dataset>
+                //   <Parameter Name="Instrument Name" Value="Lumos03" />
+
+                foreach (var element in doc.Elements("Dataset").Elements("Parameter").Where(el => (string)el.Attribute("Name") == "Instrument Name"))
+                {
+                    return string.IsNullOrWhiteSpace(element.Value) ? string.Empty : element.Value;
+                }
+
+                return string.Empty;
             }
             catch (Exception)
             {
