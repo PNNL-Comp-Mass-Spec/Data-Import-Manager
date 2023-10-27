@@ -43,7 +43,7 @@ namespace DataImportManager
         // ReSharper disable once InconsistentNaming
         private readonly DMSInfoCache mDMSInfoCache;
 
-        private readonly ProcessXmlTriggerFile.XmlProcSettingsType mProcSettings;
+        private readonly ProcessDatasetInfoBase.XmlProcSettingsType mProcSettings;
 
         private readonly ConcurrentDictionary<string, int> mInstrumentsToSkip;
 
@@ -122,7 +122,7 @@ namespace DataImportManager
             MgrSettings mgrParams,
             ConcurrentDictionary<string, int> dctInstrumentsToSkip,
             DMSInfoCache dmsCache,
-            ProcessXmlTriggerFile.XmlProcSettingsType udtProcSettings)
+            ProcessDatasetInfoBase.XmlProcSettingsType udtProcSettings)
         {
             mMgrParams = mgrParams;
             mFileTools = new FileTools();

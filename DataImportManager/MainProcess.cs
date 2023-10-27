@@ -562,7 +562,7 @@ namespace DataImportManager
 
         private XmlProcSettingsType GetProcessingSettings(string failureDirectory = "", string successDirectory = "")
         {
-            return new ProcessDatasetInfoBase.XmlProcSettingsType
+            return new XmlProcSettingsType
             {
                 DebugLevel = mDebugLevel,
                 IgnoreInstrumentSourceErrors = IgnoreInstrumentSourceErrors,
