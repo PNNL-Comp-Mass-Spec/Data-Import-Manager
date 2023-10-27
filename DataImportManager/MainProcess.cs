@@ -913,7 +913,7 @@ namespace DataImportManager
                 var successDirectory = mMgrSettings.GetParam("SuccessFolder");
                 var failureDirectory = mMgrSettings.GetParam("FailureFolder");
 
-                var result = ScanXferDirectory(out var xmlFilesToImport);
+                var result = ScanXmlTriggerFileDirectory(out var xmlFilesToImport);
 
                 if (result != CloseOutType.CLOSEOUT_SUCCESS || xmlFilesToImport.Count == 0)
                 {
@@ -990,39 +990,38 @@ namespace DataImportManager
             }
         }
 
-        public CloseOutType ScanXferDirectory(out List<FileInfo> xmlFilesToImport)
+        public CloseOutType ScanXmlTriggerFileDirectory(out List<FileInfo> xmlFilesToImport)
         {
-            // Copies the results to the transfer directory
-            var serverXferDir = mMgrSettings.GetParam("xferDir");
+            var triggerFileDirectoryPath = mMgrSettings.GetParam("xferDir");
 
-            if (string.IsNullOrWhiteSpace(serverXferDir))
+            if (string.IsNullOrWhiteSpace(triggerFileDirectoryPath))
             {
                 LogErrorToDatabase("Manager parameter xferDir is empty (" + Global.GetHostName() + ")");
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
             }
 
-            var diXferDirectory = new DirectoryInfo(serverXferDir);
+            var triggerFileDirectory = new DirectoryInfo(triggerFileDirectoryPath);
 
-            // Verify transfer directory exists
-            if (!diXferDirectory.Exists)
+            // Verify that the directory exists
+            if (!triggerFileDirectory.Exists)
             {
-                // There's a serious problem if the transfer directory can't be found!!!
-                LogErrorToDatabase("Xml transfer directory not found: " + serverXferDir);
+                // There's a serious problem if the directory can't be found
+                LogErrorToDatabase("XML trigger file directory not found: " + triggerFileDirectoryPath);
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
             }
 
-            // Load all the Xml File names and dates in the transfer directory into a string dictionary
+            // Load all the XML file names and dates in the trigger file directory into a list
             try
             {
-                ShowTrace("Finding XML files at " + serverXferDir);
+                ShowTrace("Finding XML files at " + triggerFileDirectoryPath);
 
-                xmlFilesToImport = diXferDirectory.GetFiles("*.xml").ToList();
+                xmlFilesToImport = triggerFileDirectory.GetFiles("*.xml").ToList();
             }
             catch (Exception ex)
             {
-                LogErrorToDatabase("Error loading Xml Data files from " + serverXferDir, ex);
+                LogErrorToDatabase("Error loading XML data files from " + triggerFileDirectoryPath, ex);
                 xmlFilesToImport = new List<FileInfo>();
                 return CloseOutType.CLOSEOUT_FAILED;
             }

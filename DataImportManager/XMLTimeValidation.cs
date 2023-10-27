@@ -1069,8 +1069,8 @@ namespace DataImportManager
         /// <summary>
         /// Query to get the instrument data from the database and then iterate through the dataset to retrieve the capture type and source path
         /// </summary>
-        /// <param name="insName"></param>
-        private XmlValidateStatus SetDbInstrumentParameters(string insName)
+        /// <param name="instrumentName"></param>
+        private XmlValidateStatus SetDbInstrumentParameters(string instrumentName)
         {
             try
             {
@@ -1079,7 +1079,8 @@ namespace DataImportManager
                 {
                     LogError(
                         "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
-                        insName + " not found in data from V_Instrument_List_Export");
+                        instrumentName + " not found in data from V_Instrument_List_Export");
+
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                 }
 
@@ -1090,7 +1091,7 @@ namespace DataImportManager
                 {
                     MainProcess.LogErrorToDatabase(
                         "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
-                        insName + " has an empty value for Capture in V_Instrument_List_Export");
+                        instrumentName + " has an empty value for Capture in V_Instrument_List_Export");
 
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                 }
@@ -1099,7 +1100,7 @@ namespace DataImportManager
                     return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
                 MainProcess.LogErrorToDatabase(
-                    "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " + insName +
+                    "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " + instrumentName +
                     " has an empty value for SourcePath in V_Instrument_List_Export");
 
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
@@ -1108,7 +1109,7 @@ namespace DataImportManager
             {
                 LogError(
                     "XMLTimeValidation.SetDbInstrumentParameters(), " +
-                    "Error retrieving source path and capture type for instrument: " + insName, ex);
+                    "Error retrieving source path and capture type for instrument: " + instrumentName, ex);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
         }
