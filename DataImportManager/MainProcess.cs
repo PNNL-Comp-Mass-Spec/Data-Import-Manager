@@ -28,8 +28,6 @@ namespace DataImportManager
 
         internal const string DEVELOPER_COMPUTER_NAME = "WE43320";
 
-        private const int MAX_ERROR_COUNT = 4;
-
         private const string MGR_PARAM_MGR_ACTIVE = "MgrActive";
 
         public enum CloseOutType
@@ -58,7 +56,6 @@ namespace DataImportManager
         /// </summary>
         private readonly ConcurrentDictionary<string, int> mInstrumentsToSkip;
 
-        private int mFailureCount;
         /// <summary>
         /// Keys in this dictionary are semicolon separated e-mail addresses
         /// Values are mail messages to send
@@ -260,15 +257,7 @@ namespace DataImportManager
                     mFileWatcher.EnableRaisingEvents = true;
                 }
 
-                // Check to see if excessive consecutive failures have occurred
-                if (mFailureCount > MAX_ERROR_COUNT)
-                {
-                    // More than MAX_ERROR_COUNT consecutive failures; there must be a generic problem, so exit
-                    LogError("Excessive task failures, exiting");
-                    return false;
-                }
-
-                // Check to see if the manager is still active
+                // Check to see if the manager is active
                 if (!mMgrActive)
                 {
                     LogMessage("Manager inactive");
@@ -643,7 +632,6 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                mFailureCount++;
                 LogError("Exception in MainProcess.ImportNewDatasets", ex);
             }
         }
@@ -888,7 +876,6 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                mFailureCount++;
                 LogError("Exception in MainProcess.ProcessDatasetCreateTasks", ex);
             }
         }
@@ -982,12 +969,10 @@ namespace DataImportManager
                 // Remove failed XML files older than x days
                 DeleteXmlFiles(failureDirectory, delBadXmlFilesDays);
 
-                mFailureCount = 0;
                 LogMessage("Done processing XML files");
             }
             catch (Exception ex)
             {
-                mFailureCount++;
                 LogError("Exception in MainProcess.ProcessXmlTriggerFiles", ex);
             }
         }
