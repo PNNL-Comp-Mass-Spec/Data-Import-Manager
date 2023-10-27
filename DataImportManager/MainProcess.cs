@@ -1036,14 +1036,14 @@ namespace DataImportManager
                 {
                     var currentChunk = GetNextChunk(ref xmlFilesToImport, 50).ToList();
 
-                    // Prevent duplicate entries in T_Storage_Path due to a race condition
-                    EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
-
                     var itemCount = currentChunk.Count;
 
                     if (itemCount > 1)
                     {
                         LogMessage("Processing " + itemCount + " XML files in parallel");
+
+                        // Prevent duplicate entries in T_Storage_Path due to a race condition
+                        EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
                     }
 
                     Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
