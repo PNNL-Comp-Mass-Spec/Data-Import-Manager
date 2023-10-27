@@ -890,6 +890,61 @@ namespace DataImportManager
             }
         }
 
+        private void ProcessOneDatasetCreateTask(int entryId, string xmlParameters, DMSInfoCache infoCache)
+        {
+            const string SET_TASK_COMPLETE_SP = "set_dataset_create_task_complete.sql";
+
+            var udtSettings = GetProcessingSettings();
+            var triggerProcessor = new ProcessDatasetCreateTask(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
+
+            triggerProcessor.ProcessXmlParameters(entryId, xmlParameters);
+
+            if (triggerProcessor.QueuedMail.Count > 0)
+            {
+                AddToMailQueue(triggerProcessor.QueuedMail);
+            }
+
+            // Call procedure set_dataset_create_task_complete
+
+            var dbTools = infoCache.DBTools;
+
+            var cmd = dbTools.CreateCommand(SET_TASK_COMPLETE_SP, CommandType.StoredProcedure);
+
+            dbTools.AddParameter(cmd, "@processorName", SqlType.VarChar, 128);
+
+            dbTools.AddParameter(cmd, "@entryID", SqlType.Int).Value = entryId;
+            var completionCodeParam = dbTools.AddParameter(cmd, "@completionCode", SqlType.Int);
+            var completionMessageParam = dbTools.AddParameter(cmd, "@completionMessage", SqlType.VarChar, 4000);
+            var messageParam = dbTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, ParameterDirection.InputOutput);
+            var returnCodeParam = dbTools.AddParameter(cmd, "@returnCode", SqlType.VarChar, 64, ParameterDirection.InputOutput);
+
+            if (string.IsNullOrWhiteSpace(triggerProcessor.DatabaseErrorMsg))
+            {
+                completionCodeParam.Value = 0;
+                completionMessageParam.Value = string.Empty;
+            }
+            else
+            {
+                completionCodeParam.Value = 1;
+                completionMessageParam.Value = triggerProcessor.DatabaseErrorMsg;
+            }
+
+            if (mDebugLevel > 4 || TraceMode)
+            {
+                LogDebug("Calling procedure " + SET_TASK_COMPLETE_SP);
+            }
+
+            // Execute the SP
+            var resCode = dbTools.ExecuteSP(cmd);
+
+            var returnCode = DBToolsBase.GetReturnCode(returnCodeParam);
+
+            if (resCode == 0 && returnCode == 0)
+                return;
+
+            LogProcedureCallError(resCode, returnCode, messageParam, returnCodeParam, SET_TASK_COMPLETE_SP);
+        }
+
         private void ProcessOneFile(FileInfo currentFile, string successDirectory, string failureDirectory, DMSInfoCache infoCache)
         {
             var objRand = new Random();
@@ -922,6 +977,8 @@ namespace DataImportManager
 
                 var dbTools = infoCache.DBTools;
 
+                var datasetCreateTasks = new Dictionary<int, string>();
+
                 while (true)
                 {
                     var cmd = dbTools.CreateCommand(REQUEST_DATASET_CREATE_TASK_SP, CommandType.StoredProcedure);
@@ -950,39 +1007,87 @@ namespace DataImportManager
                         return;
                     }
 
-                    var entryID = entryIdParam.Value.CastDBVal<int>();
+                    var entryId = entryIdParam.Value.CastDBVal<int>();
 
-                    if (entryID == 0)
+                    if (entryId == 0)
                     {
-                        if (mDebugLevel > 4 || TraceMode)
-                        {
-                            LogDebug("No dataset creation tasks were found");
-                        }
-
-                        return;
+                        // Exit the while loop
+                        break;
                     }
 
                     var xmlParameters = parametersParam.Value.CastDBVal<string>();
 
-                    if (!infoCache.DMSInfoLoaded)
+                    if (datasetCreateTasks.ContainsKey(entryId))
                     {
-                        // Load information from DMS
-                        infoCache.LoadDMSInfo();
+                        LogError(string.Format("Procedure {0} returned entry ID {1} on successive calls, indicating an error", REQUEST_DATASET_CREATE_TASK_SP, entryId));
+                        return;
                     }
 
-                    var udtSettings = GetProcessingSettings();
-                    var triggerProcessor = new ProcessDatasetCreateTask(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
-
-                    triggerProcessor.ProcessXmlParameters(entryID, xmlParameters);
-
-                    if (triggerProcessor.QueuedMail.Count > 0)
-                    {
-                        AddToMailQueue(triggerProcessor.QueuedMail);
-                    }
-
-                    // ToDo: Call procedure set_dataset_create_task_complete
-
+                    datasetCreateTasks.Add(entryId, xmlParameters);
                 }
+
+                if (mDebugLevel > 4 || TraceMode)
+                {
+                    LogDebug("No dataset creation tasks were found");
+                }
+
+                if (!infoCache.DMSInfoLoaded)
+                {
+                    // Load information from DMS
+                    infoCache.LoadDMSInfo();
+                }
+
+                // Populate a list with the create task IDs so that we can process them in a random order
+                var entryIds = new List<int>();
+
+                foreach (var entryId in datasetCreateTasks.Keys)
+                {
+                    entryIds.Add(entryId);
+                }
+
+                entryIds.Shuffle();
+
+                ShowTrace(string.Format("Processing {0} dataset create task{1}", entryIds.Count, CheckPlural(entryIds.Count)));
+
+                var currentChunk = new Dictionary<int, string>();
+
+                // Process the dataset create tasks in parallel, in groups of 50 at a time
+                while (entryIds.Count > 0)
+                {
+                    var currentChunkIDs = GetNextChunk(ref entryIds, 50).ToList();
+
+                    currentChunk.Clear();
+
+                    foreach (var entryId in currentChunkIDs)
+                    {
+                        currentChunk.Add(entryId, datasetCreateTasks[entryId]);
+                    }
+
+                    var itemCount = currentChunk.Count;
+
+                    if (itemCount > 1)
+                    {
+                        LogMessage("Processing " + itemCount + " dataset create tasks in parallel");
+
+                        // Use EnsureInstrumentDataStorageDirectories to prevent duplicate entries in T_Storage_Path due to a race condition
+
+                        var currentChunkXmlParameters = new List<string>();
+
+                        // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
+                        foreach (var item in currentChunk)
+                        {
+                            currentChunkXmlParameters.Add(item.Value);
+                        }
+
+                        EnsureInstrumentDataStorageDirectories(currentChunkXmlParameters, infoCache.DBTools);
+                    }
+
+                    Parallel.ForEach(currentChunk, (currentTask) => ProcessOneDatasetCreateTask(currentTask.Key, currentTask.Value, infoCache));
+                }
+
+                NotifySkippedDatasets();
+
+                LogMessage("Done processing dataset create tasks");
             }
             catch (Exception ex)
             {
