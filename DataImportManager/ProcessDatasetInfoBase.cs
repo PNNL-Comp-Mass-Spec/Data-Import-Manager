@@ -189,7 +189,7 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Validate the XML trigger file info, then send it to the database using mDataImportTask.PostTask
+        /// Validate the metadata for the new dataset, then send it to the database using mDataImportTask.PostTask
         /// </summary>
         /// <param name="captureInfo">Dataset capture info</param>
         /// <returns>True if success, false if an error</returns>
@@ -255,7 +255,7 @@ namespace DataImportManager
 
             if (ProcSettings.DebugLevel >= 2)
             {
-                LogMessage("Posting Dataset XML file to database: " + captureInfo.GetSourceDescription());
+                LogMessage("Posting Dataset XML to database: " + captureInfo.GetSourceDescription());
             }
 
             // Open a new database connection
@@ -319,7 +319,7 @@ namespace DataImportManager
                 sourceDescription = MoveXmlFile(xmlTriggerFileInfo.TriggerFile, ProcSettings.FailureDirectory);
             }
 
-            var errorMessage = "Error posting xml file to database: " + mDataImportTask.PostTaskErrorMessage;
+            var errorMessage = "Error posting dataset XML to database: " + mDataImportTask.PostTaskErrorMessage;
 
             if (mDataImportTask.PostTaskErrorMessage.IndexOf("since already in database", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -333,7 +333,7 @@ namespace DataImportManager
             }
 
             var validationErrors = new List<ValidationError>();
-            var newError = new ValidationError("XML trigger file problem", sourceDescription);
+            var newError = new ValidationError("Dataset XML problem", sourceDescription);
 
             var msgTypeString = messageType == BaseLogger.LogLevels.ERROR ? "Error" : "Warning";
 
@@ -466,14 +466,14 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Process the specified XML file
+        /// Process the specified dataset XML
         /// </summary>
         /// <remarks>
         /// PerformValidation in XMLTimeValidation will monitor the dataset file (or dataset directory)
         /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
         /// <param name="captureInfo">Dataset capture info</param>
-        /// <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
+        /// <returns>True if dataset metadata is valid the and dataset is ready for import; otherwise false</returns>
         private bool ValidateXmlInfoMain(DatasetCaptureInfo captureInfo)
         {
             try
@@ -555,6 +555,7 @@ namespace DataImportManager
                     }
 
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Operator not defined.");
+
                     return false;
                 }
 
@@ -607,14 +608,16 @@ namespace DataImportManager
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE)
                 {
-                    // Logon failure; Do not move the XML file
+                    // Logon failure
+                    // If processing an XML trigger file, do not move it
                     return false;
                 }
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_NETWORK_ERROR)
                 {
-                    // Network error; Do not move the XML file
-                    // Furthermore, do not process any more .XML files for this instrument
+                    // Network error
+                    // Do not process any more datasets for this instrument
+                    // Also, if processing an XML trigger file, do not move it
                     UpdateInstrumentsToSkip(mXmlInstrumentName);
                     return false;
                 }
@@ -633,7 +636,8 @@ namespace DataImportManager
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_SIZE_CHANGED)
                 {
-                    // Size changed; Do not move the XML file
+                    // Size changed
+                    // If processing an XML trigger file, do not move it
                     return false;
                 }
 
@@ -692,7 +696,7 @@ namespace DataImportManager
                     return false;
                 }
 
-                // xmlResult is one of the following:
+                // xmlResult should be one of the following:
                 // XML_VALIDATE_SUCCESS
                 // XML_VALIDATE_CONTINUE
                 // XML_VALIDATE_SKIP_INSTRUMENT
@@ -703,11 +707,11 @@ namespace DataImportManager
             {
                 if (captureInfo is TriggerFileInfo xmlTriggerFileInfo)
                 {
-                    MainProcess.LogErrorToDatabase("Error validating Xml data in file " + xmlTriggerFileInfo.TriggerFile.FullName, ex);
+                    MainProcess.LogErrorToDatabase("Error validating XML data in file " + xmlTriggerFileInfo.TriggerFile.FullName, ex);
                 }
                 else
                 {
-                    MainProcess.LogErrorToDatabase("Error validating Xml data for " + captureInfo.GetSourceDescription(), ex);
+                    MainProcess.LogErrorToDatabase("Error validating XML data for " + captureInfo.GetSourceDescription(), ex);
                 }
 
                 return false;

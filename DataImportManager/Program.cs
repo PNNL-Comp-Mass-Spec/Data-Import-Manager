@@ -95,12 +95,13 @@ namespace DataImportManager
                 }
 
                 mainProcess.DoImport();
+
                 LogTools.FlushPendingMessages();
                 return 0;
             }
             catch (Exception ex)
             {
-                ShowErrorMessage("Error occurred in modMain->Main", ex);
+                ShowErrorMessage("Error occurred in Program->Main", ex);
                 LogTools.FlushPendingMessages();
                 return -1;
             }

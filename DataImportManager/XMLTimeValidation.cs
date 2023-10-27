@@ -1074,8 +1074,9 @@ namespace DataImportManager
         {
             try
             {
-                // Requests additional task parameters from database and adds them to the m_taskParams string dictionary
-                if (!mDMSInfoCache.GetInstrumentInfo(insName, out var udtInstrumentInfo))
+                // Query the database to obtain information about the given instrument
+
+                if (!mDMSInfoCache.GetInstrumentInfo(instrumentName, out var udtInstrumentInfo))
                 {
                     LogError(
                         "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
