@@ -1,17 +1,16 @@
-﻿using System;
+﻿using PRISM.AppSettings;
+using PRISM.Logging;
+using PRISM;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.ServiceProcess;
-using PRISM;
-using PRISM.AppSettings;
-using PRISM.Logging;
 
 namespace DataImportManager
 {
-    // ReSharper disable once InconsistentNaming
-    internal class ProcessXmlTriggerFile : LoggerBase
+    internal class ProcessDatasetInfoBase : LoggerBase
     {
         // ReSharper disable once CommentTypo
         // Ignore Spelling: Bionet, logon, MM-dd-yyyy, prepend, seclogon
@@ -44,7 +43,7 @@ namespace DataImportManager
 
         private DataImportTask mDataImportTask;
 
-        private string mDatabaseErrorMsg;
+        protected string mDatabaseErrorMsg;
 
         private bool mSecondaryLogonServiceChecked;
 
@@ -66,7 +65,7 @@ namespace DataImportManager
         /// <param name="instrumentsToSkip"></param>
         /// <param name="infoCache"></param>
         /// <param name="udtSettings"></param>
-        public ProcessXmlTriggerFile(
+        public ProcessDatasetInfoBase(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
             DMSInfoCache infoCache,
@@ -152,6 +151,10 @@ namespace DataImportManager
             }
         }
 
+        protected virtual void FinalizeTask()
+        {
+        }
+
         /// <summary>
         /// Returns a string with the path to the log file, assuming the file can be accessed with \\ComputerName\DMS_Programs\Manager\Logs\LogFileName.txt
         /// </summary>
@@ -186,27 +189,13 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Validate the XML trigger file, then send it to the database using mDataImportTask.PostTask
+        /// Validate the XML trigger file info, then send it to the database using mDataImportTask.PostTask
         /// </summary>
-        /// <param name="triggerFile"></param>
+        /// <param name="captureInfo">Dataset capture info</param>
         /// <returns>True if success, false if an error</returns>
-        public bool ProcessFile(FileInfo triggerFile)
+        protected bool ProcessDatasetCaptureInfo(DatasetCaptureInfo captureInfo)
         {
-            mDatabaseErrorMsg = string.Empty;
-
-            var statusMsg = "Starting data import task for dataset: " + triggerFile.FullName;
-
-            if (ProcSettings.TraceMode)
-            {
-                Console.WriteLine();
-                Console.WriteLine("-------------------------------------------");
-            }
-
-            LogMessage(statusMsg);
-
-            var triggerFileInfo = new TriggerFileInfo(triggerFile);
-
-            if (!ValidateXmlFileMain(triggerFileInfo))
+            if (!ValidateXmlInfoMain(captureInfo))
             {
                 if (mSecondaryLogonServiceChecked)
                 {
@@ -236,11 +225,10 @@ namespace DataImportManager
 
                     ConsoleMsgUtils.SleepSeconds(3);
 
-                    statusMsg = "Successfully started the Secondary Logon service (normally should be running, but found to be stopped)";
-                    LogWarning(statusMsg, true);
+                    LogWarning("Successfully started the Secondary Logon service (normally should be running, but found to be stopped)", true);
 
                     // Now that the service is running, try the validation one more time
-                    if (!ValidateXmlFileMain(triggerFileInfo))
+                    if (!ValidateXmlInfoMain(captureInfo))
                     {
                         return false;
                     }
@@ -252,15 +240,22 @@ namespace DataImportManager
                 }
             }
 
-            if (!triggerFile.Exists)
+            if (captureInfo is TriggerFileInfo xmlTriggerFileInfo)
             {
-                LogWarning("XML file no longer exists; cannot import: " + triggerFile.FullName);
-                return false;
+                if (!xmlTriggerFileInfo.TriggerFile.Exists)
+                {
+                    LogWarning("XML file no longer exists; cannot import: " + xmlTriggerFileInfo.TriggerFile.FullName);
+                    return false;
+                }
+            }
+            else
+            {
+                xmlTriggerFileInfo = null;
             }
 
             if (ProcSettings.DebugLevel >= 2)
             {
-                LogMessage("Posting Dataset XML file to database: " + triggerFile.Name);
+                LogMessage("Posting Dataset XML file to database: " + captureInfo.GetSourceDescription());
             }
 
             // Open a new database connection
@@ -276,21 +271,20 @@ namespace DataImportManager
             };
 
             mDatabaseErrorMsg = string.Empty;
-            var success = mDataImportTask.PostTask(triggerFileInfo);
+            var success = mDataImportTask.PostTask(captureInfo);
 
             mDatabaseErrorMsg = mDataImportTask.DatabaseErrorMessage;
 
             if (mDatabaseErrorMsg.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
-                MainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + triggerFile.FullName);
+                MainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + captureInfo.GetSourceDescription(true));
                 return false;
             }
 
             if (success)
             {
-                MoveXmlFile(triggerFile, ProcSettings.SuccessDirectory);
-                LogMessage("Completed Data import task for dataset: " + triggerFile.FullName);
+                FinalizeTask();
                 return true;
             }
 
@@ -299,8 +293,7 @@ namespace DataImportManager
             if (mDataImportTask.PostTaskErrorMessage.IndexOf("deadlocked", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
-                statusMsg = "Deadlock encountered";
-                LogError(statusMsg + ": " + triggerFile.Name);
+                LogError("Deadlock encountered: " + captureInfo.GetSourceDescription());
                 return false;
             }
 
@@ -309,29 +302,38 @@ namespace DataImportManager
             if (mDataImportTask.PostTaskErrorMessage.IndexOf("current transaction cannot be committed", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
-                statusMsg = "Transaction commit error";
-                LogError(statusMsg + ": " + triggerFile.Name);
+                LogError("Transaction commit error: " + captureInfo.GetSourceDescription());
                 return false;
             }
 
             BaseLogger.LogLevels messageType;
 
-            var moveLocPath = MoveXmlFile(triggerFile, ProcSettings.FailureDirectory);
-            statusMsg = "Error posting xml file to database: " + mDataImportTask.PostTaskErrorMessage;
+            string sourceDescription;
+
+            if (xmlTriggerFileInfo == null)
+            {
+                sourceDescription = captureInfo.GetSourceDescription();
+            }
+            else
+            {
+                sourceDescription = MoveXmlFile(xmlTriggerFileInfo.TriggerFile, ProcSettings.FailureDirectory);
+            }
+
+            var errorMessage = "Error posting xml file to database: " + mDataImportTask.PostTaskErrorMessage;
 
             if (mDataImportTask.PostTaskErrorMessage.IndexOf("since already in database", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 messageType = BaseLogger.LogLevels.WARN;
-                LogWarning(statusMsg + ". See: " + moveLocPath);
+                LogWarning(errorMessage + ". See: " + sourceDescription);
             }
             else
             {
                 messageType = BaseLogger.LogLevels.ERROR;
-                MainProcess.LogErrorToDatabase(statusMsg + ". View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
+                MainProcess.LogErrorToDatabase(errorMessage + ". View details in log at " + GetLogFileSharePath() + " for: " + captureInfo.GetSourceDescription(true));
             }
 
             var validationErrors = new List<ValidationError>();
-            var newError = new ValidationError("XML trigger file problem", moveLocPath);
+            var newError = new ValidationError("XML trigger file problem", sourceDescription);
 
             var msgTypeString = messageType == BaseLogger.LogLevels.ERROR ? "Error" : "Warning";
 
@@ -366,7 +368,7 @@ namespace DataImportManager
         /// <param name="triggerFile"></param>
         /// <param name="targetDirectory"></param>
         /// <returns>New path of the trigger file</returns>
-        private string MoveXmlFile(FileInfo triggerFile, string targetDirectory)
+        protected string MoveXmlFile(FileInfo triggerFile, string targetDirectory)
         {
             try
             {
@@ -470,14 +472,14 @@ namespace DataImportManager
         /// PerformValidation in XMLTimeValidation will monitor the dataset file (or dataset directory)
         /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
-        /// <param name="triggerFileInfo">XML file to process</param>
+        /// <param name="captureInfo">Dataset capture info</param>
         /// <returns>True if XML file is valid and dataset is ready for import; otherwise false</returns>
-        private bool ValidateXmlFileMain(TriggerFileInfo triggerFileInfo)
+        private bool ValidateXmlInfoMain(DatasetCaptureInfo captureInfo)
         {
             try
             {
                 var timeValidationDirectory = mMgrSettings.GetParam("TimeValidationFolder");
-                string moveLocPath;
+
                 var failureDirectory = mMgrSettings.GetParam("FailureFolder");
 
                 var myDataXmlValidation = new XMLTimeValidation(mMgrSettings, mInstrumentsToSkip, mDMSInfoCache, ProcSettings)
@@ -485,27 +487,50 @@ namespace DataImportManager
                     TraceMode = ProcSettings.TraceMode
                 };
 
-                var xmlResult = myDataXmlValidation.ValidateXmlFile(triggerFileInfo);
+                var xmlResult = myDataXmlValidation.ValidateXmlFile(captureInfo);
 
                 mXmlOperatorName = myDataXmlValidation.OperatorName;
                 mXmlOperatorEmail = myDataXmlValidation.OperatorEMail;
                 mXmlDatasetPath = myDataXmlValidation.DatasetPath;
                 mXmlInstrumentName = myDataXmlValidation.InstrumentName;
 
-                var triggerFile = triggerFileInfo.TriggerFile;
+                FileInfo triggerFile;
+                string sourceDescriptionPrefix;
+
+                if (captureInfo is TriggerFileInfo xmlTriggerFileInfo)
+                {
+                    // Processing an actual Xml Trigger File
+                    triggerFile = xmlTriggerFileInfo.TriggerFile;
+                    sourceDescriptionPrefix = "the XML file";
+                }
+                else
+                {
+                    // Processing data from a dataset creation task
+                    triggerFile = null;
+                    sourceDescriptionPrefix = captureInfo.GetSourceDescription();
+                }
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
+                    string moveLocPath;
 
-                    LogWarning("Undefined Operator in " + moveLocPath, true);
+                    if (triggerFile == null)
+                    {
+                        moveLocPath = string.Empty;
+                        LogWarning("Undefined Operator in " + captureInfo.GetSourceDescription(), true);
+                    }
+                    else
+                    {
+                        moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
+                        LogWarning("Undefined Operator in " + moveLocPath, true);
+                    }
 
                     var validationErrors = new List<ValidationError>();
 
                     if (string.IsNullOrWhiteSpace(mXmlOperatorName))
                     {
                         mDatabaseErrorMsg = "Operator username not listed in the XML file";
-                        validationErrors.Add(new ValidationError("Operator name not listed in the XML file", string.Empty));
+                        validationErrors.Add(new ValidationError("Operator name not listed in " + sourceDescriptionPrefix, string.Empty));
                     }
                     else
                     {
@@ -513,7 +538,10 @@ namespace DataImportManager
                         validationErrors.Add(new ValidationError("Operator name not defined in DMS", mXmlOperatorName));
                     }
 
-                    validationErrors.Add(new ValidationError("Dataset trigger file path", moveLocPath));
+                    if (!string.IsNullOrWhiteSpace(moveLocPath))
+                    {
+                        validationErrors.Add(new ValidationError("Dataset trigger file path", moveLocPath));
+                    }
 
                     var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
 
@@ -532,29 +560,45 @@ namespace DataImportManager
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_FAILED)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, timeValidationDirectory);
-
-                    LogWarning("XML Time validation error, file " + moveLocPath);
-                    MainProcess.LogErrorToDatabase("Time validation error. View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
-
-                    var validationErrors = new List<ValidationError>
+                    if (triggerFile == null)
                     {
-                        new("Time validation error", moveLocPath)
-                    };
+                        LogWarning("XML Time validation error " + captureInfo.GetSourceDescription(), true);
 
-                    CacheMail(validationErrors, mXmlOperatorEmail, " - Time validation error.");
+                        MainProcess.LogErrorToDatabase("Time validation error for " + captureInfo.GetSourceDescription());
+                    }
+                    else
+                    {
+                        var moveLocPath = MoveXmlFile(triggerFile, timeValidationDirectory);
+
+                        LogWarning("XML Time validation error " + moveLocPath, true);
+                        MainProcess.LogErrorToDatabase("Time validation error. View details in log at " + GetLogFileSharePath() + " for: " + moveLocPath);
+
+                        var validationErrors = new List<ValidationError>
+                        {
+                            new("Time validation error", moveLocPath)
+                        };
+
+                        CacheMail(validationErrors, mXmlOperatorEmail, " - Time validation error.");
+                    }
                     return false;
                 }
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
+                    if (triggerFile == null)
+                    {
+                        LogWarning("An error was encountered during the validation process for " + captureInfo.GetSourceDescription(), true);
+                    }
+                    else
+                    {
+                        var moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
 
-                    LogWarning("An error was encountered during the validation process, file " + moveLocPath, true);
+                        LogWarning("An error was encountered during the validation process, file " + moveLocPath, true);
+                    }
 
                     var validationErrors = new List<ValidationError>
                     {
-                        new("XML error encountered during validation process", moveLocPath)
+                        new("XML error encountered during validation process", captureInfo.GetSourceDescription())
                     };
 
                     CacheMail(validationErrors, mXmlOperatorEmail, " - XML validation error.");
@@ -595,13 +639,23 @@ namespace DataImportManager
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_DATA)
                 {
-                    moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
+                    string sourceDescription;
+
+                    if (triggerFile == null)
+                    {
+                        sourceDescription = captureInfo.GetSourceDescription();
+                    }
+                    else
+                    {
+                        var moveLocPath = MoveXmlFile(triggerFile, failureDirectory);
+                        sourceDescription = string.Format("See file {0}", moveLocPath);
+                    }
 
                     LogWarning("Dataset " + myDataXmlValidation.DatasetName + " not found at " + myDataXmlValidation.SourcePath, true);
 
                     var validationErrors = new List<ValidationError>();
 
-                    var newError = new ValidationError("Dataset not found on the instrument", moveLocPath);
+                    var newError = new ValidationError("Dataset not found on the instrument", sourceDescription);
 
                     if (string.IsNullOrEmpty(myDataXmlValidation.ErrorMessage))
                     {
@@ -647,7 +701,15 @@ namespace DataImportManager
             }
             catch (Exception ex)
             {
-                MainProcess.LogErrorToDatabase("Error validating Xml Data file, file " + triggerFileInfo.TriggerFile.FullName, ex);
+                if (captureInfo is TriggerFileInfo xmlTriggerFileInfo)
+                {
+                    MainProcess.LogErrorToDatabase("Error validating Xml data in file " + xmlTriggerFileInfo.TriggerFile.FullName, ex);
+                }
+                else
+                {
+                    MainProcess.LogErrorToDatabase("Error validating Xml data for " + captureInfo.GetSourceDescription(), ex);
+                }
+
                 return false;
             }
         }
