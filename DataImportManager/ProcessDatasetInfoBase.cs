@@ -43,7 +43,7 @@ namespace DataImportManager
 
         private DataImportTask mDataImportTask;
 
-        protected string mDatabaseErrorMsg;
+        public string DatabaseErrorMsg { get; protected set; }
 
         private bool mSecondaryLogonServiceChecked;
 
@@ -117,9 +117,9 @@ namespace DataImportManager
                 // Store the message and metadata
                 var messageToQueue = new QueuedMail(mXmlOperatorName, mailRecipients, mailSubject, validationErrors);
 
-                if (!string.IsNullOrEmpty(mDatabaseErrorMsg))
+                if (!string.IsNullOrEmpty(DatabaseErrorMsg))
                 {
-                    messageToQueue.DatabaseErrorMsg = mDatabaseErrorMsg;
+                    messageToQueue.DatabaseErrorMsg = DatabaseErrorMsg;
                 }
 
                 messageToQueue.InstrumentDatasetPath = mXmlDatasetPath;
@@ -270,12 +270,12 @@ namespace DataImportManager
                 PreviewMode = ProcSettings.PreviewMode
             };
 
-            mDatabaseErrorMsg = string.Empty;
+            DatabaseErrorMsg = string.Empty;
             var success = mDataImportTask.PostTask(captureInfo);
 
-            mDatabaseErrorMsg = mDataImportTask.DatabaseErrorMessage;
+            DatabaseErrorMsg = mDataImportTask.DatabaseErrorMessage;
 
-            if (mDatabaseErrorMsg.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (DatabaseErrorMsg.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
                 MainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + captureInfo.GetSourceDescription(true));
@@ -349,7 +349,7 @@ namespace DataImportManager
             validationErrors.Add(newError);
 
             // Check whether there is a suggested solution in table T_DIM_Error_Solution for the error
-            var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
+            var errorSolution = mDMSInfoCache.GetDbErrorSolution(DatabaseErrorMsg);
 
             if (!string.IsNullOrWhiteSpace(errorSolution))
             {
@@ -529,12 +529,12 @@ namespace DataImportManager
 
                     if (string.IsNullOrWhiteSpace(mXmlOperatorName))
                     {
-                        mDatabaseErrorMsg = "Operator username not listed in the XML file";
+                        DatabaseErrorMsg = "Operator username not listed in the dataset XML";
                         validationErrors.Add(new ValidationError("Operator name not listed in " + sourceDescriptionPrefix, string.Empty));
                     }
                     else
                     {
-                        mDatabaseErrorMsg = "Operator username not defined in DMS (or ambiguous): " + mXmlOperatorName;
+                        DatabaseErrorMsg = "Operator username not defined in DMS (or ambiguous): " + mXmlOperatorName;
                         validationErrors.Add(new ValidationError("Operator name not defined in DMS", mXmlOperatorName));
                     }
 
@@ -543,15 +543,15 @@ namespace DataImportManager
                         validationErrors.Add(new ValidationError("Dataset trigger file path", moveLocPath));
                     }
 
-                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
+                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(DatabaseErrorMsg);
 
                     if (string.IsNullOrWhiteSpace(errorSolution))
                     {
-                        mDatabaseErrorMsg = string.Empty;
+                        DatabaseErrorMsg = string.Empty;
                     }
                     else
                     {
-                        mDatabaseErrorMsg = errorSolution;
+                        DatabaseErrorMsg = errorSolution;
                     }
 
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Operator not defined.");
@@ -668,17 +668,17 @@ namespace DataImportManager
 
                     validationErrors.Add(newError);
 
-                    mDatabaseErrorMsg = "The dataset data is not available for capture";
+                    DatabaseErrorMsg = "The dataset data is not available for capture";
 
-                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(mDatabaseErrorMsg);
+                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(DatabaseErrorMsg);
 
                     if (string.IsNullOrWhiteSpace(errorSolution))
                     {
-                        mDatabaseErrorMsg = string.Empty;
+                        DatabaseErrorMsg = string.Empty;
                     }
                     else
                     {
-                        mDatabaseErrorMsg = errorSolution;
+                        DatabaseErrorMsg = errorSolution;
                     }
 
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Dataset not found.");
