@@ -770,6 +770,40 @@ namespace DataImportManager
             LogError(message, ex, true);
         }
 
+        private void LogProcedureCallError(int resCode, int returnCode, IDataParameter messageParam, IDataParameter returnCodeParam, string procedureName)
+        {
+            var errorMessage = resCode != 0 && returnCode == 0
+                ? string.Format("ExecuteSP() reported result code {0} calling {1}", resCode, procedureName)
+                : string.Format("{0} reported return code {1}", procedureName, returnCodeParam.Value.CastDBVal<string>());
+
+            var message = messageParam.Value.CastDBVal<string>();
+
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                LogError(errorMessage + "; message: " + message);
+            }
+            else
+            {
+                LogError(errorMessage);
+            }
+        }
+
+        private void NotifySkippedDatasets()
+        {
+            foreach (var kvItem in mInstrumentsToSkip)
+            {
+                var message = "Skipped " + kvItem.Value + " dataset";
+
+                if (kvItem.Value != 1)
+                {
+                    message += "s";
+                }
+
+                message += " for instrument " + kvItem.Key + " due to network errors";
+                LogMessage(message);
+            }
+        }
+
         private void ProcessOneFile(FileInfo currentFile, string successDirectory, string failureDirectory, DMSInfoCache infoCache)
         {
             var objRand = new Random();
@@ -825,18 +859,8 @@ namespace DataImportManager
 
                     if (resCode != 0 || returnCode != 0)
                     {
-                        var errorMessage = resCode != 0 && returnCode == 0
-                            ? string.Format("ExecuteSP() reported result code {0} calling {1}", resCode, REQUEST_DATASET_CREATE_TASK_SP)
-                            : string.Format("{0} reported return code {1}", REQUEST_DATASET_CREATE_TASK_SP, returnCodeParam.Value.CastDBVal<string>());
+                        LogProcedureCallError(resCode, returnCode, messageParam, returnCodeParam, REQUEST_DATASET_CREATE_TASK_SP);
 
-                        var message = messageParam.Value.CastDBVal<string>();
-
-                        if (!string.IsNullOrWhiteSpace(message))
-                        {
-                            errorMessage = errorMessage + "; message: " + message;
-                        }
-
-                        LogError(errorMessage);
                         return;
                     }
 
@@ -950,18 +974,7 @@ namespace DataImportManager
                     Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
                 }
 
-                foreach (var kvItem in mInstrumentsToSkip)
-                {
-                    var message = "Skipped " + kvItem.Value + " dataset";
-
-                    if (kvItem.Value != 1)
-                    {
-                        message += "s";
-                    }
-
-                    message += " for instrument " + kvItem.Key + " due to network errors";
-                    LogMessage(message);
-                }
+                NotifySkippedDatasets();
 
                 // Remove successful XML files older than x days
                 DeleteXmlFiles(successDirectory, delGoodXmlFilesDays);
