@@ -199,6 +199,11 @@ namespace DataImportManager
             {
                 if (mSecondaryLogonServiceChecked)
                 {
+                    if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
+                    {
+                        DatabaseErrorMsg = "Call to ValidateXmlInfoMain returned false";
+                    }
+
                     return false;
                 }
 
@@ -230,12 +235,18 @@ namespace DataImportManager
                     // Now that the service is running, try the validation one more time
                     if (!ValidateXmlInfoMain(captureInfo))
                     {
+                        if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
+                        {
+                            DatabaseErrorMsg = "Call to ValidateXmlInfoMain returned false";
+                        }
+
                         return false;
                     }
                 }
                 catch (Exception ex)
                 {
-                    LogWarning("Unable to start the Secondary Logon service: " + ex.Message);
+                    DatabaseErrorMsg = "Unable to start the Secondary Logon service: " + ex.Message;
+                    LogWarning(DatabaseErrorMsg);
                     return false;
                 }
             }
@@ -294,6 +305,12 @@ namespace DataImportManager
             {
                 // Log the error and leave the file for another attempt
                 LogError("Deadlock encountered: " + captureInfo.GetSourceDescription());
+
+                if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
+                {
+                    DatabaseErrorMsg = "Deadlock encountered";
+                }
+
                 return false;
             }
 
@@ -303,6 +320,12 @@ namespace DataImportManager
             {
                 // Log the error and leave the file for another attempt
                 LogError("Transaction commit error: " + captureInfo.GetSourceDescription());
+
+                if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
+                {
+                    DatabaseErrorMsg = "Transaction commit error";
+                }
+
                 return false;
             }
 
@@ -332,6 +355,15 @@ namespace DataImportManager
                 MainProcess.LogErrorToDatabase(errorMessage + ". View details in log at " + GetLogFileSharePath() + " for: " + captureInfo.GetSourceDescription(true));
             }
 
+            if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
+            {
+                DatabaseErrorMsg = errorMessage;
+            }
+            else
+            {
+                DatabaseErrorMsg = string.Format("{0}; {1}", DatabaseErrorMsg, errorMessage);
+            }
+
             var validationErrors = new List<ValidationError>();
             var newError = new ValidationError("Dataset XML problem", sourceDescription);
 
@@ -353,12 +385,20 @@ namespace DataImportManager
 
             if (!string.IsNullOrWhiteSpace(errorSolution))
             {
-                // Store the solution in the database error message variable so that it gets included in the message body
-                mDatabaseErrorMsg = errorSolution;
+                if (xmlTriggerFileInfo == null)
+                {
+                    LogWarning(errorSolution);
+                }
+                else
+                {
+                    // Store the solution in the database error message variable so that it gets included in the message body of the e-mail
+                    DatabaseErrorMsg = errorSolution;
+                }
             }
 
             // Send an e-mail; subject will be "Data Import Manager - Database error." or "Data Import Manager - Database warning."
             CacheMail(validationErrors, mXmlOperatorEmail, " - Database " + msgTypeString.ToLower() + ".");
+
             return false;
         }
 
