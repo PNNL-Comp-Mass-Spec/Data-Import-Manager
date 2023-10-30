@@ -266,15 +266,14 @@ namespace DataImportManager
 
             if (ProcSettings.DebugLevel >= 2)
             {
-                LogMessage("Posting Dataset XML to database: " + captureInfo.GetSourceDescription());
+                LogMessage("Posting dataset XML to database: " + captureInfo.GetSourceDescription());
             }
 
             // Open a new database connection
             // Doing this now due to database timeouts that were seen when using mDMSInfoCache.DBConnection
             var dbTools = mDMSInfoCache.DBTools;
 
-            // Create the object that will import the Data record
-            //
+            // Create the object that will import the metadata
             mDataImportTask = new DataImportTask(mMgrSettings, dbTools)
             {
                 TraceMode = ProcSettings.TraceMode,
@@ -527,28 +526,36 @@ namespace DataImportManager
                     TraceMode = ProcSettings.TraceMode
                 };
 
-                var xmlResult = myDataXmlValidation.ValidateXmlFile(captureInfo);
+                XMLTimeValidation.XmlValidateStatus xmlResult;
+                FileInfo triggerFile;
+                string sourceDescriptionPrefix;
+
+                switch (captureInfo)
+                {
+                    case TriggerFileInfo xmlTriggerFileInfo:
+                        xmlResult = myDataXmlValidation.ValidateXmlFile(xmlTriggerFileInfo);
+
+                        // Processing an actual Xml Trigger File
+                        triggerFile = xmlTriggerFileInfo.TriggerFile;
+                        sourceDescriptionPrefix = "the XML file";
+                        break;
+
+                    case DatasetCreateTaskInfo createTaskInfo:
+                        xmlResult = myDataXmlValidation.ValidateDatasetCreateTaskXml(createTaskInfo);
+
+                        // Processing data from a dataset creation task
+                        triggerFile = null;
+                        sourceDescriptionPrefix = captureInfo.GetSourceDescription();
+                        break;
+
+                    default:
+                        throw new Exception("Unrecognized data type for the captureInfo argument in ValidateXmlInfoMain");
+                }
 
                 mXmlOperatorName = myDataXmlValidation.OperatorName;
                 mXmlOperatorEmail = myDataXmlValidation.OperatorEMail;
                 mXmlDatasetPath = myDataXmlValidation.DatasetPath;
                 mXmlInstrumentName = myDataXmlValidation.InstrumentName;
-
-                FileInfo triggerFile;
-                string sourceDescriptionPrefix;
-
-                if (captureInfo is TriggerFileInfo xmlTriggerFileInfo)
-                {
-                    // Processing an actual Xml Trigger File
-                    triggerFile = xmlTriggerFileInfo.TriggerFile;
-                    sourceDescriptionPrefix = "the XML file";
-                }
-                else
-                {
-                    // Processing data from a dataset creation task
-                    triggerFile = null;
-                    sourceDescriptionPrefix = captureInfo.GetSourceDescription();
-                }
 
                 if (xmlResult == XMLTimeValidation.XmlValidateStatus.XML_VALIDATE_NO_OPERATOR)
                 {

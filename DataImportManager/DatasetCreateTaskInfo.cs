@@ -45,19 +45,27 @@ namespace DataImportManager
             IReadOnlyDictionary<DatasetMetadata, string> triggerFileParamNames,
             DatasetMetadata metadataItem)
         {
-            var paramName = triggerFileParamNames[metadataItem];
-
             if (doc.Root == null)
             {
                 throw new Exception("Root element for the XML is null");
             }
+
+            if (!triggerFileParamNames.ContainsKey(metadataItem))
+            {
+                LogWarning(string.Format("Dictionary triggerFileParamNames does not have key {0}", metadataItem.ToString()));
+                return;
+            }
+
+            var paramName = triggerFileParamNames[metadataItem];
+
+            var paramValue = datasetInfo.ContainsKey(metadataItem) ? datasetInfo[metadataItem] : string.Empty;
 
             // Add a new node, e.g.
             // <Parameter Name="Experiment Name" Value="QC_Mam_23_01" />
 
             doc.Root.Add(new XElement("Parameter",
                 new XAttribute("Name", paramName),
-                new XAttribute("Value", datasetInfo[metadataItem])));
+                new XAttribute("Value", paramValue)));
         }
 
         /// <summary>
@@ -192,7 +200,7 @@ namespace DataImportManager
             {
                 Indent = true,
                 IndentChars = "  ",
-                OmitXmlDeclaration = false
+                OmitXmlDeclaration = true
             };
 
             using var sw = new StringWriter();
@@ -232,6 +240,14 @@ namespace DataImportManager
         public override string GetSourceDescription(bool verbose = false)
         {
             return string.Format("Dataset creation task queue ID {0}", TaskID);
+        }
+
+        /// <summary>
+        /// Show the dataset creation task ID
+        /// </summary>
+        public override string ToString()
+        {
+            return string.Format("Dataset create task {0}", TaskID);
         }
     }
 }

@@ -28,7 +28,7 @@ namespace DataImportManager
         protected override void FinalizeTask()
         {
             MoveXmlFile(TriggerFile, ProcSettings.SuccessDirectory);
-            LogMessage("Completed Data import task for dataset: " + TriggerFile.FullName);
+            LogMessage("Completed data import task for dataset: " + TriggerFile.FullName);
         }
 
         /// <summary>

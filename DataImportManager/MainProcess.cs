@@ -29,6 +29,8 @@ namespace DataImportManager
 
         private const string MGR_PARAM_MGR_ACTIVE = "MgrActive";
 
+        private const bool PROCESS_IN_PARALLEL = true;
+
         public enum CloseOutType
         {
             CLOSEOUT_SUCCESS = 0,
@@ -334,7 +336,7 @@ namespace DataImportManager
         {
             var serverType = DbToolsFactory.GetServerTypeFromConnectionString(dbTools.ConnectStr);
 
-            foreach (var instrument in counts.Where(x => x.Value > 1).Select(x => x.Key))
+            foreach (var instrument in counts.Where(x => x.Value >= 2).Select(x => x.Key))
             {
                 try
                 {
@@ -378,7 +380,7 @@ namespace DataImportManager
             // Prepare to query the function
             // The function will create a new storage path if the auto-defined path does not exist in t_storage_path
 
-            var query = string.Format("SELECT * FROM {0}({1}) AS storage_path_id", instrumentStorageFunction, instrumentId);
+            var query = string.Format("SELECT * FROM {0}({1}, _refDate => null, _autoSwitchActiveStorage => true) AS storage_path_id", instrumentStorageFunction, instrumentId);
 
             if (PreviewMode)
             {
@@ -535,7 +537,7 @@ namespace DataImportManager
                     return string.Empty;
                 }
 
-                var doc = new XDocument(xmlParameters);
+                var doc = XDocument.Parse(xmlParameters);
 
                 // Determine the instrument name by looking for the following XML node
 
@@ -549,8 +551,9 @@ namespace DataImportManager
 
                 return string.Empty;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                LogError(string.Format("Error in GetInstrumentFromDatasetCreateTaskParameters: {0}", ex.Message));
                 return string.Empty;
             }
         }
@@ -564,7 +567,7 @@ namespace DataImportManager
                     return string.Empty;
                 }
 
-                var doc = new XDocument(file.FullName);
+                var doc = XDocument.Load(file.FullName);
 
                 // Determine the instrument name by looking for the following XML node
 
@@ -573,13 +576,16 @@ namespace DataImportManager
 
                 foreach (var element in doc.Elements("Dataset").Elements("Parameter").Where(el => (string)el.Attribute("Name") == "Instrument Name"))
                 {
-                    return string.IsNullOrWhiteSpace(element.Value) ? string.Empty : element.Value;
+                    var instrument = element.Attribute("Value")?.Value;
+
+                    return string.IsNullOrWhiteSpace(instrument) ? string.Empty : instrument;
                 }
 
                 return string.Empty;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                LogError(string.Format("Error in GetInstrumentFromXmlFile: {0}", ex.Message));
                 return string.Empty;
             }
         }
@@ -1019,7 +1025,6 @@ namespace DataImportManager
                     if (resCode != 0 || returnCode != 0)
                     {
                         LogProcedureCallError(resCode, returnCode, messageParam, returnCodeParam, REQUEST_DATASET_CREATE_TASK_SP);
-
                         return;
                     }
 
@@ -1053,13 +1058,8 @@ namespace DataImportManager
                     infoCache.LoadDMSInfo();
                 }
 
-                // Populate a list with the create task IDs so that we can process them in a random order
-                var entryIds = new List<int>();
-
-                foreach (var entryId in datasetCreateTasks.Keys)
-                {
-                    entryIds.Add(entryId);
-                }
+                // Populate a list with the dataset creation task IDs so that we can process them in a random order
+                var entryIds = datasetCreateTasks.Keys.ToList();
 
                 entryIds.Shuffle();
 
@@ -1098,7 +1098,20 @@ namespace DataImportManager
                         EnsureInstrumentDataStorageDirectories(currentChunkXmlParameters, infoCache.DBTools);
                     }
 
-                    Parallel.ForEach(currentChunk, (currentTask) => ProcessOneDatasetCreateTask(currentTask.Key, currentTask.Value, infoCache));
+                    if (PROCESS_IN_PARALLEL)
+                    {
+                        Parallel.ForEach(currentChunk, (currentTask) => ProcessOneDatasetCreateTask(currentTask.Key, currentTask.Value, infoCache));
+                    }
+                    else
+#pragma warning disable CS0162 // Unreachable code detected
+                    {
+                        // ReSharper disable once HeuristicUnreachableCode
+                        foreach (var currentTask in currentChunk)
+                        {
+                            ProcessOneDatasetCreateTask(currentTask.Key, currentTask.Value, infoCache);
+                        }
+                    }
+#pragma warning restore CS0162 // Unreachable code detected
                 }
 
                 NotifySkippedDatasets();
@@ -1178,7 +1191,20 @@ namespace DataImportManager
                         EnsureInstrumentDataStorageDirectories(currentChunk, infoCache.DBTools);
                     }
 
-                    Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
+                    if (PROCESS_IN_PARALLEL)
+                    {
+                        Parallel.ForEach(currentChunk, (currentFile) => ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache));
+                    }
+                    else
+#pragma warning disable CS0162 // Unreachable code detected
+                    {
+                        // ReSharper disable once HeuristicUnreachableCode
+                        foreach (var currentFile in currentChunk)
+                        {
+                            ProcessOneFile(currentFile, successDirectory, failureDirectory, infoCache);
+                        }
+                    }
+#pragma warning restore CS0162 // Unreachable code detected
                 }
 
                 NotifySkippedDatasets();

@@ -25,7 +25,7 @@ namespace DataImportManager
 
         protected override void FinalizeTask()
         {
-            LogMessage("Completed Data import task for dataset creation queue item " + TaskID);
+            LogMessage("Completed data import task for dataset creation queue item " + TaskID);
         }
 
         /// <summary>

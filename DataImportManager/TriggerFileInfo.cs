@@ -62,5 +62,14 @@ namespace DataImportManager
         {
             return verbose ? TriggerFile.FullName : TriggerFile.Name;
         }
+
+
+        /// <summary>
+        /// Show the dataset creation task ID
+        /// </summary>
+        public override string ToString()
+        {
+            return string.Format("XML trigger file {0}", TriggerFile.Name);
+        }
     }
 }

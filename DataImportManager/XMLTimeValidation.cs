@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using PRISM;
 using PRISM.AppSettings;
 
@@ -18,7 +19,9 @@ namespace DataImportManager
 
         private string mDatasetName = string.Empty;
 
-        private DateTime mRunFinishUtc = new(1960, 1, 1);
+        private readonly DateTime mDefaultRunFinishUtc = new(1960, 1, 1);
+
+        private DateTime mRunFinishUtc;
 
         private string mCaptureType = string.Empty;
 
@@ -134,6 +137,8 @@ namespace DataImportManager
                 { ' ', "_"},
                 { '%', "pct"},
                 { '.', "pt"}};
+
+            mRunFinishUtc = mDefaultRunFinishUtc;
         }
 
         /// <summary>
@@ -415,6 +420,42 @@ namespace DataImportManager
         }
 
         /// <summary>
+        /// Extract certain settings from dataset creation task XML
+        /// </summary>
+        /// <param name="createTaskInfo"></param>
+        private XmlValidateStatus GetXmlParameters(DatasetCreateTaskInfo createTaskInfo)
+        {
+            try
+            {
+                var doc = XDocument.Parse(createTaskInfo.XmlParameters);
+                var elements = doc.Elements("root").ToList();
+
+                InstrumentName = DatasetCreateTaskInfo.GetXmlValue(elements, createTaskInfo.CreateTaskXmlNames[DatasetCaptureInfo.DatasetMetadata.Instrument]);
+
+                createTaskInfo.CaptureShareName = DatasetCreateTaskInfo.GetXmlValue(elements, createTaskInfo.CreateTaskXmlNames[DatasetCaptureInfo.DatasetMetadata.CaptureShareName]);
+
+                CaptureSubdirectory = DatasetCreateTaskInfo.GetXmlValue(elements, createTaskInfo.CreateTaskXmlNames[DatasetCaptureInfo.DatasetMetadata.CaptureSubdirectory]);
+
+                ValidateCaptureSubdirectory(createTaskInfo);
+
+                mDatasetName = DatasetCreateTaskInfo.GetXmlValue(elements, createTaskInfo.CreateTaskXmlNames[DatasetCaptureInfo.DatasetMetadata.Dataset]);
+
+                mOperatorUsername = DatasetCreateTaskInfo.GetXmlValue(elements, createTaskInfo.CreateTaskXmlNames[DatasetCaptureInfo.DatasetMetadata.OperatorUsername]);
+
+                if (!string.IsNullOrEmpty(InstrumentName))
+                    return XmlValidateStatus.XML_VALIDATE_CONTINUE;
+
+                LogError("XMLTimeValidation.GetXMLParameters(), The instrument name was blank.");
+                return XmlValidateStatus.XML_VALIDATE_BAD_XML;
+            }
+            catch (Exception ex)
+            {
+                LogError("XMLTimeValidation.GetXMLParameters(), Error parsing dataset creation task XML", ex);
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+            }
+        }
+
+        /// <summary>
         /// Extract certain settings from an XML file
         /// </summary>
         /// <param name="triggerFileInfo"></param>
@@ -466,18 +507,8 @@ namespace DataImportManager
                             case "Capture Subdirectory":
                                 CaptureSubdirectory = row["Value"].ToString();
 
-                                if (Path.IsPathRooted(CaptureSubdirectory))
-                                {
-                                    // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
-                                    // For safety, will blank this out, but will post a log entry to the database
-                                    var msg = "XMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
-                                              "this indicates a bug with Buzzard; see: " + captureInfo.GetSourceDescription();
+                                ValidateCaptureSubdirectory(captureInfo);
 
-                                    LogError(msg, null, true);
-                                    CaptureSubdirectory = string.Empty;
-                                }
-
-                                captureInfo.OriginalCaptureSubdirectory = CaptureSubdirectory;
                                 break;
 
                             case "Dataset Name":
@@ -899,7 +930,7 @@ namespace DataImportManager
                         {
                             Console.WriteLine("Skipping date validation because host name starts with {0}", MainProcess.DEVELOPER_COMPUTER_NAME);
                         }
-                        else if (mRunFinishUtc != new DateTime(1960, 1, 1))
+                        else if (mRunFinishUtc != mDefaultRunFinishUtc)
                         {
                             var additionalInfo = "validating file Date vs. Run_Finish listed In XML trigger file " +
                                             "(" + mRunFinishUtc.ToString(CultureInfo.InvariantCulture) + ")";
@@ -1195,6 +1226,51 @@ namespace DataImportManager
             ConsoleMsgUtils.SleepSeconds(actualSecondsToSleep);
         }
 
+
+        private void ValidateCaptureSubdirectory(DatasetCaptureInfo captureInfo)
+        {
+            if (Path.IsPathRooted(CaptureSubdirectory))
+            {
+                // Instrument directory has an older version of Buzzard that incorrectly determines the capture subfolder
+                // For safety, will blank this out, but will post a log entry to the database
+                var msg = "XMLTimeValidation.GetXMLParameters(), the CaptureSubfolder is not a relative path; " +
+                          "this indicates a bug with Buzzard; see: " + captureInfo.GetSourceDescription();
+
+                LogError(msg, null, true);
+                CaptureSubdirectory = string.Empty;
+            }
+
+            captureInfo.OriginalCaptureSubdirectory = CaptureSubdirectory;
+        }
+
+        /// <summary>
+        /// Process dataset creation task XML
+        /// </summary>
+        /// <param name="createTaskInfo"></param>
+        public XmlValidateStatus ValidateDatasetCreateTaskXml(DatasetCreateTaskInfo createTaskInfo)
+        {
+            ErrorMessage = string.Empty;
+            try
+            {
+                var xmlLoadResult = GetXmlParameters(createTaskInfo);
+
+                // ReSharper disable once ConvertIfStatementToReturnStatement
+                if (xmlLoadResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
+                {
+                    return xmlLoadResult;
+                }
+
+                return ValidateXmlFileWork(createTaskInfo);
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = string.Format("Error validating XML for dataset create task {0}", createTaskInfo.TaskID);
+                var errMsg = "XMLTimeValidation.ValidateDatasetCreateTaskXml(), " + ErrorMessage + ": " + ex.Message;
+                LogError(errMsg);
+                return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
+            }
+        }
+
         /// <summary>
         /// Process an XML file that defines a new dataset to add to DMS
         /// </summary>
@@ -1213,10 +1289,13 @@ namespace DataImportManager
 
                 var xmlLoadResult = GetXmlParameters(triggerFileInfo);
 
+                // ReSharper disable once ConvertIfStatementToReturnStatement
                 if (xmlLoadResult != XmlValidateStatus.XML_VALIDATE_CONTINUE)
                 {
                     return xmlLoadResult;
                 }
+
+                return ValidateXmlFileWork(triggerFileInfo);
             }
             catch (Exception ex)
             {
@@ -1225,15 +1304,13 @@ namespace DataImportManager
                 LogError(errMsg);
                 return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
             }
-
-            return ValidateXmlFile(triggerFileInfo);
         }
 
         /// <summary>
         /// Process XML that defines a new dataset to add to DMS
         /// </summary>
         /// <param name="captureInfo">Dataset capture info</param>
-        public XmlValidateStatus ValidateXmlFile(DatasetCaptureInfo captureInfo)
+        private XmlValidateStatus ValidateXmlFileWork(DatasetCaptureInfo captureInfo)
         {
             if (mInstrumentsToSkip.ContainsKey(InstrumentName))
             {
