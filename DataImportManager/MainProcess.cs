@@ -420,11 +420,23 @@ namespace DataImportManager
             // Prepare to call the stored procedure
             // The procedure will create a new storage path if the auto-defined path does not exist in T_Storage_Path
 
-            var command = dbTools.CreateCommand(instrumentStorageProcedure, CommandType.StoredProcedure);
-            command.CommandTimeout = 45;
+            var cmd = dbTools.CreateCommand(instrumentStorageProcedure, CommandType.StoredProcedure);
+            cmd.CommandTimeout = 45;
 
-            dbTools.AddParameter(command, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
-            dbTools.AddParameter(command, "@InstrumentID", SqlType.Int, 1, instrumentId);
+            dbTools.AddParameter(cmd, "@instrumentID", SqlType.Int, 1, instrumentId);
+
+            // Set this to null so that the current datetime is used
+            dbTools.AddParameter(cmd, "@refDate", SqlType.DateTime).Value = DBNull.Value;
+
+            // SQL Server (defaults to 1)
+            dbTools.AddParameter(cmd, "@autoSwitchActiveStorage", SqlType.TinyInt).Value = 1;
+
+            // Postgres (defaults to true)
+            // dbTools.AddParameter(cmd, "@autoSwitchActiveStorage", SqlType.Boolean).Value = true;
+
+            // Define parameter for procedure's return value
+            // If querying a Postgres DB, dbTools will auto-change "@return" to "_returnCode"
+            dbTools.AddParameter(cmd, "@return", SqlType.Int, ParameterDirection.ReturnValue);
 
             if (PreviewMode)
             {
@@ -443,7 +455,7 @@ namespace DataImportManager
             }
 
             // Execute the stored procedure
-            var storagePathID = dbTools.ExecuteSP(command);
+            var storagePathID = dbTools.ExecuteSP(cmd);
 
             if (TraceMode)
             {
@@ -892,7 +904,7 @@ namespace DataImportManager
 
         private void ProcessOneDatasetCreateTask(int entryId, string xmlParameters, DMSInfoCache infoCache)
         {
-            const string SET_TASK_COMPLETE_SP = "set_dataset_create_task_complete.sql";
+            const string SET_TASK_COMPLETE_SP = "set_dataset_create_task_complete";
 
             var udtSettings = GetProcessingSettings();
             var triggerProcessor = new ProcessDatasetCreateTask(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
@@ -910,13 +922,14 @@ namespace DataImportManager
 
             var cmd = dbTools.CreateCommand(SET_TASK_COMPLETE_SP, CommandType.StoredProcedure);
 
-            dbTools.AddParameter(cmd, "@processorName", SqlType.VarChar, 128);
-
             dbTools.AddParameter(cmd, "@entryID", SqlType.Int).Value = entryId;
             var completionCodeParam = dbTools.AddParameter(cmd, "@completionCode", SqlType.Int);
-            var completionMessageParam = dbTools.AddParameter(cmd, "@completionMessage", SqlType.VarChar, 4000);
+            var completionMessageParam = dbTools.AddParameter(cmd, "@completionMessage", SqlType.VarChar, 2048);
             var messageParam = dbTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, ParameterDirection.InputOutput);
-            var returnCodeParam = dbTools.AddParameter(cmd, "@returnCode", SqlType.VarChar, 64, ParameterDirection.InputOutput);
+
+            // Define parameter for procedure's return value
+            // If querying a Postgres DB, dbTools will auto-change "@return" to "_returnCode"
+            var returnCodeParam = dbTools.AddParameter(cmd, "@return", SqlType.Int, ParameterDirection.ReturnValue);
 
             if (string.IsNullOrWhiteSpace(triggerProcessor.DatabaseErrorMsg))
             {
@@ -988,7 +1001,10 @@ namespace DataImportManager
                     var entryIdParam = dbTools.AddParameter(cmd, "@entryID", SqlType.Int, ParameterDirection.InputOutput);
                     var parametersParam = dbTools.AddParameter(cmd, "@parameters", SqlType.VarChar, 4000, ParameterDirection.InputOutput);
                     var messageParam = dbTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, ParameterDirection.InputOutput);
-                    var returnCodeParam = dbTools.AddParameter(cmd, "@returnCode", SqlType.VarChar, 64, ParameterDirection.InputOutput);
+
+                    // Define parameter for procedure's return value
+                    // If querying a Postgres DB, dbTools will auto-change "@return" to "_returnCode"
+                    var returnCodeParam = dbTools.AddParameter(cmd, "@return", SqlType.Int, ParameterDirection.ReturnValue);
 
                     if (mDebugLevel > 4 || TraceMode)
                     {

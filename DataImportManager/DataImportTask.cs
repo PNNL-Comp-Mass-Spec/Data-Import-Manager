@@ -132,13 +132,13 @@ namespace DataImportManager
                 var cmd = DBTools.CreateCommand(mStoredProc, CommandType.StoredProcedure);
                 cmd.CommandTimeout = 45;
 
-                // Define parameter for procedure's return value
-                // If querying a Postgres DB, DBTools will auto-change "@return" to "_returnCode"
-                var returnParam = DBTools.AddParameter(cmd, "@Return", SqlType.Int, direction: ParameterDirection.ReturnValue);
-
-                DBTools.AddParameter(cmd, "@XmlDoc", SqlType.VarChar, 4000, triggerFileXML);
+                DBTools.AddParameter(cmd, "@xmlDoc", SqlType.VarChar, 4000, triggerFileXML);
                 DBTools.AddParameter(cmd, "@mode", SqlType.VarChar, 24, "add");
-                var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, direction: ParameterDirection.InputOutput);
+                var messageParam = DBTools.AddParameter(cmd, "@message", SqlType.VarChar, 512, ParameterDirection.InputOutput);
+
+                // Define parameter for procedure's return value
+                // If querying a Postgres DB, dbTools will auto-change "@return" to "_returnCode"
+                var returnParam = DBTools.AddParameter(cmd, "@return", SqlType.Int, ParameterDirection.ReturnValue);
 
                 if (PreviewMode)
                 {
