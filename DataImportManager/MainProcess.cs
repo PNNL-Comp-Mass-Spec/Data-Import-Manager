@@ -1114,6 +1114,9 @@ namespace DataImportManager
 #pragma warning restore CS0162 // Unreachable code detected
                 }
 
+                if (entryIds.Count == 0)
+                    return;
+
                 NotifySkippedDatasets();
 
                 LogMessage("Done processing dataset create tasks");
