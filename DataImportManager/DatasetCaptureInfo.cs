@@ -4,6 +4,9 @@ namespace DataImportManager
 {
     internal abstract class DatasetCaptureInfo : LoggerBase
     {
+        /// <summary>
+        /// Dataset metadata names and IDs
+        /// </summary>
         public enum DatasetMetadata
         {
             Dataset = 0,
@@ -31,12 +34,24 @@ namespace DataImportManager
             RunFinish = 22  // Only tracked by XML trigger files, not by dataset creation task parameters
         }
 
+        /// <summary>
+        /// Capture share name
+        /// </summary>
         public string CaptureShareName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Final capture subdirectory path
+        /// </summary>
         public string FinalCaptureSubdirectory { get; set; } = string.Empty;
 
+        /// <summary>
+        /// True if <see cref="FinalCaptureSubdirectory"/> differs from <see cref="OriginalCaptureSubdirectory"/>
+        /// </summary>
         public bool NeedsCaptureSubdirectoryReplacement => !OriginalCaptureSubdirectory.Equals(FinalCaptureSubdirectory, StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Original capture subdirectory path
+        /// </summary>
         public string OriginalCaptureSubdirectory { get; set; } = string.Empty;
 
         /// <summary>

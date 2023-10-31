@@ -14,6 +14,9 @@ namespace DataImportManager
         private string mDataImportErrorMessageForDatabase;
         private string mStoredProc;
 
+        /// <summary>
+        /// Error message returned by procedure add_new_dataset (which in turn calls add_update_dataset)
+        /// </summary>
         public string PostTaskErrorMessage
         {
             get

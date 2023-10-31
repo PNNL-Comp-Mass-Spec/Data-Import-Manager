@@ -31,6 +31,9 @@ namespace DataImportManager
 
         private const bool PROCESS_IN_PARALLEL = true;
 
+        /// <summary>
+        /// Closeout type
+        /// </summary>
         public enum CloseOutType
         {
             CLOSEOUT_SUCCESS = 0,
@@ -63,9 +66,24 @@ namespace DataImportManager
         /// </summary>
         private readonly ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> mQueuedMail;
 
+        /// <summary>
+        /// When true, ignore instrument source errors
+        /// </summary>
         public bool IgnoreInstrumentSourceErrors { get; set; }
+
+        /// <summary>
+        /// When true, do not send e-mails
+        /// </summary>
         public bool MailDisabled { get; set; }
+
+        /// <summary>
+        /// When true, preview adding new datasets
+        /// </summary>
         public bool PreviewMode { get; set; }
+
+        /// <summary>
+        /// When true, show additional messages
+        /// </summary>
         public bool TraceMode { get; set; }
 
         /// <summary>
@@ -479,6 +497,11 @@ namespace DataImportManager
             mFileWatcher.EnableRaisingEvents = false;
         }
 
+        /// <summary>
+        /// Look for instrument names in dataset create task XML parameters and determine the number of datasets to be created for each instrument
+        /// </summary>
+        /// <param name="xmlParameters">List of XML parameters for dataset create tasks</param>
+        /// <returns>Dictionary where keys are instrument names and values are dataset counts</returns>
         public static Dictionary<string, int> GetCreateTaskCountsForInstruments(List<string> xmlParameters)
         {
             var instrumentNames = new List<string>();
@@ -493,6 +516,11 @@ namespace DataImportManager
             return GetDatasetsCountsByInstrument(instrumentNames);
         }
 
+        /// <summary>
+        /// Look for instrument names in XML trigger files and determine the number of datasets to be created for each instrument
+        /// </summary>
+        /// <param name="xmlFiles">List of XML trigger file</param>
+        /// <returns>Dictionary where keys are instrument names and values are dataset counts</returns>
         public static Dictionary<string, int> GetFileCountsForInstruments(List<FileInfo> xmlFiles)
         {
             var instrumentNames = new List<string>();
@@ -507,7 +535,12 @@ namespace DataImportManager
             return GetDatasetsCountsByInstrument(instrumentNames);
         }
 
-        public static Dictionary<string, int> GetDatasetsCountsByInstrument(List<string> instrumentNames)
+        /// <summary>
+        /// Determine the number of datasets to be created for each instrument
+        /// </summary>
+        /// <param name="instrumentNames">List of instrument names</param>
+        /// <returns>Dictionary where keys are instrument names and values are dataset counts</returns>
+        private static Dictionary<string, int> GetDatasetsCountsByInstrument(List<string> instrumentNames)
         {
             var counts = new Dictionary<string, int>();
 
@@ -869,6 +902,11 @@ namespace DataImportManager
             return true;
         }
 
+        /// <summary>
+        /// Log an error message to the database
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="ex"></param>
         public static void LogErrorToDatabase(string message, Exception ex = null)
         {
             LogError(message, ex, true);
@@ -1226,6 +1264,11 @@ namespace DataImportManager
             }
         }
 
+        /// <summary>
+        /// Look for available XML trigger files
+        /// </summary>
+        /// <param name="xmlFilesToImport"></param>
+        /// <returns>CloseOutType.CLOSEOUT_SUCCESS if successful, CloseOutType.CLOSEOUT_FAILED if an error</returns>
         public CloseOutType ScanXmlTriggerFileDirectory(out List<FileInfo> xmlFilesToImport)
         {
             var triggerFileDirectoryPath = mMgrSettings.GetParam("xferDir");
@@ -1455,7 +1498,7 @@ namespace DataImportManager
                         }
 
                         subjectList.Add(queuedMailItem.Subject);
-                    } // for each queuedMailItem
+                    }
 
                     currentTask = "Iterate over summarizedErrors, sorted by SortWeight";
 
@@ -1502,7 +1545,7 @@ namespace DataImportManager
 
                         mailBody.AppendLine(errorSummary.DatabaseErrorMsg);
                         mailBody.AppendLine();
-                    } // for each errorEntry
+                    }
 
                     if (instrumentFilePaths.Count == 1)
                     {
@@ -1589,7 +1632,7 @@ namespace DataImportManager
                     mailLogger.WriteLine("Subject: " + mailToSend.Subject);
                     mailLogger.WriteLine();
                     mailLogger.WriteLine(mailToSend.Body);
-                } // for each queuedMailContainer
+                }
 
                 currentTask = "Preview cached messages";
 

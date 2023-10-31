@@ -5,6 +5,9 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class QueuedMail
     {
+        /// <summary>
+        /// Instrument operator for the dataset
+        /// </summary>
         public string InstrumentOperator { get; }
 
         /// <summary>
@@ -12,6 +15,9 @@ namespace DataImportManager
         /// </summary>
         public string Recipients { get; }
 
+        /// <summary>
+        /// E-mail subject
+        /// </summary>
         public string Subject { get; }
 
         /// <summary>
@@ -20,6 +26,9 @@ namespace DataImportManager
         /// </summary>
         public string ErrorMessageForUser { get; set; }
 
+        /// <summary>
+        /// List of validation errors
+        /// </summary>
         public List<ValidationError> ValidationErrors { get; }
 
         /// <summary>

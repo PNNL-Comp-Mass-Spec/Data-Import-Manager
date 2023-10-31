@@ -134,6 +134,11 @@ namespace DataImportManager
         /// </summary>
         public IDBTools DBTools { get; }
 
+        /// <summary>
+        /// Look for the error message in the messages loaded from T_DIM_Error_Solution to see if a solution message is defined
+        /// </summary>
+        /// <param name="errorText"></param>
+        /// <returns>Suggested solution, or an empty string</returns>
         public string GetDbErrorSolution(string errorText)
         {
             if (mErrorSolutions.Count == 0)
@@ -149,6 +154,12 @@ namespace DataImportManager
             return string.Empty;
         }
 
+        /// <summary>
+        /// Get metadata about a given instrument
+        /// </summary>
+        /// <param name="instrumentName">Instrument name</param>
+        /// <param name="udtInstrumentInfo">Output instrument info</param>
+        /// <returns>True if successful, false if the instrument name is unrecognized</returns>
         public bool GetInstrumentInfo(string instrumentName, out InstrumentInfoType udtInstrumentInfo)
         {
             if (mInstruments.Count == 0)

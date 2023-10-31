@@ -56,8 +56,14 @@ namespace DataImportManager
 
         private string captureShareNameInTriggerFile = string.Empty;
 
+        /// <summary>
+        /// Capture subdirectory
+        /// </summary>
         public string CaptureSubdirectory { get; private set; } = string.Empty;
 
+        /// <summary>
+        /// Dataset name
+        /// </summary>
         public string DatasetName => FixNull(mDatasetName);
 
         /// <summary>
@@ -65,12 +71,24 @@ namespace DataImportManager
         /// </summary>
         public string DatasetPath => FixNull(mDatasetPath);
 
+        /// <summary>
+        /// Instrument name
+        /// </summary>
         public string InstrumentName { get; private set; } = string.Empty;
 
+        /// <summary>
+        /// Time validation error message
+        /// </summary>
         public string ErrorMessage { get; private set; } = string.Empty;
 
+        /// <summary>
+        /// Instrument operator's e-mail
+        /// </summary>
         public string OperatorEMail => FixNull(mOperatorEmail);
 
+        /// <summary>
+        /// Instrument operator's name
+        /// </summary>
         public string OperatorName => FixNull(mOperatorName);
 
         /// <summary>
@@ -78,6 +96,9 @@ namespace DataImportManager
         /// </summary>
         public string SourcePath => FixNull(mSourcePath);
 
+        /// <summary>
+        /// When true, show additional messages
+        /// </summary>
         public bool TraceMode { get; set; }
 
         /// <summary>

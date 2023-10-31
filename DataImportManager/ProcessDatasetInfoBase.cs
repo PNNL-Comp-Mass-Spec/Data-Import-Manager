@@ -17,16 +17,47 @@ namespace DataImportManager
 
         private const string CHECK_THE_LOG_FOR_DETAILS = "Check the log for details";
 
+        /// <summary>
+        /// Processing settings struct
+        /// </summary>
         public struct XmlProcSettingsType
         {
+            /// <summary>
+            /// Debug level
+            /// </summary>
+            /// <remarks>Higher values lead to more log messages</remarks>
             public int DebugLevel;
+
+            /// <summary>
+            /// When true, ignore instrument source errors
+            /// </summary>
             public bool IgnoreInstrumentSourceErrors;
+
+            /// <summary>
+            /// When true, preview adding new datasets
+            /// </summary>
             public bool PreviewMode;
+
+            /// <summary>
+            /// When true, show additional messages
+            /// </summary>
             public bool TraceMode;
+
+            /// <summary>
+            /// Share path for failed XML trigger files
+            /// </summary>
             public string FailureDirectory;
+
+
+            /// <summary>
+            /// Share path for successful XML trigger files
+            /// </summary>
             public string SuccessDirectory;
         }
 
+        /// <summary>
+        /// Processing settings
+        /// </summary>
         public XmlProcSettingsType ProcSettings { get; set; }
 
         /// <summary>
