@@ -6,7 +6,7 @@ namespace DataImportManager
 {
     internal class ProcessDatasetCreateTask : ProcessDatasetInfoBase
     {
-        private int TaskID { get; set; } = 0;
+        private int TaskID { get; set; }
 
         /// <summary>
         /// Constructor

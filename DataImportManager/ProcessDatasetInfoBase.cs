@@ -805,7 +805,7 @@ namespace DataImportManager
             }
         }
 
-        private void ShowTraceMessage(string message)
+        private static void ShowTraceMessage(string message)
         {
             MainProcess.ShowTraceMessage(message);
         }

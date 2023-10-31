@@ -7,7 +7,7 @@ namespace DataImportManager
 {
     internal static class Program
     {
-        public static readonly string ProgramDate;
+        private static readonly string ProgramDate;
 
         static Program()
         {
