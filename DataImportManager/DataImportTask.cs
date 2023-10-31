@@ -10,7 +10,8 @@ namespace DataImportManager
     internal class DataImportTask : DBTask
     {
         private string mPostTaskErrorMessage = string.Empty;
-        private string mDatabaseErrorMessage;
+        private string mDataImportErrorMessage;
+        private string mDataImportErrorMessageForDatabase;
         private string mStoredProc;
 
         public string PostTaskErrorMessage
@@ -26,16 +27,36 @@ namespace DataImportManager
             }
         }
 
-        public string DatabaseErrorMessage
+        /// <summary>
+        /// Data import error message to mail to the user
+        /// </summary>
+        public string DataImportErrorMessage
         {
             get
             {
-                if (string.IsNullOrEmpty(mDatabaseErrorMessage))
+                if (string.IsNullOrEmpty(mDataImportErrorMessage))
                 {
                     return string.Empty;
                 }
 
-                return mDatabaseErrorMessage;
+                return mDataImportErrorMessage;
+            }
+        }
+
+        /// <summary>
+        /// Data import error message to store in T_Dataset_Create_Queue
+        /// </summary>
+        /// <remarks>This is the error message, but without any suggested fixes</remarks>
+        public string DataImportErrorMessageForDatabase
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(mDataImportErrorMessageForDatabase))
+                {
+                    return string.Empty;
+                }
+
+                return mDataImportErrorMessageForDatabase;
             }
         }
 
@@ -61,7 +82,8 @@ namespace DataImportManager
         public bool PostTask(DatasetCaptureInfo captureInfo)
         {
             mPostTaskErrorMessage = string.Empty;
-            mDatabaseErrorMessage = string.Empty;
+            mDataImportErrorMessage = string.Empty;
+            mDataImportErrorMessageForDatabase = string.Empty;
 
             try
             {
@@ -122,8 +144,8 @@ namespace DataImportManager
         {
             try
             {
-                // Initialize database error message
-                mDatabaseErrorMessage = string.Empty;
+                mDataImportErrorMessage = string.Empty;
+                mDataImportErrorMessageForDatabase = string.Empty;
 
                 // Prepare to call the stored procedure, typically named add_new_dataset in DMS5, which in turn calls add_update_dataset
                 // (old procedure names: AddNewDataset and AddUpdateDataset)
@@ -173,7 +195,10 @@ namespace DataImportManager
             catch (Exception ex)
             {
                 LogError("DataImportTask.ImportDataTask(), Error posting dataset", ex, true);
-                mDatabaseErrorMessage = Environment.NewLine + ("Database Error Message:" + ex.Message);
+
+                mDataImportErrorMessage = Environment.NewLine + "Database Error Message: " + ex.Message;
+                mDataImportErrorMessageForDatabase = "Exception in ImportDataTask: " + ex.Message;
+
                 return false;
             }
         }

@@ -43,7 +43,15 @@ namespace DataImportManager
 
         private DataImportTask mDataImportTask;
 
-        public string DatabaseErrorMsg { get; protected set; }
+        /// <summary>
+        /// Error message to include in the e-mail to the user
+        /// </summary>
+        public string ErrorMessageForUser { get; protected set; }
+
+        /// <summary>
+        /// Error message to store in the database (only applies to dataset create tasks)
+        /// </summary>
+        public string ErrorMessageForDatabase { get; protected set; }
 
         private bool mSecondaryLogonServiceChecked;
 
@@ -78,6 +86,16 @@ namespace DataImportManager
             mDMSInfoCache = infoCache;
 
             QueuedMail = new ConcurrentDictionary<string, ConcurrentBag<QueuedMail>>();
+        }
+
+        private static string AppendToText(string existingText, string additionalText)
+        {
+            if (string.IsNullOrWhiteSpace(additionalText))
+                return existingText;
+
+            return string.IsNullOrWhiteSpace(existingText)
+                ? additionalText
+                : string.Format("{0}; {1}", existingText, additionalText);
         }
 
         private void CacheMail(List<ValidationError> validationErrors, string addnlRecipient, string subjectAppend)
@@ -117,9 +135,9 @@ namespace DataImportManager
                 // Store the message and metadata
                 var messageToQueue = new QueuedMail(mXmlOperatorName, mailRecipients, mailSubject, validationErrors);
 
-                if (!string.IsNullOrEmpty(DatabaseErrorMsg))
+                if (!string.IsNullOrEmpty(ErrorMessageForUser))
                 {
-                    messageToQueue.DatabaseErrorMsg = DatabaseErrorMsg;
+                    messageToQueue.ErrorMessageForUser = ErrorMessageForUser;
                 }
 
                 messageToQueue.InstrumentDatasetPath = mXmlDatasetPath;
@@ -199,11 +217,7 @@ namespace DataImportManager
             {
                 if (mSecondaryLogonServiceChecked)
                 {
-                    if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
-                    {
-                        DatabaseErrorMsg = "Call to ValidateXmlInfoMain returned false";
-                    }
-
+                    UpdateErrorMessagePropertiesIfEmpty("Call to ValidateXmlInfoMain returned false");
                     return false;
                 }
 
@@ -235,18 +249,18 @@ namespace DataImportManager
                     // Now that the service is running, try the validation one more time
                     if (!ValidateXmlInfoMain(captureInfo))
                     {
-                        if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
-                        {
-                            DatabaseErrorMsg = "Call to ValidateXmlInfoMain returned false";
-                        }
-
+                        UpdateErrorMessagePropertiesIfEmpty("Call to ValidateXmlInfoMain returned false");
                         return false;
                     }
                 }
                 catch (Exception ex)
                 {
-                    DatabaseErrorMsg = "Unable to start the Secondary Logon service: " + ex.Message;
-                    LogWarning(DatabaseErrorMsg);
+                    var msg = "Unable to start the Secondary Logon service: " + ex.Message;
+
+                    ErrorMessageForUser = AppendToText(ErrorMessageForUser, msg);
+                    ErrorMessageForDatabase = AppendToText(ErrorMessageForDatabase, msg);
+
+                    LogWarning(ErrorMessageForUser);
                     return false;
                 }
             }
@@ -280,12 +294,12 @@ namespace DataImportManager
                 PreviewMode = ProcSettings.PreviewMode
             };
 
-            DatabaseErrorMsg = string.Empty;
             var success = mDataImportTask.PostTask(captureInfo);
 
-            DatabaseErrorMsg = mDataImportTask.DatabaseErrorMessage;
+            ErrorMessageForUser = mDataImportTask.DataImportErrorMessage;
+            ErrorMessageForDatabase = mDataImportTask.DataImportErrorMessageForDatabase;
 
-            if (DatabaseErrorMsg.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (ErrorMessageForUser.IndexOf("timeout expired.", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Log the error and leave the file for another attempt
                 MainProcess.LogErrorToDatabase("Encountered database timeout error for dataset: " + captureInfo.GetSourceDescription(true));
@@ -305,11 +319,7 @@ namespace DataImportManager
                 // Log the error and leave the file for another attempt
                 LogError("Deadlock encountered: " + captureInfo.GetSourceDescription());
 
-                if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
-                {
-                    DatabaseErrorMsg = "Deadlock encountered";
-                }
-
+                UpdateErrorMessagePropertiesIfEmpty("Deadlock encountered");
                 return false;
             }
 
@@ -320,11 +330,7 @@ namespace DataImportManager
                 // Log the error and leave the file for another attempt
                 LogError("Transaction commit error: " + captureInfo.GetSourceDescription());
 
-                if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
-                {
-                    DatabaseErrorMsg = "Transaction commit error";
-                }
-
+                UpdateErrorMessagePropertiesIfEmpty("Transaction commit error");
                 return false;
             }
 
@@ -354,14 +360,8 @@ namespace DataImportManager
                 MainProcess.LogErrorToDatabase(errorMessage + ". View details in log at " + GetLogFileSharePath() + " for: " + captureInfo.GetSourceDescription(true));
             }
 
-            if (string.IsNullOrWhiteSpace(DatabaseErrorMsg))
-            {
-                DatabaseErrorMsg = errorMessage;
-            }
-            else
-            {
-                DatabaseErrorMsg = string.Format("{0}; {1}", DatabaseErrorMsg, errorMessage);
-            }
+            ErrorMessageForUser = AppendToText(ErrorMessageForUser, errorMessage);
+            ErrorMessageForDatabase = AppendToText(ErrorMessageForDatabase, errorMessage);
 
             var validationErrors = new List<ValidationError>();
             var newError = new ValidationError("Dataset XML problem", sourceDescription);
@@ -375,12 +375,14 @@ namespace DataImportManager
             else
             {
                 newError.AdditionalInfo = msgTypeString + ": " + mDataImportTask.PostTaskErrorMessage;
+
+                ErrorMessageForDatabase = AppendToText(ErrorMessageForDatabase, mDataImportTask.PostTaskErrorMessage);
             }
 
             validationErrors.Add(newError);
 
             // Check whether there is a suggested solution in table T_DIM_Error_Solution for the error
-            var errorSolution = mDMSInfoCache.GetDbErrorSolution(DatabaseErrorMsg);
+            var errorSolution = mDMSInfoCache.GetDbErrorSolution(ErrorMessageForUser);
 
             if (!string.IsNullOrWhiteSpace(errorSolution))
             {
@@ -391,7 +393,7 @@ namespace DataImportManager
                 else
                 {
                     // Store the solution in the database error message variable so that it gets included in the message body of the e-mail
-                    DatabaseErrorMsg = errorSolution;
+                    ErrorMessageForUser = errorSolution;
                 }
             }
 
@@ -576,12 +578,16 @@ namespace DataImportManager
 
                     if (string.IsNullOrWhiteSpace(mXmlOperatorName))
                     {
-                        DatabaseErrorMsg = "Operator username not listed in the dataset XML";
+                        const string OPERATOR_MISSING_FROM_XML = "Operator username not listed in the dataset XML";
+                        AppendToText(ErrorMessageForDatabase, OPERATOR_MISSING_FROM_XML);
+                        ErrorMessageForUser = OPERATOR_MISSING_FROM_XML;
                         validationErrors.Add(new ValidationError("Operator name not listed in " + sourceDescriptionPrefix, string.Empty));
                     }
                     else
                     {
-                        DatabaseErrorMsg = "Operator username not defined in DMS (or ambiguous): " + mXmlOperatorName;
+                        var msg = "Operator username not defined in DMS (or ambiguous): " + mXmlOperatorName;
+                        AppendToText(ErrorMessageForDatabase, msg);
+                        ErrorMessageForUser = msg;
                         validationErrors.Add(new ValidationError("Operator name not defined in DMS", mXmlOperatorName));
                     }
 
@@ -590,15 +596,15 @@ namespace DataImportManager
                         validationErrors.Add(new ValidationError("Dataset trigger file path", moveLocPath));
                     }
 
-                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(DatabaseErrorMsg);
+                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(ErrorMessageForUser);
 
                     if (string.IsNullOrWhiteSpace(errorSolution))
                     {
-                        DatabaseErrorMsg = string.Empty;
+                        ErrorMessageForUser = string.Empty;
                     }
                     else
                     {
-                        DatabaseErrorMsg = errorSolution;
+                        ErrorMessageForUser = errorSolution;
                     }
 
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Operator not defined.");
@@ -719,17 +725,20 @@ namespace DataImportManager
 
                     validationErrors.Add(newError);
 
-                    DatabaseErrorMsg = "The dataset data is not available for capture";
+                    ErrorMessageForDatabase = AppendToText(ErrorMessageForDatabase, newError.IssueType);
+                    ErrorMessageForDatabase = AppendToText(ErrorMessageForDatabase, newError.AdditionalInfo);
 
-                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(DatabaseErrorMsg);
+                    ErrorMessageForUser = "The dataset data is not available for capture";
+
+                    var errorSolution = mDMSInfoCache.GetDbErrorSolution(ErrorMessageForUser);
 
                     if (string.IsNullOrWhiteSpace(errorSolution))
                     {
-                        DatabaseErrorMsg = string.Empty;
+                        ErrorMessageForUser = string.Empty;
                     }
                     else
                     {
-                        DatabaseErrorMsg = errorSolution;
+                        ErrorMessageForUser = errorSolution;
                     }
 
                     CacheMail(validationErrors, mXmlOperatorEmail, " - Dataset not found.");
@@ -768,6 +777,19 @@ namespace DataImportManager
         private void ShowTraceMessage(string message)
         {
             MainProcess.ShowTraceMessage(message);
+        }
+
+        private void UpdateErrorMessagePropertiesIfEmpty(string errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(ErrorMessageForUser))
+            {
+                ErrorMessageForUser = errorMessage;
+            }
+
+            if (string.IsNullOrWhiteSpace(ErrorMessageForDatabase))
+            {
+                ErrorMessageForDatabase = errorMessage;
+            }
         }
     }
 }

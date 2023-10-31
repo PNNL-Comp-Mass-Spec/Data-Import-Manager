@@ -937,7 +937,7 @@ namespace DataImportManager
             // If querying a Postgres DB, dbTools will auto-change "@return" to "_returnCode"
             var returnCodeParam = dbTools.AddParameter(cmd, "@return", SqlType.Int, ParameterDirection.ReturnValue);
 
-            if (string.IsNullOrWhiteSpace(triggerProcessor.DatabaseErrorMsg))
+            if (string.IsNullOrWhiteSpace(triggerProcessor.ErrorMessageForDatabase))
             {
                 completionCodeParam.Value = 0;
                 completionMessageParam.Value = string.Empty;
@@ -945,7 +945,7 @@ namespace DataImportManager
             else
             {
                 completionCodeParam.Value = 1;
-                completionMessageParam.Value = triggerProcessor.DatabaseErrorMsg;
+                completionMessageParam.Value = triggerProcessor.ErrorMessageForDatabase;
             }
 
             if (mDebugLevel > 4 || TraceMode)
@@ -1444,15 +1444,15 @@ namespace DataImportManager
 
                             errorSummary.AffectedItems.Add(affectedItem);
 
-                            if (string.IsNullOrWhiteSpace(queuedMailItem.DatabaseErrorMsg))
+                            if (string.IsNullOrWhiteSpace(queuedMailItem.ErrorMessageForUser))
                                 continue;
 
-                            if (databaseErrorMessages.Contains(queuedMailItem.DatabaseErrorMsg))
+                            if (databaseErrorMessages.Contains(queuedMailItem.ErrorMessageForUser))
                                 continue;
 
-                            databaseErrorMessages.Add(queuedMailItem.DatabaseErrorMsg);
-                            errorSummary.DatabaseErrorMsg = queuedMailItem.DatabaseErrorMsg;
-                        } // for each validationError
+                            databaseErrorMessages.Add(queuedMailItem.ErrorMessageForUser);
+                            errorSummary.DatabaseErrorMsg = queuedMailItem.ErrorMessageForUser;
+                        }
 
                         subjectList.Add(queuedMailItem.Subject);
                     } // for each queuedMailItem

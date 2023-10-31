@@ -38,7 +38,8 @@ namespace DataImportManager
         /// <returns>True if success, false if an error</returns>
         public bool ProcessFile(FileInfo triggerFile)
         {
-            DatabaseErrorMsg = string.Empty;
+            ErrorMessageForDatabase = string.Empty;
+            ErrorMessageForUser = string.Empty;
             TriggerFile = triggerFile;
 
             var statusMsg = "Starting data import task for dataset: " + triggerFile.FullName;

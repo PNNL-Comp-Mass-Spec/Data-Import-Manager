@@ -36,7 +36,8 @@ namespace DataImportManager
         /// <returns>True if success, false if an error</returns>
         public bool ProcessXmlParameters(int taskID, string xmlParameters)
         {
-            DatabaseErrorMsg = string.Empty;
+            ErrorMessageForDatabase = string.Empty;
+            ErrorMessageForUser = string.Empty;
             TaskID = taskID;
 
             var statusMsg = string.Format("Starting data import task for dataset creation task ID {0}", taskID);

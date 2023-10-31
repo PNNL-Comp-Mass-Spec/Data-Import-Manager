@@ -18,7 +18,7 @@ namespace DataImportManager
         /// Tracks any database message errors
         /// Also used to track suggested solutions
         /// </summary>
-        public string DatabaseErrorMsg { get; set; }
+        public string ErrorMessageForUser { get; set; }
 
         public List<ValidationError> ValidationErrors { get; }
 
@@ -41,7 +41,7 @@ namespace DataImportManager
             Subject = mailSubject;
             ValidationErrors = lstValidationErrors;
 
-            DatabaseErrorMsg = string.Empty;
+            ErrorMessageForUser = string.Empty;
             InstrumentDatasetPath = string.Empty;
         }
     }
