@@ -63,7 +63,6 @@ namespace DataImportManager
             return verbose ? TriggerFile.FullName : TriggerFile.Name;
         }
 
-
         /// <summary>
         /// Show the dataset creation task ID
         /// </summary>
