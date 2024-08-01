@@ -949,8 +949,8 @@ namespace DataImportManager
         {
             const string SET_TASK_COMPLETE_SP = "set_dataset_create_task_complete";
 
-            var udtSettings = GetProcessingSettings();
-            var triggerProcessor = new ProcessDatasetCreateTask(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
+            var settings = GetProcessingSettings();
+            var triggerProcessor = new ProcessDatasetCreateTask(mMgrSettings, mInstrumentsToSkip, infoCache, settings);
 
             triggerProcessor.ProcessXmlParameters(entryId, xmlParameters);
 
@@ -1020,8 +1020,8 @@ namespace DataImportManager
                 ConsoleMsgUtils.SleepSeconds(waitSeconds);
             }
 
-            var udtSettings = GetProcessingSettings(failureDirectory, successDirectory);
-            var triggerProcessor = new ProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
+            var settings = GetProcessingSettings(failureDirectory, successDirectory);
+            var triggerProcessor = new ProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, settings);
 
             triggerProcessor.ProcessFile(currentFile);
 

@@ -1130,7 +1130,7 @@ namespace DataImportManager
             {
                 // Query the database to obtain information about the given instrument
 
-                if (!mDMSInfoCache.GetInstrumentInfo(instrumentName, out var udtInstrumentInfo))
+                if (!mDMSInfoCache.GetInstrumentInfo(instrumentName, out var instrumentInfo))
                 {
                     LogError(
                         "XMLTimeValidation.SetDbInstrumentParameters(), Instrument " +
@@ -1139,8 +1139,8 @@ namespace DataImportManager
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                 }
 
-                mCaptureType = udtInstrumentInfo.CaptureType;
-                mSourcePath = udtInstrumentInfo.SourcePath;
+                mCaptureType = instrumentInfo.CaptureType;
+                mSourcePath = instrumentInfo.SourcePath;
 
                 if (string.IsNullOrWhiteSpace(mCaptureType))
                 {

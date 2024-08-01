@@ -158,19 +158,19 @@ namespace DataImportManager
         /// Get metadata about a given instrument
         /// </summary>
         /// <param name="instrumentName">Instrument name</param>
-        /// <param name="udtInstrumentInfo">Output instrument info</param>
+        /// <param name="instrumentInfo">Output instrument info</param>
         /// <returns>True if successful, false if the instrument name is unrecognized</returns>
-        public bool GetInstrumentInfo(string instrumentName, out InstrumentInfoType udtInstrumentInfo)
+        public bool GetInstrumentInfo(string instrumentName, out InstrumentInfoType instrumentInfo)
         {
             if (mInstruments.Count == 0)
             {
                 LoadInstrumentsFromDMS(DBTools);
             }
 
-            if (mInstruments.TryGetValue(instrumentName, out udtInstrumentInfo))
+            if (mInstruments.TryGetValue(instrumentName, out instrumentInfo))
                 return true;
 
-            udtInstrumentInfo = new InstrumentInfoType();
+            instrumentInfo = new InstrumentInfoType();
             return false;
         }
 
@@ -279,7 +279,7 @@ namespace DataImportManager
             {
                 var instrumentName = row[0];
 
-                var udtInstrumentInfo = new InstrumentInfoType
+                var instrumentInfo = new InstrumentInfoType
                 {
                     InstrumentClass = row[1],
                     RawDataType = row[2],
@@ -289,7 +289,7 @@ namespace DataImportManager
 
                 if (!mInstruments.ContainsKey(instrumentName))
                 {
-                    mInstruments.Add(instrumentName, udtInstrumentInfo);
+                    mInstruments.Add(instrumentName, instrumentInfo);
                 }
             }
 
@@ -323,7 +323,7 @@ namespace DataImportManager
                     userId = 0;
                 }
 
-                var udtUser = new UserInfoType
+                var userInfo = new UserInfoType
                 {
                     Name = row[0],
                     Email = row[1],
@@ -332,9 +332,9 @@ namespace DataImportManager
                     Obsolete = string.Equals(row[4], "Obsolete", StringComparison.OrdinalIgnoreCase)
                 };
 
-                if (!string.IsNullOrWhiteSpace(udtUser.Username) && !mDmsUsers.ContainsKey(udtUser.Username.ToUpper()))
+                if (!string.IsNullOrWhiteSpace(userInfo.Username) && !mDmsUsers.ContainsKey(userInfo.Username.ToUpper()))
                 {
-                    mDmsUsers.Add(udtUser.Username.ToUpper(), udtUser);
+                    mDmsUsers.Add(userInfo.Username.ToUpper(), userInfo);
                 }
             }
 
