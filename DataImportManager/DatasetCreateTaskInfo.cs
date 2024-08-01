@@ -50,15 +50,13 @@ namespace DataImportManager
                 throw new Exception("Root element for the XML is null");
             }
 
-            if (!triggerFileParamNames.ContainsKey(metadataItem))
+            if (!triggerFileParamNames.TryGetValue(metadataItem, out var paramName))
             {
                 LogWarning(string.Format("Dictionary triggerFileParamNames does not have key {0}", metadataItem.ToString()));
                 return;
             }
 
-            var paramName = triggerFileParamNames[metadataItem];
-
-            var paramValue = datasetInfo.ContainsKey(metadataItem) ? datasetInfo[metadataItem] : string.Empty;
+            var paramValue = datasetInfo.TryGetValue(metadataItem, out var value) ? value : string.Empty;
 
             // Add a new node, e.g.
             // <Parameter Name="Experiment Name" Value="QC_Mam_23_01" />
