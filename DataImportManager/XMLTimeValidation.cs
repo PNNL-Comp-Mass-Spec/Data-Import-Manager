@@ -139,20 +139,20 @@ namespace DataImportManager
         /// Constructor
         /// </summary>
         /// <param name="mgrParams"></param>
-        /// <param name="dctInstrumentsToSkip"></param>
+        /// <param name="instrumentsToSkip"></param>
         /// <param name="dmsCache"></param>
-        /// <param name="udtProcSettings"></param>
+        /// <param name="settings"></param>
         public XMLTimeValidation(
             MgrSettings mgrParams,
-            ConcurrentDictionary<string, int> dctInstrumentsToSkip,
+            ConcurrentDictionary<string, int> instrumentsToSkip,
             DMSInfoCache dmsCache,
-            ProcessDatasetInfoBase.XmlProcSettingsType udtProcSettings)
+            ProcessDatasetInfoBase.XmlProcSettingsType settings)
         {
             mMgrParams = mgrParams;
             mFileTools = new FileTools();
-            mInstrumentsToSkip = dctInstrumentsToSkip;
+            mInstrumentsToSkip = instrumentsToSkip;
             mDMSInfoCache = dmsCache;
-            mProcSettings = udtProcSettings;
+            mProcSettings = settings;
 
             mFilenameAutoFixes = new Dictionary<char, string> {
                 { ' ', "_"},

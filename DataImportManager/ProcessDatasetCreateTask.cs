@@ -14,12 +14,12 @@ namespace DataImportManager
         /// <param name="mgrSettings"></param>
         /// <param name="instrumentsToSkip"></param>
         /// <param name="infoCache"></param>
-        /// <param name="udtSettings"></param>
+        /// <param name="settings"></param>
         public ProcessDatasetCreateTask(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
             DMSInfoCache infoCache,
-            XmlProcSettingsType udtSettings) : base(mgrSettings, instrumentsToSkip, infoCache, udtSettings)
+            XmlProcSettingsType settings) : base(mgrSettings, instrumentsToSkip, infoCache, settings)
         {
         }
 

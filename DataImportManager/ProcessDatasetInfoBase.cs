@@ -102,16 +102,16 @@ namespace DataImportManager
         /// <param name="mgrSettings"></param>
         /// <param name="instrumentsToSkip"></param>
         /// <param name="infoCache"></param>
-        /// <param name="udtSettings"></param>
+        /// <param name="settings"></param>
         public ProcessDatasetInfoBase(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
             DMSInfoCache infoCache,
-            XmlProcSettingsType udtSettings)
+            XmlProcSettingsType settings)
         {
             mMgrSettings = mgrSettings;
             mInstrumentsToSkip = instrumentsToSkip;
-            ProcSettings = udtSettings;
+            ProcSettings = settings;
 
             mDMSInfoCache = infoCache;
 
