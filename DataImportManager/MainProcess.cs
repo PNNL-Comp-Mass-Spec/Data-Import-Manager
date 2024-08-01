@@ -977,7 +977,16 @@ namespace DataImportManager
 
             if (string.IsNullOrWhiteSpace(triggerProcessor.ErrorMessageForDatabase))
             {
-                completionCodeParam.Value = 0;
+                if (PreviewMode)
+                {
+                    // Use completion code -1 to change the dataset create task's state back to 1
+                    completionCodeParam.Value = -1;
+                }
+                else
+                {
+                    completionCodeParam.Value = 0;
+                }
+
                 completionMessageParam.Value = string.Empty;
             }
             else
