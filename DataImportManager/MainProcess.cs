@@ -1013,11 +1013,13 @@ namespace DataImportManager
 
         private void ProcessOneFile(FileInfo currentFile, string successDirectory, string failureDirectory, DMSInfoCache infoCache)
         {
-            var objRand = new Random();
-
-            // Delay for anywhere between 1 to 15 seconds so that the tasks don't all fire at once
-            var waitSeconds = objRand.Next(1, 15);
-            ConsoleMsgUtils.SleepSeconds(waitSeconds);
+            if (PROCESS_IN_PARALLEL)
+            {
+                // Delay for anywhere between 1 and 15 seconds so that the tasks don't all fire at once
+                var objRand = new Random();
+                var waitSeconds = objRand.Next(1, 15);
+                ConsoleMsgUtils.SleepSeconds(waitSeconds);
+            }
 
             var udtSettings = GetProcessingSettings(failureDirectory, successDirectory);
             var triggerProcessor = new ProcessXmlTriggerFile(mMgrSettings, mInstrumentsToSkip, infoCache, udtSettings);
