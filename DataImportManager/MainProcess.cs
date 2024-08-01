@@ -395,8 +395,7 @@ namespace DataImportManager
         {
             const string instrumentStorageFunction = "get_instrument_storage_path_for_new_datasets";
 
-            // Prepare to query the function
-            // The function will create a new storage path if the auto-defined path does not exist in t_storage_path
+            // Call the storage function, which will create a new storage path if the auto-defined path does not exist in t_storage_path
 
             var query = string.Format("SELECT * FROM {0}({1}, _refDate => null, _autoSwitchActiveStorage => true) AS storage_path_id", instrumentStorageFunction, instrumentId);
 
@@ -1501,6 +1500,7 @@ namespace DataImportManager
                             if (string.IsNullOrWhiteSpace(queuedMailItem.ErrorMessageForUser))
                                 continue;
 
+                            // ReSharper disable once CanSimplifySetAddingWithSingleCall
                             if (databaseErrorMessages.Contains(queuedMailItem.ErrorMessageForUser))
                                 continue;
 

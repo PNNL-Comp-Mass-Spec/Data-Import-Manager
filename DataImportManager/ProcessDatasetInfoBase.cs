@@ -544,7 +544,7 @@ namespace DataImportManager
         /// to make sure the file size (directory size) remains unchanged over 30 seconds (see VerifyConstantFileSize and VerifyConstantDirectorySize)
         /// </remarks>
         /// <param name="captureInfo">Dataset capture info</param>
-        /// <returns>True if dataset metadata is valid the and dataset is ready for import; otherwise false</returns>
+        /// <returns>True if dataset metadata is valid and the dataset is ready for import; otherwise false</returns>
         private bool ValidateXmlInfoMain(DatasetCaptureInfo captureInfo)
         {
             try

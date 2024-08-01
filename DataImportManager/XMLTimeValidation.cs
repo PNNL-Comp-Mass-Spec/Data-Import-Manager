@@ -15,7 +15,7 @@ namespace DataImportManager
     // ReSharper disable once InconsistentNaming
     internal class XMLTimeValidation : LoggerBase
     {
-        // Ignore Spelling: AcqData, Alz, bionet, fso, logon, prepend, pwd, Roc, secfso, subfolder, username
+        // Ignore Spelling: AcqData, Alz, bionet, dms, fso, logon, prepend, pwd, Roc, secfso, subfolder, username
 
         private string mDatasetName = string.Empty;
 
@@ -409,8 +409,8 @@ namespace DataImportManager
                 sourceDirectory = subdirectory;
             }
 
-            // When i is 0, check for an exact match to a file or directory
-            // When i is 1, replace spaces with underscores and try again to match
+            // When i = 0, check for an exact match to a file or directory
+            // When i = 1, replace spaces with underscores and try again to match
 
             for (var i = 0; i < 2; i++)
             {
@@ -698,7 +698,7 @@ namespace DataImportManager
                 }
 
                 // Define the source path now, before attempting to connect to Bionet
-                // This is done so that mDatasetPath will be defined so we can include it in a log message if a connection error occurs
+                // This is done so that mDatasetPath will be defined, so we can include it in a log message if a connection error occurs
                 string datasetSourcePath;
 
                 if (string.IsNullOrWhiteSpace(subdirectory))
@@ -1070,6 +1070,7 @@ namespace DataImportManager
                 if (ContainsIgnoreCase(ex.Message, "unknown user name or bad password"))
                 {
                     // ReSharper disable once CommentTypo
+                    // ReSharper disable once GrammarMistakeInComment
                     // Example message: Error accessing '\\VOrbi05.bionet\ProteomicsData\QC_Shew_11_02_pt5_d2_1Apr12_Earth_12-03-14.raw': Logon failure: unknown user name or bad password
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
                 }
@@ -1077,6 +1078,7 @@ namespace DataImportManager
                 if (ContainsIgnoreCase(ex.Message, "user name or password is incorrect"))
                 {
                     // ReSharper disable once CommentTypo
+                    // ReSharper disable once GrammarMistakeInComment
                     // Example message: Error reading XML File, current task: Dataset found at \\QEHFX01.bionet\ProteomicsData\; verifying file size is constant: The user name or password is incorrect.
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_LOGON_FAILURE;
                 }
@@ -1429,7 +1431,7 @@ namespace DataImportManager
             {
                 LogWarning("Error accessing: " + filePath + ": " + ex.Message);
 
-                // Check for "Logon failure: unknown user name or bad password."
+                // Check for "Logon failure: unknown username or bad password."
 
                 if (ContainsIgnoreCase(ex.Message, "unknown user name or bad password"))
                 {
@@ -1445,6 +1447,7 @@ namespace DataImportManager
                 }
                 else
                 {
+                    // ReSharper disable once GrammarMistakeInComment
                     // Note that error "The user name or password is incorrect" could be due to the Secondary Logon service not running
                     // We check for that in ProcessXmlTriggerFile.ProcessFile if ValidateXmlInfoMain returns false
                     throw;

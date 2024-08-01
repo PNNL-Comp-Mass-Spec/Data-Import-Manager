@@ -31,6 +31,8 @@ namespace DataImportManager
             LogTools.LogError(errorMessage, null, logToDb);
         }
 
+        // ReSharper disable once GrammarMistakeInComment
+
         /// <summary>
         /// Log an error message and exception
         /// </summary>
