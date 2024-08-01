@@ -310,7 +310,13 @@ namespace DataImportManager
 
             if (ProcSettings.DebugLevel >= 2)
             {
-                LogMessage("Posting dataset XML to database: " + captureInfo.GetSourceDescription());
+                // Posting dataset XML to database:
+                // Preview posting dataset XML to database:
+
+                LogMessage(string.Format(
+                    "{0} dataset XML to database: {1}",
+                    ProcSettings.PreviewMode ? "Preview posting" : "Posting",
+                    captureInfo.GetSourceDescription()));
             }
 
             // Open a new database connection
