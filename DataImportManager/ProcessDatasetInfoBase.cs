@@ -48,7 +48,6 @@ namespace DataImportManager
             /// </summary>
             public string FailureDirectory;
 
-
             /// <summary>
             /// Share path for successful XML trigger files
             /// </summary>

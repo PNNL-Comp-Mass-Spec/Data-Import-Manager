@@ -1247,7 +1247,6 @@ namespace DataImportManager
             ConsoleMsgUtils.SleepSeconds(actualSecondsToSleep);
         }
 
-
         private void ValidateCaptureSubdirectory(DatasetCaptureInfo captureInfo)
         {
             if (Path.IsPathRooted(CaptureSubdirectory))

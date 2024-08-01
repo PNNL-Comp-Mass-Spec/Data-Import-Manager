@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "Keep for reference", Scope = "member", Target = "~M:DataImportManager.XMLTimeValidation.InstrumentWaitDelay(System.IO.FileSystemInfo)~DataImportManager.XMLTimeValidation.XmlValidateStatus")]
 [assembly: SuppressMessage("Readability", "RCS1123:Add parentheses when necessary.", Justification = "Parentheses not needed", Scope = "member", Target = "~P:DataImportManager.ThreadSafeRandom.ThisThreadsRandom")]
+[assembly: SuppressMessage("Style", "IDE0305:Simplify collection initialization", Justification = "Leave as-is for readability", Scope = "member", Target = "~M:DataImportManager.MainProcess.ScanXmlTriggerFileDirectory(System.Collections.Generic.List{System.IO.FileInfo}@)~DataImportManager.MainProcess.CloseOutType")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Allow legacy name", Scope = "type", Target = "~T:DataImportManager.DataImportTask")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Allow legacy name", Scope = "type", Target = "~T:DataImportManager.DBTask")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Allow legacy name", Scope = "type", Target = "~T:DataImportManager.Global")]
