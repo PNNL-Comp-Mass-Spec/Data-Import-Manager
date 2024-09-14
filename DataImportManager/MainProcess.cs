@@ -14,6 +14,7 @@ using PRISM.AppSettings;
 using PRISM.Logging;
 using PRISMDatabaseUtils;
 using PRISMDatabaseUtils.AppSettings;
+using PRISMDatabaseUtils.Logging;
 using static DataImportManager.ProcessDatasetInfoBase;
 
 namespace DataImportManager
@@ -153,6 +154,35 @@ namespace DataImportManager
         {
             return value == 1 ? string.Empty : "s";
         }
+
+        /// <summary>
+        /// Initializes the database logger in static class PRISM.Logging.LogTools
+        /// </summary>
+        /// <remarks>Supports both SQL Server and Postgres connection strings</remarks>
+        /// <param name="connectionString">Database connection string</param>
+        /// <param name="moduleName">Module name used by logger</param>
+        /// <param name="traceMode">When true, show additional debug messages at the console</param>
+        /// <param name="logLevel">Log threshold level</param>
+        private void CreateDbLogger(
+            string connectionString,
+            string moduleName,
+            bool traceMode = false,
+            BaseLogger.LogLevels logLevel = BaseLogger.LogLevels.INFO)
+        {
+            var databaseType = DbToolsFactory.GetServerTypeFromConnectionString(connectionString);
+
+            DatabaseLogger dbLogger = databaseType switch
+            {
+                DbServerTypes.MSSQLServer => new SQLServerDatabaseLogger(),
+                DbServerTypes.PostgreSQL => new PostgresDatabaseLogger(),
+                _ => throw new Exception("Unsupported database connection string: should be SQL Server or Postgres")
+            };
+
+            dbLogger.ChangeConnectionInfo(moduleName, connectionString);
+
+            LogTools.SetDbLogger(dbLogger, logLevel, traceMode);
+        }
+
         private void DeleteXmlFiles(string directoryPath, int fileAgeDays)
         {
             var workingDirectory = new DirectoryInfo(directoryPath);
@@ -283,13 +313,14 @@ namespace DataImportManager
                     return false;
                 }
 
+                // This connection string points to the DMS database on prismdb2 (previously, DMS5 on Gigasax)
                 var connectionString = mMgrSettings.GetParam("ConnectionString");
 
                 var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
 
                 // Example connection strings after adding the application name:
                 //   Data Source=gigasax;Initial Catalog=DMS5;Integrated Security=True;Application Name=Proto-6_DIM
-                //   Host=prismdb1;Port=5432;Database=dms;Username=svc-dms;Application Name=Proto-6_DIM
+                //   Host=prismdb2;Port=5432;Database=dms;Username=svc-dms;Application Name=Proto-6_DIM
 
                 DMSInfoCache infoCache;
 
@@ -785,7 +816,8 @@ namespace DataImportManager
                 // This will get updated below
                 LogTools.CreateFileLogger(DEFAULT_BASE_LOGFILE_NAME);
 
-                // Create a database logger connected to the Manager_Control database
+                // Create a database logger connected to the DMS database on prismdb2 (previously, Manager_Control on Proteinseqs)
+
                 // Once the initial parameters have been successfully read,
                 // we update the dbLogger to use the connection string read from the Manager Control DB
                 string dmsConnectionString;
@@ -810,13 +842,13 @@ namespace DataImportManager
 
                 ShowTrace("Instantiate a DbLogger using " + dbLoggerConnectionString);
 
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                LogTools.CreateDbLogger(dbLoggerConnectionString, managerName, false);
+                CreateDbLogger(dbLoggerConnectionString, managerName, TraceMode);
 
                 mMgrSettings = new MgrSettingsDB
                 {
                     TraceMode = TraceMode
                 };
+
                 RegisterEvents(mMgrSettings);
                 mMgrSettings.CriticalErrorEvent += ErrorEventHandler;
 
@@ -856,7 +888,9 @@ namespace DataImportManager
                 throw new Exception("InitMgr, " + ex.Message, ex);
             }
 
+            // This connection string points to the DMS database on prismdb2 (previously, DMS5 on Gigasax)
             var connectionString = mMgrSettings.GetParam("ConnectionString");
+
             var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
 
             var logFileBaseName = mMgrSettings.GetParam("LogFileName");
@@ -871,7 +905,7 @@ namespace DataImportManager
                 var moduleName = mMgrSettings.GetParam("ModuleName", defaultModuleName);
 
                 LogTools.CreateFileLogger(logFileBaseName);
-                LogTools.CreateDbLogger(connectionStringToUse, moduleName);
+                CreateDbLogger(connectionStringToUse, moduleName);
 
                 // Write the initial log and status entries
                 var appVersion = AppUtils.GetEntryOrExecutingAssembly().GetName().Version;
