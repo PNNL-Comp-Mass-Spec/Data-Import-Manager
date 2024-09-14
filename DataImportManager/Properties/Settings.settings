@@ -6,7 +6,7 @@
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="MgrCnfgDbConnectStr" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">Data Source=proteinseqs;Initial Catalog=Manager_Control;Integrated Security=SSPI;</Value>
+      <Value Profile="(Default)">Host=prismdb2.emsl.pnl.gov;Port=5432;Database=dms;UserId=svc-dms</Value>
     </Setting>
     <Setting Name="MgrName" Type="System.String" Scope="Application">
       <Value Profile="(Default)">Proto-6_DIM</Value>
