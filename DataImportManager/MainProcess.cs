@@ -1129,9 +1129,14 @@ namespace DataImportManager
                     datasetCreateTasks.Add(entryId, xmlParameters);
                 }
 
-                if (mDebugLevel > 4 || TraceMode)
+                if (datasetCreateTasks.Count == 0)
                 {
-                    LogDebug("No dataset creation tasks were found");
+                    if (mDebugLevel > 4 || TraceMode)
+                    {
+                        LogDebug("No dataset creation tasks were found");
+                    }
+
+                    return;
                 }
 
                 if (!infoCache.DMSInfoLoaded)
@@ -1152,6 +1157,7 @@ namespace DataImportManager
                 // Process the dataset create tasks in parallel, in groups of 50 at a time
                 while (entryIds.Count > 0)
                 {
+                    // Call GetNextChunk() to obtain the next 50 items from entryIds (items in currentChunkIDs will no longer exist in List entryIds)
                     var currentChunkIDs = GetNextChunk(ref entryIds, 50).ToList();
 
                     currentChunk.Clear();
@@ -1195,9 +1201,6 @@ namespace DataImportManager
                     }
 #pragma warning restore CS0162 // Unreachable code detected
                 }
-
-                if (entryIds.Count == 0)
-                    return;
 
                 NotifySkippedDatasets();
 
