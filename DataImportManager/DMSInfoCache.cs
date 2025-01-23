@@ -137,7 +137,7 @@ namespace DataImportManager
         /// <summary>
         /// Look for the error message in the messages loaded from T_DIM_Error_Solution to see if a solution message is defined
         /// </summary>
-        /// <param name="errorText"></param>
+        /// <param name="errorText">Error message</param>
         /// <returns>Suggested solution, or an empty string</returns>
         public string GetDbErrorSolution(string errorText)
         {

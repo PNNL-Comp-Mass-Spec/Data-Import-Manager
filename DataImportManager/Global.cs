@@ -92,7 +92,7 @@ namespace DataImportManager
         /// Load an XML file into memory and return as a string
         /// </summary>
         /// <remarks>Replaces the ampersand character with &#38;</remarks>
-        /// <param name="xmlFile"></param>
+        /// <param name="xmlFile">XML file</param>
         public static string LoadXmlFileContentsIntoString(FileInfo xmlFile)
         {
             try

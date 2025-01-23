@@ -30,7 +30,7 @@ namespace DataImportManager
         /// Shuffle the items in a list
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="list"></param>
+        /// <param name="list">List of items</param>
         public static void Shuffle<T>(this IList<T> list)
         {
             var index = list.Count;

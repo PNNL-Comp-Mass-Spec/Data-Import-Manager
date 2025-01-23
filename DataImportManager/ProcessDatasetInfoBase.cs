@@ -99,10 +99,10 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="mgrSettings"></param>
-        /// <param name="instrumentsToSkip"></param>
-        /// <param name="infoCache"></param>
-        /// <param name="settings"></param>
+        /// <param name="mgrSettings">Manager settings</param>
+        /// <param name="instrumentsToSkip">Instruments to skip</param>
+        /// <param name="infoCache">DMS info cache</param>
+        /// <param name="settings">Processing settings</param>
         public ProcessDatasetInfoBase(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
@@ -442,8 +442,8 @@ namespace DataImportManager
         /// <summary>
         /// Move a trigger file to the target directory
         /// </summary>
-        /// <param name="triggerFile"></param>
-        /// <param name="targetDirectory"></param>
+        /// <param name="triggerFile">Trigger file</param>
+        /// <param name="targetDirectory">Target directory</param>
         /// <returns>New path of the trigger file</returns>
         protected string MoveXmlFile(FileInfo triggerFile, string targetDirectory)
         {
@@ -521,7 +521,7 @@ namespace DataImportManager
         /// <summary>
         /// Adds or updates instrumentName in m_InstrumentsToSkip
         /// </summary>
-        /// <param name="instrumentName"></param>
+        /// <param name="instrumentName">Instrument name</param>
         private void UpdateInstrumentsToSkip(string instrumentName)
         {
             // Look for the instrument in m_InstrumentsToSkip

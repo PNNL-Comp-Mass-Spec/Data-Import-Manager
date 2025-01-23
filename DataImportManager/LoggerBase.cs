@@ -70,8 +70,8 @@ namespace DataImportManager
         /// However, does not subscribe to .ProgressUpdate
         /// Note: the DatasetInfoPlugin does subscribe to .ProgressUpdate
         /// </summary>
-        /// <param name="processingClass"></param>
-        /// <param name="writeDebugEventsToLog"></param>
+        /// <param name="processingClass">Processing class</param>
+        /// <param name="writeDebugEventsToLog">When true, log debug events to the log</param>
         protected void RegisterEvents(IEventNotifier processingClass, bool writeDebugEventsToLog = true)
         {
             if (writeDebugEventsToLog)
@@ -92,8 +92,8 @@ namespace DataImportManager
         /// <summary>
         /// Unregister the event handler for the given LogLevel
         /// </summary>
-        /// <param name="processingClass"></param>
-        /// <param name="messageType"></param>
+        /// <param name="processingClass">Processing class</param>
+        /// <param name="messageType">Message type</param>
         protected void UnregisterEventHandler(EventNotifier processingClass, BaseLogger.LogLevels messageType)
         {
             switch (messageType)

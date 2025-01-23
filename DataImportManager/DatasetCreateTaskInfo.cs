@@ -15,20 +15,20 @@ namespace DataImportManager
         public Dictionary<DatasetMetadata, string> CreateTaskXmlNames { get; }
 
         /// <summary>
-        /// Dataset creation task queue ID
+        /// Dataset creation task queue ID (column entry_id in t_dataset_create_queue)
         /// </summary>
         public int TaskID { get; }
 
         /// <summary>
-        /// XML parameters obtained from procedure request_dataset_create_task
+        /// Dataset metadata obtained from procedure request_dataset_create_task
         /// </summary>
         public string XmlParameters { get; }
 
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="taskID">Dataset creation task ID (column entry_id in t_dataset_create_queue)</param>
-        /// <param name="xmlParameters"></param>
+        /// <param name="taskID">Dataset creation task ID</param>
+        /// <param name="xmlParameters">Dataset metadata</param>
         public DatasetCreateTaskInfo(int taskID, string xmlParameters)
         {
             CreateTaskXmlNames = new Dictionary<DatasetMetadata, string>();
@@ -215,9 +215,9 @@ namespace DataImportManager
         /// <summary>
         /// Extract the string value inside an XML element
         /// </summary>
-        /// <param name="elementList"></param>
-        /// <param name="elementName"></param>
-        /// <param name="valueIfMissing"></param>
+        /// <param name="elementList">XML elements</param>
+        /// <param name="elementName">Element name</param>
+        /// <param name="valueIfMissing">Value to return if the list is empty or does not contain the given element</param>
         /// <returns>String value, or valueIfMissing if a parse error</returns>
         public static string GetXmlValue(IEnumerable<XElement> elementList, string elementName, string valueIfMissing = "")
         {

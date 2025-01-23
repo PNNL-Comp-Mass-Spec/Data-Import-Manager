@@ -138,10 +138,10 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="mgrParams"></param>
-        /// <param name="instrumentsToSkip"></param>
-        /// <param name="dmsCache"></param>
-        /// <param name="settings"></param>
+        /// <param name="mgrParams">Manager parameters</param>
+        /// <param name="instrumentsToSkip">Instruments to skip</param>
+        /// <param name="dmsCache">DMS info cache</param>
+        /// <param name="settings">Processing settings</param>
         public XMLTimeValidation(
             MgrSettings mgrParams,
             ConcurrentDictionary<string, int> instrumentsToSkip,
@@ -165,8 +165,8 @@ namespace DataImportManager
         /// <summary>
         /// Look for textToFind in textToSearch, ignoring case
         /// </summary>
-        /// <param name="textToSearch"></param>
-        /// <param name="textToFind"></param>
+        /// <param name="textToSearch">Text to search</param>
+        /// <param name="textToFind">Text to find</param>
         private bool ContainsIgnoreCase(string textToSearch, string textToFind)
         {
             return textToSearch.IndexOf(textToFind, StringComparison.OrdinalIgnoreCase) >= 0;
@@ -220,7 +220,7 @@ namespace DataImportManager
         /// <summary>
         /// Disconnect from a remote share
         /// </summary>
-        /// <param name="connector"></param>
+        /// <param name="connector">Share connector</param>
         private void DisconnectShare(ShareConnector connector)
         {
             if (TraceMode)
@@ -328,7 +328,7 @@ namespace DataImportManager
         /// <summary>
         /// If textToCheck is null or empty, return an empty string
         /// </summary>
-        /// <param name="textToCheck"></param>
+        /// <param name="textToCheck">Text to check</param>
         private static string FixNull(string textToCheck)
         {
             return string.IsNullOrWhiteSpace(textToCheck) ? string.Empty : textToCheck;
@@ -337,15 +337,15 @@ namespace DataImportManager
         /// <summary>
         /// Determines if raw dataset exists as a single file, directory with same name as dataset, or directory with dataset name + extension
         /// </summary>
-        /// <param name="instrumentSourcePath"></param>
-        /// <param name="captureSubFolderName"></param>
-        /// <param name="currentDataset"></param>
-        /// <param name="ignoreInstrumentSourceErrors"></param>
+        /// <param name="instrumentSourcePath">Instrument source path</param>
+        /// <param name="captureSubdirectoryName">Capture subdirectory name</param>
+        /// <param name="currentDataset">Dataset name</param>
+        /// <param name="ignoreInstrumentSourceErrors">If true, assume a Thermo .raw file if the source directory does not exist</param>
         /// <param name="instrumentFileOrDirectoryName">Output: full name of the dataset file or dataset directory</param>
         /// <returns>Enum specifying what was found</returns>
         private RawDsTypes GetRawDsType(
             string instrumentSourcePath,
-            string captureSubFolderName,
+            string captureSubdirectoryName,
             string currentDataset,
             bool ignoreInstrumentSourceErrors,
             out string instrumentFileOrDirectoryName)
@@ -380,20 +380,20 @@ namespace DataImportManager
                 return RawDsTypes.None;
             }
 
-            if (!string.IsNullOrWhiteSpace(captureSubFolderName))
+            if (!string.IsNullOrWhiteSpace(captureSubdirectoryName))
             {
-                if (captureSubFolderName.Length > 255)
+                if (captureSubdirectoryName.Length > 255)
                 {
                     ErrorMessage = string.Format(
                         "Subdirectory path for dataset {0} is too long (over 255 characters): [{1}]",
-                        currentDataset, captureSubFolderName);
+                        currentDataset, captureSubdirectoryName);
 
                     LogError(ErrorMessage);
                     instrumentFileOrDirectoryName = string.Empty;
                     return RawDsTypes.None;
                 }
 
-                var subdirectory = new DirectoryInfo(Path.Combine(sourceDirectory.FullName, captureSubFolderName));
+                var subdirectory = new DirectoryInfo(Path.Combine(sourceDirectory.FullName, captureSubdirectoryName));
 
                 if (!subdirectory.Exists)
                 {
@@ -443,7 +443,7 @@ namespace DataImportManager
         /// <summary>
         /// Extract certain settings from dataset creation task XML
         /// </summary>
-        /// <param name="createTaskInfo"></param>
+        /// <param name="createTaskInfo">Dataset create task info</param>
         private XmlValidateStatus GetXmlParameters(DatasetCreateTaskInfo createTaskInfo)
         {
             try
@@ -479,7 +479,7 @@ namespace DataImportManager
         /// <summary>
         /// Extract certain settings from an XML file
         /// </summary>
-        /// <param name="triggerFileInfo"></param>
+        /// <param name="triggerFileInfo">XML trigger file info</param>
         private XmlValidateStatus GetXmlParameters(TriggerFileInfo triggerFileInfo)
         {
             var xmlFileContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
@@ -496,7 +496,7 @@ namespace DataImportManager
         /// Extract certain settings from dataset capture XML
         /// </summary>
         /// <param name="captureInfo">Dataset capture info</param>
-        /// <param name="xmlFileContents"></param>
+        /// <param name="xmlFileContents">Dataset metadata XML</param>
         private XmlValidateStatus GetXmlParameters(DatasetCaptureInfo captureInfo, string xmlFileContents)
         {
             // Load into a string reader after '&' was fixed
@@ -582,7 +582,7 @@ namespace DataImportManager
         /// <summary>
         /// Examine the date of the trigger file; if less than XMLFileDelay minutes old, delay processing trigger file
         /// </summary>
-        /// <param name="triggerFile"></param>
+        /// <param name="triggerFile">Trigger file</param>
         // ReSharper disable once UnusedMember.Local
         [Obsolete("Unused")]
         private XmlValidateStatus InstrumentWaitDelay(FileSystemInfo triggerFile)
@@ -635,10 +635,10 @@ namespace DataImportManager
                 {
                     // If working on a share, special handling to allow replacing the share name
                     // .NET is smart and considers '\\server_name\share_name' as the path root, so '..\' doesn't work
-                    if (sourcePath.StartsWith("\\\\"))
+                    if (sourcePath.StartsWith(@"\\"))
                     {
                         var tempSource = sourcePath.Trim('\\', '.').Split('\\')[0];
-                        sourcePath = "\\\\" + Path.Combine(tempSource, captureShareName);
+                        sourcePath = @"\\" + Path.Combine(tempSource, captureShareName);
                     }
 
                     captureShareName = $"..\\{captureShareName}";
@@ -819,11 +819,12 @@ namespace DataImportManager
                             else
                             {
                                 var sqlQuery =
-                                    "SELECT Inst.IN_name, SP.SP_path_ID, SP.SP_path, SP.SP_machine_name, SP.SP_vol_name_client, " +
-                                    "       SP.SP_vol_name_server, SP.SP_function, Inst.IN_capture_method " +
-                                    "FROM T_Storage_Path SP INNER JOIN T_Instrument_Name Inst " +
-                                    "       ON SP.SP_instrument_name = Inst.IN_name AND SP.SP_path_ID = Inst.IN_source_path_ID " +
-                                    "WHERE IN_Name = '" + InstrumentName + "'";
+                                    "SELECT Inst.instrument, SP.storage_path_ID, SP.storage_path, SP.machine_name, SP.vol_name_client, " +
+                                    "       SP.vol_name_server, SP.storage_path_function, Inst.capture_method " +
+                                    "FROM T_Storage_Path SP " +
+                                    "     INNER JOIN T_Instrument_Name Inst " +
+                                    "        ON SP.instrument = Inst.instrument AND SP.storage_path_ID = Inst.source_path_ID " +
+                                    "WHERE Inst.instrument = '" + InstrumentName + "'";
 
                                 LogError(sqlQuery);
 
@@ -1107,7 +1108,7 @@ namespace DataImportManager
         /// <summary>
         /// Auto change spaces to underscores, % to 'pct', and periods to 'pt' in the search text
         /// </summary>
-        /// <param name="searchText"></param>
+        /// <param name="searchText">Text to update</param>
         private string ReplaceInvalidChars(string searchText)
         {
             var updatedText = string.Copy(searchText);
@@ -1123,7 +1124,7 @@ namespace DataImportManager
         /// <summary>
         /// Query to get the instrument data from the database and then iterate through the dataset to retrieve the capture type and source path
         /// </summary>
-        /// <param name="instrumentName"></param>
+        /// <param name="instrumentName">Instrument name</param>
         private XmlValidateStatus SetDbInstrumentParameters(string instrumentName)
         {
             try
@@ -1211,7 +1212,7 @@ namespace DataImportManager
         /// <summary>
         /// Show a trace message
         /// </summary>
-        /// <param name="message"></param>
+        /// <param name="message">Trace message</param>
         private void ShowTraceMessage(string message)
         {
             MainProcess.ShowTraceMessage(message);
@@ -1220,14 +1221,17 @@ namespace DataImportManager
         /// <summary>
         /// Sleep for up to 3 seconds
         /// </summary>
-        /// <param name="sleepIntervalSeconds"></param>
-        /// <param name="datasetType"></param>
+        /// <param name="sleepIntervalSeconds">Sleep time, in seconds</param>
+        /// <param name="datasetType">Dataset type ("directory" or "file")</param>
         private void SleepWhileVerifyingConstantSize(int sleepIntervalSeconds, string datasetType)
         {
             int actualSecondsToSleep;
 
             if (TraceMode)
             {
+                // Monitoring dataset file for 3 seconds
+                // Monitoring dataset directory for 3 seconds
+
                 if (sleepIntervalSeconds > 3)
                 {
                     actualSecondsToSleep = 3;
@@ -1268,7 +1272,7 @@ namespace DataImportManager
         /// <summary>
         /// Process dataset creation task XML
         /// </summary>
-        /// <param name="createTaskInfo"></param>
+        /// <param name="createTaskInfo">Dataset create task info</param>
         public XmlValidateStatus ValidateDatasetCreateTaskXml(DatasetCreateTaskInfo createTaskInfo)
         {
             ErrorMessage = string.Empty;
@@ -1331,7 +1335,7 @@ namespace DataImportManager
         /// <summary>
         /// Process XML that defines a new dataset to add to DMS
         /// </summary>
-        /// <param name="captureInfo">Dataset capture info</param>
+        /// <param name="captureInfo">Dataset capture task info</param>
         private XmlValidateStatus ValidateXmlFileWork(DatasetCaptureInfo captureInfo)
         {
             if (mInstrumentsToSkip.ContainsKey(InstrumentName))
@@ -1364,8 +1368,8 @@ namespace DataImportManager
         /// <summary>
         /// Determines if the size of a directory changes over specified time interval
         /// </summary>
-        /// <param name="directoryPath"></param>
-        /// <param name="sleepIntervalSeconds"></param>
+        /// <param name="directoryPath">Directory path</param>
+        /// <param name="sleepIntervalSeconds">Sleep time, in seconds</param>
         /// <returns>True if constant, false if changed</returns>
         private bool VerifyConstantDirectorySize(string directoryPath, int sleepIntervalSeconds)
         {
@@ -1394,9 +1398,9 @@ namespace DataImportManager
         /// <summary>
         /// Determines if the size of a file changes over specified time interval
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="sleepIntervalSeconds"></param>
-        /// <param name="logonFailure"></param>
+        /// <param name="filePath">Dataset file path</param>
+        /// <param name="sleepIntervalSeconds">Sleep time, in seconds</param>
+        /// <param name="logonFailure">Output: true if a logon failure</param>
         /// <returns>True if constant, false if changed</returns>
         private bool VerifyConstantFileSize(string filePath, int sleepIntervalSeconds, out bool logonFailure)
         {

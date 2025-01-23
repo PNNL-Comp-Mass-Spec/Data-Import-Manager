@@ -39,10 +39,10 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="operatorName"></param>
-        /// <param name="recipientList"></param>
-        /// <param name="mailSubject"></param>
-        /// <param name="lstValidationErrors"></param>
+        /// <param name="operatorName">Instrument operator for the dataset</param>
+        /// <param name="recipientList">Semicolon separated list of e-mail addresses</param>
+        /// <param name="mailSubject">E-mail subject</param>
+        /// <param name="lstValidationErrors">List of validation errors</param>
         public QueuedMail(string operatorName, string recipientList, string mailSubject, List<ValidationError> lstValidationErrors)
         {
             InstrumentOperator = operatorName;

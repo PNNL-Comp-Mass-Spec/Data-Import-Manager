@@ -72,8 +72,8 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="mgrParams"></param>
-        /// <param name="dbTools"></param>
+        /// <param name="mgrParams">Manager parameters</param>
+        /// <param name="dbTools">DBTools instance</param>
         public DataImportTask(MgrSettings mgrParams, IDBTools dbTools) : base(mgrParams, dbTools)
         {
         }
@@ -124,11 +124,11 @@ namespace DataImportManager
 
                     LogMessage($"Replaced capture subdirectory \"{captureInfo.OriginalCaptureSubdirectory}\" with \"{captureInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
 
-                    // Call the stored procedure (typically add_new_dataset)
+                    // Call the procedure (typically add_new_dataset)
                     return ImportDataTask(updatedTriggerFileXML);
                 }
 
-                // Call the stored procedure (typically add_new_dataset)
+                // Call the procedure (typically add_new_dataset)
                 return ImportDataTask(triggerFileXML);
             }
             catch (Exception ex)
@@ -139,9 +139,9 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Posts the given XML to DMS5 using stored procedure add_new_dataset
+        /// Posts the given XML to DMS using procedure add_new_dataset
         /// </summary>
-        /// <param name="triggerFileXML"></param>
+        /// <param name="triggerFileXML">Dataset metadata XML</param>
         /// <returns>True if success, false if an error</returns>
         private bool ImportDataTask(string triggerFileXML)
         {
@@ -150,7 +150,7 @@ namespace DataImportManager
                 mDataImportErrorMessage = string.Empty;
                 mDataImportErrorMessageForDatabase = string.Empty;
 
-                // Prepare to call the stored procedure, typically named add_new_dataset in DMS5, which in turn calls add_update_dataset
+                // Prepare to call the procedure, typically named add_new_dataset in DMS, which in turn calls add_update_dataset
                 // (old procedure names: AddNewDataset and AddUpdateDataset)
                 mStoredProc = MgrParams.GetParam("StoredProcedure");
 
@@ -167,16 +167,16 @@ namespace DataImportManager
 
                 if (PreviewMode)
                 {
-                    MainProcess.ShowTraceMessage("Preview: call stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
+                    MainProcess.ShowTraceMessage("Preview: call procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
                     return true;
                 }
 
                 if (TraceMode)
                 {
-                    MainProcess.ShowTraceMessage("Calling stored procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
+                    MainProcess.ShowTraceMessage("Calling procedure " + mStoredProc + " in database " + DBTools.DatabaseName);
                 }
 
-                // Execute the stored procedure
+                // Call the procedure
                 DBTools.ExecuteSP(cmd);
 
                 // Get return code

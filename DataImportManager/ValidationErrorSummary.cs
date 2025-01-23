@@ -22,8 +22,8 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="issueType"></param>
-        /// <param name="sortWeight"></param>
+        /// <param name="issueType">Issue type</param>
+        /// <param name="sortWeight">Sort weight</param>
         public ValidationErrorSummary(string issueType, int sortWeight)
         {
             IssueType = issueType;

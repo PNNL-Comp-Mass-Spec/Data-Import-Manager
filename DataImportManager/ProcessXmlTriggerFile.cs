@@ -13,10 +13,10 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="mgrSettings"></param>
-        /// <param name="instrumentsToSkip"></param>
-        /// <param name="infoCache"></param>
-        /// <param name="settings"></param>
+        /// <param name="mgrSettings">Manager settings</param>
+        /// <param name="instrumentsToSkip">Instruments to skip</param>
+        /// <param name="infoCache">DMS info cache</param>
+        /// <param name="settings">Processing settings</param>
         public ProcessXmlTriggerFile(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
@@ -34,7 +34,7 @@ namespace DataImportManager
         /// <summary>
         /// Validate the XML trigger file, then send it to the database using mDataImportTask.PostTask
         /// </summary>
-        /// <param name="triggerFile"></param>
+        /// <param name="triggerFile">XML trigger file</param>
         /// <returns>True if success, false if an error</returns>
         public bool ProcessFile(FileInfo triggerFile)
         {

@@ -11,10 +11,10 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="mgrSettings"></param>
-        /// <param name="instrumentsToSkip"></param>
-        /// <param name="infoCache"></param>
-        /// <param name="settings"></param>
+        /// <param name="mgrSettings">Manager settings</param>
+        /// <param name="instrumentsToSkip">Instruments to skip</param>
+        /// <param name="infoCache">DMS info cache</param>
+        /// <param name="settings">Processing settings</param>
         public ProcessDatasetCreateTask(
             MgrSettings mgrSettings,
             ConcurrentDictionary<string, int> instrumentsToSkip,
@@ -32,7 +32,7 @@ namespace DataImportManager
         /// Validate the XML parameters, then send them to the database using mDataImportTask.PostTask
         /// </summary>
         /// <param name="taskID">ID of the row in t_dataset_create_queue</param>
-        /// <param name="xmlParameters"></param>
+        /// <param name="xmlParameters">Metadata for the new dataset</param>
         /// <returns>True if success, false if an error</returns>
         public bool ProcessXmlParameters(int taskID, string xmlParameters)
         {

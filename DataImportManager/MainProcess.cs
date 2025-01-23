@@ -90,7 +90,7 @@ namespace DataImportManager
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="traceMode"></param>
+        /// <param name="traceMode">If true, show trace messages</param>
         public MainProcess(bool traceMode)
         {
             TraceMode = traceMode;
@@ -103,7 +103,7 @@ namespace DataImportManager
         /// <summary>
         /// Add one or more mail messages to mQueuedMail
         /// </summary>
-        /// <param name="newQueuedMail"></param>
+        /// <param name="newQueuedMail">Queued mail</param>
         private void AddToMailQueue(ConcurrentDictionary<string, ConcurrentBag<QueuedMail>> newQueuedMail)
         {
             foreach (var newQueuedMessage in newQueuedMail)
@@ -136,7 +136,7 @@ namespace DataImportManager
         /// <summary>
         /// Append text to the string builder, using the given format string and arguments
         /// </summary>
-        /// <param name="sb"></param>
+        /// <param name="sb">String builder</param>
         /// <param name="format">Message format string</param>
         /// <param name="args">Arguments to use with formatString</param>
         [StringFormatMethod("format")]
@@ -149,7 +149,7 @@ namespace DataImportManager
         /// <summary>
         /// Return an empty string if value is 1; otherwise return "s"
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">Item count</param>
         private static string CheckPlural(int value)
         {
             return value == 1 ? string.Empty : "s";
@@ -319,7 +319,7 @@ namespace DataImportManager
                 var connectionStringToUse = DbToolsFactory.AddApplicationNameToConnectionString(connectionString, mMgrSettings.ManagerName);
 
                 // Example connection strings after adding the application name:
-                //   Data Source=gigasax;Initial Catalog=DMS5;Integrated Security=True;Application Name=Proto-6_DIM
+                //   Data Source=gigasax;Initial Catalog=DMS5;Integrated Security=SSPI;Encrypt=False;Application Name=Proto-6_DIM
                 //   Host=prismdb2;Port=5432;Database=dms;Username=svc-dms;Application Name=Proto-6_DIM
 
                 DMSInfoCache infoCache;
@@ -352,8 +352,8 @@ namespace DataImportManager
         /// <summary>
         /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple datasets to add to DMS
         /// </summary>
-        /// <param name="xmlParameters"></param>
-        /// <param name="dbTools"></param>
+        /// <param name="xmlParameters">List of XML parameters for dataset create tasksL</param>
+        /// <param name="dbTools">DBTools instance</param>
         private void EnsureInstrumentDataStorageDirectories(List<string> xmlParameters, IDBTools dbTools)
         {
             var counts = GetCreateTaskCountsForInstruments(xmlParameters);
@@ -364,8 +364,8 @@ namespace DataImportManager
         /// <summary>
         /// Call procedure get_instrument_storage_path_for_new_datasets on all instruments with multiple datasets to add to DMS
         /// </summary>
-        /// <param name="xmlFiles"></param>
-        /// <param name="dbTools"></param>
+        /// <param name="xmlFiles">List of XML trigger files</param>
+        /// <param name="dbTools">DBTools instance</param>
         private void EnsureInstrumentDataStorageDirectories(List<FileInfo> xmlFiles, IDBTools dbTools)
         {
             var counts = GetFileCountsForInstruments(xmlFiles);
@@ -380,7 +380,7 @@ namespace DataImportManager
         /// The purpose is to avoid a race condition in the database that leads to identical single-use entries in T_Storage_Path
         /// </remarks>
         /// <param name="counts">File or create task counts, by instrument</param>
-        /// <param name="dbTools"></param>
+        /// <param name="dbTools">DBTools instance</param>
         private void EnsureInstrumentDataStorageDirectories(Dictionary<string, int> counts, IDBTools dbTools)
         {
             var serverType = DbToolsFactory.GetServerTypeFromConnectionString(dbTools.ConnectStr);
@@ -467,8 +467,8 @@ namespace DataImportManager
         {
             const string instrumentStorageProcedure = "get_instrument_storage_path_for_new_datasets";
 
-            // Prepare to call the stored procedure
-            // The procedure will create a new storage path if the auto-defined path does not exist in T_Storage_Path
+            // Prepare to call the procedure
+            // It will create a new storage path if the auto-defined path does not exist in T_Storage_Path
 
             var cmd = dbTools.CreateCommand(instrumentStorageProcedure, CommandType.StoredProcedure);
             cmd.CommandTimeout = 45;
@@ -491,7 +491,7 @@ namespace DataImportManager
             if (PreviewMode)
             {
                 ShowTraceMessage(string.Format(
-                    "Preview: call stored procedure {0} in database {1}",
+                    "Preview: call procedure {0} in database {1}",
                     instrumentStorageProcedure, dbTools.DatabaseName));
 
                 return;
@@ -500,17 +500,17 @@ namespace DataImportManager
             if (TraceMode)
             {
                 ShowTraceMessage(string.Format(
-                    "Calling stored procedure {0} in database {1}",
+                    "Calling procedure {0} in database {1}",
                     instrumentStorageProcedure, dbTools.DatabaseName));
             }
 
-            // Execute the stored procedure
+            // Call the procedure
             var storagePathID = dbTools.ExecuteSP(cmd);
 
             if (TraceMode)
             {
                 ShowTraceMessage(string.Format(
-                    "Stored procedure {0}: returned storage path ID {1} for instrument {2}",
+                    "Procedure {0}: returned storage path ID {1} for instrument {2}",
                     instrumentStorageProcedure, storagePathID, instrument));
             }
         }
@@ -938,8 +938,8 @@ namespace DataImportManager
         /// <summary>
         /// Log an error message to the database
         /// </summary>
-        /// <param name="message"></param>
-        /// <param name="ex"></param>
+        /// <param name="message">Error message</param>
+        /// <param name="ex">Exception</param>
         public static void LogErrorToDatabase(string message, Exception ex = null)
         {
             LogError(message, ex, true);
@@ -1033,7 +1033,7 @@ namespace DataImportManager
                 LogDebug("Calling procedure " + SET_TASK_COMPLETE_SP);
             }
 
-            // Execute the SP
+            // Call the procedure
             var resCode = dbTools.ExecuteSP(cmd);
 
             var returnCode = DBToolsBase.GetReturnCode(returnCodeParam);
@@ -1099,7 +1099,7 @@ namespace DataImportManager
                         LogDebug("Calling procedure " + REQUEST_DATASET_CREATE_TASK_SP);
                     }
 
-                    // Execute the SP
+                    // Call the procedure
                     var resCode = dbTools.ExecuteSP(cmd);
 
                     var returnCode = DBToolsBase.GetReturnCode(returnCodeParam);
@@ -1314,7 +1314,7 @@ namespace DataImportManager
         /// <summary>
         /// Look for available XML trigger files
         /// </summary>
-        /// <param name="xmlFilesToImport"></param>
+        /// <param name="xmlFilesToImport">List of XML trigger files</param>
         /// <returns>CloseOutType.CLOSEOUT_SUCCESS if successful, CloseOutType.CLOSEOUT_FAILED if an error</returns>
         public CloseOutType ScanXmlTriggerFileDirectory(out List<FileInfo> xmlFilesToImport)
         {
@@ -1700,7 +1700,7 @@ namespace DataImportManager
         /// <summary>
         /// Show a message at the console, preceded by a time stamp
         /// </summary>
-        /// <param name="message"></param>
+        /// <param name="message">Trace message</param>
         private void ShowTrace(string message)
         {
             if (!TraceMode)
@@ -1712,7 +1712,7 @@ namespace DataImportManager
         /// <summary>
         /// Show a message at the console, preceded with a timestamp
         /// </summary>
-        /// <param name="message"></param>
+        /// <param name="message">Trace message</param>
         public static void ShowTraceMessage(string message)
         {
             BaseLogger.ShowTraceMessage(message, false);
