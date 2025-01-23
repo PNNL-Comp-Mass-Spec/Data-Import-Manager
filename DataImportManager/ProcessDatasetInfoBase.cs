@@ -118,9 +118,16 @@ namespace DataImportManager
             QueuedMail = new ConcurrentDictionary<string, ConcurrentBag<QueuedMail>>();
         }
 
+        /// <summary>
+        /// Append additionalText to existingText
+        /// </summary>
+        /// <param name="existingText">Existing text</param>
+        /// <param name="additionalText">Additional text</param>
+        /// <remarks>Nothing is appended if existingText already has additionalText</remarks>
+        /// <returns>Updated text</returns>
         private static string AppendToText(string existingText, string additionalText)
         {
-            if (string.IsNullOrWhiteSpace(additionalText))
+            if (string.IsNullOrWhiteSpace(additionalText) || existingText.IndexOf(additionalText, StringComparison.OrdinalIgnoreCase) >= 0)
                 return existingText;
 
             return string.IsNullOrWhiteSpace(existingText)
