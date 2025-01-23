@@ -331,7 +331,7 @@ namespace DataImportManager
         /// <param name="textToCheck"></param>
         private static string FixNull(string textToCheck)
         {
-            return string.IsNullOrEmpty(textToCheck) ? string.Empty : textToCheck;
+            return string.IsNullOrWhiteSpace(textToCheck) ? string.Empty : textToCheck;
         }
 
         /// <summary>
@@ -463,7 +463,7 @@ namespace DataImportManager
 
                 mOperatorUsername = DatasetCreateTaskInfo.GetXmlValue(elements, createTaskInfo.CreateTaskXmlNames[DatasetCaptureInfo.DatasetMetadata.OperatorUsername]);
 
-                if (!string.IsNullOrEmpty(InstrumentName))
+                if (!string.IsNullOrWhiteSpace(InstrumentName))
                     return XmlValidateStatus.XML_VALIDATE_CONTINUE;
 
                 LogError("XMLTimeValidation.GetXMLParameters(), The instrument name was blank.");
@@ -484,7 +484,7 @@ namespace DataImportManager
         {
             var xmlFileContents = Global.LoadXmlFileContentsIntoString(triggerFileInfo.TriggerFile);
 
-            if (string.IsNullOrEmpty(xmlFileContents))
+            if (string.IsNullOrWhiteSpace(xmlFileContents))
             {
                 return XmlValidateStatus.XML_VALIDATE_TRIGGER_FILE_MISSING;
             }
@@ -548,7 +548,7 @@ namespace DataImportManager
                     }
                 }
 
-                if (string.IsNullOrEmpty(InstrumentName))
+                if (string.IsNullOrWhiteSpace(InstrumentName))
                 {
                     LogError("XMLTimeValidation.GetXMLParameters(), The instrument name was blank.");
                     return XmlValidateStatus.XML_VALIDATE_BAD_XML;
@@ -665,7 +665,7 @@ namespace DataImportManager
 
             try
             {
-                if (string.IsNullOrEmpty(mCaptureType) || string.IsNullOrEmpty(mSourcePath))
+                if (string.IsNullOrWhiteSpace(mCaptureType) || string.IsNullOrWhiteSpace(mSourcePath))
                 {
                     return XmlValidateStatus.XML_VALIDATE_ENCOUNTERED_ERROR;
                 }

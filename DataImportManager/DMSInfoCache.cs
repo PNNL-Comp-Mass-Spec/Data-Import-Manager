@@ -189,7 +189,7 @@ namespace DataImportManager
 
             var success = LookupUserInfo(usernameToFind, out var userInfo, out userCountMatched);
 
-            if (success && !string.IsNullOrEmpty(userInfo.Name))
+            if (success && !string.IsNullOrWhiteSpace(userInfo.Name))
             {
                 // Uncomment to debug
                 //if (mTraceMode && false)

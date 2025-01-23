@@ -289,7 +289,7 @@ namespace DataImportManager
 
                     if (!success)
                     {
-                        if (!string.IsNullOrEmpty(mMgrSettings.ErrMsg))
+                        if (!string.IsNullOrWhiteSpace(mMgrSettings.ErrMsg))
                         {
                             // Report the error
                             LogWarning(mMgrSettings.ErrMsg);
@@ -1369,7 +1369,7 @@ namespace DataImportManager
 
                 var mailServer = mMgrSettings.GetParam("SmtpServer");
 
-                if (string.IsNullOrEmpty(mailServer))
+                if (string.IsNullOrWhiteSpace(mailServer))
                 {
                     LogError("Manager parameter SmtpServer is empty; cannot send mail");
                     return;

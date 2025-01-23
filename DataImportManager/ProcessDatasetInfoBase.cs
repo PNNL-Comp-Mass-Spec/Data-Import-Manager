@@ -143,7 +143,7 @@ namespace DataImportManager
                 var mailRecipientsList = mailRecipients.Split(';').Distinct().ToList();
 
                 // Possibly update the e-mail address for addnlRecipient
-                if (!string.IsNullOrEmpty(addnlRecipient) && !mailRecipientsList.Contains(addnlRecipient))
+                if (!string.IsNullOrWhiteSpace(addnlRecipient) && !mailRecipientsList.Contains(addnlRecipient))
                 {
                     mailRecipients += ";" + addnlRecipient;
                 }
@@ -165,7 +165,7 @@ namespace DataImportManager
                 // Store the message and metadata
                 var messageToQueue = new QueuedMail(mXmlOperatorName, mailRecipients, mailSubject, validationErrors);
 
-                if (!string.IsNullOrEmpty(ErrorMessageForUser))
+                if (!string.IsNullOrWhiteSpace(ErrorMessageForUser))
                 {
                     messageToQueue.ErrorMessageForUser = ErrorMessageForUser;
                 }
@@ -224,7 +224,7 @@ namespace DataImportManager
 
             var exeDirectoryNameToUse = string.IsNullOrWhiteSpace(exeDirectoryName) ? "DataImportManager" : exeDirectoryName;
 
-            var logFilePath = Path.Combine(exeDirectoryNameToUse, string.IsNullOrEmpty(baseLogFileName) ? @"Logs\DataImportManager" : baseLogFileName);
+            var logFilePath = Path.Combine(exeDirectoryNameToUse, string.IsNullOrWhiteSpace(baseLogFileName) ? @"Logs\DataImportManager" : baseLogFileName);
 
             // logFilePath should look like this:
             //    DataImportManager\Logs\DataImportManager
@@ -750,7 +750,7 @@ namespace DataImportManager
 
                     var newError = new ValidationError("Dataset not found on the instrument", sourceDescription);
 
-                    if (string.IsNullOrEmpty(myDataXmlValidation.ErrorMessage))
+                    if (string.IsNullOrWhiteSpace(myDataXmlValidation.ErrorMessage))
                     {
                         newError.AdditionalInfo = string.Empty;
                     }

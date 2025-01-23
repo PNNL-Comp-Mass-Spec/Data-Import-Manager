@@ -228,7 +228,7 @@ namespace DataImportManager
 
             var firstElement = elements[0];
 
-            return string.IsNullOrEmpty(firstElement?.Value) ? valueIfMissing : firstElement.Value;
+            return string.IsNullOrWhiteSpace(firstElement?.Value) ? valueIfMissing : firstElement.Value;
         }
 
         /// <summary>

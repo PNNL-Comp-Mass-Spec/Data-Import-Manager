@@ -21,7 +21,7 @@ namespace DataImportManager
         {
             get
             {
-                if (string.IsNullOrEmpty(mPostTaskErrorMessage))
+                if (string.IsNullOrWhiteSpace(mPostTaskErrorMessage))
                 {
                     return string.Empty;
                 }
@@ -37,7 +37,7 @@ namespace DataImportManager
         {
             get
             {
-                if (string.IsNullOrEmpty(mDataImportErrorMessage))
+                if (string.IsNullOrWhiteSpace(mDataImportErrorMessage))
                 {
                     return string.Empty;
                 }
@@ -54,7 +54,7 @@ namespace DataImportManager
         {
             get
             {
-                if (string.IsNullOrEmpty(mDataImportErrorMessageForDatabase))
+                if (string.IsNullOrWhiteSpace(mDataImportErrorMessageForDatabase))
                 {
                     return string.Empty;
                 }
@@ -110,7 +110,7 @@ namespace DataImportManager
                     return false;
                 }
 
-                if (string.IsNullOrEmpty(triggerFileXML))
+                if (string.IsNullOrWhiteSpace(triggerFileXML))
                 {
                     return false;
                 }
