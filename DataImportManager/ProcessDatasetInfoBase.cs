@@ -377,6 +377,17 @@ namespace DataImportManager
                 return false;
             }
 
+            // Look for:
+            // Exception calling procedure add_new_dataset: Exception while reading from stream; resultCode = -9999; ....-Timeout during reading attempt
+            if (mDataImportTask.PostTaskErrorMessage.IndexOf("Timeout during reading attempt", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // Log the error and leave the file for another attempt
+                LogError("Procedure call error: " + captureInfo.GetSourceDescription());
+
+                UpdateErrorMessagePropertiesIfEmpty("Procedure call error");
+                return false;
+            }
+
             BaseLogger.LogLevels messageType;
 
             string sourceDescription;

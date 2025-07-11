@@ -177,11 +177,11 @@ namespace DataImportManager
                 }
 
                 // Call the procedure
-                var resultCode = DBTools.ExecuteSP(cmd);
+                var resultCode = DBTools.ExecuteSP(cmd, out var errorMessage);
 
                 // resultCode will always have a value, even on failure due to errors outside the procedure.
                 // if resultCode is less than zero, it is always an error
-                if (resultCode >= 0)
+                if (resultCode >= 0 && string.IsNullOrWhiteSpace(errorMessage))
                 {
                     // Get return code
                     var returnCode = DBToolsBase.GetReturnCode(returnParam);
@@ -194,6 +194,10 @@ namespace DataImportManager
                 }
 
                 mPostTaskErrorMessage = messageParam.Value.CastDBVal<string>();
+                if (string.IsNullOrWhiteSpace(mPostTaskErrorMessage) && !string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    mPostTaskErrorMessage = errorMessage;
+                }
 
                 LogError(string.Format("DataImportTask.ImportDataTask(), Problem posting dataset (return code {0}): {1}",
                     returnParam.Value.CastDBVal<string>(), mPostTaskErrorMessage));
