@@ -16,10 +16,11 @@ namespace DataImportManager
         private string mStoredProc;
 
         private static readonly SemaphoreSlim dbCallLimiter;
-        private const int MAX_PARALLEL_DB_CALLS = 10;
+        private const int MAX_PARALLEL_DB_CALLS = 6;
 
         static DataImportTask()
         {
+            // Only allow up to 6 database calls in parallel
             dbCallLimiter = new SemaphoreSlim(MAX_PARALLEL_DB_CALLS, MAX_PARALLEL_DB_CALLS);
         }
 
