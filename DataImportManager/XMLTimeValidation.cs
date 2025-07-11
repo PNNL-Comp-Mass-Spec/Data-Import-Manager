@@ -1385,12 +1385,12 @@ namespace DataImportManager
             }
 
             // Get the initial size of the directory
-            var initialDirectorySize = mFileTools.GetDirectorySize(directoryPath);
+            var initialDirectorySize = FileTools.GetDirectorySize(directoryPath);
 
             SleepWhileVerifyingConstantSize(sleepIntervalSeconds, "directory");
 
             // Get the final size of the directory and compare
-            var finalDirectorySize = mFileTools.GetDirectorySize(directoryPath);
+            var finalDirectorySize = FileTools.GetDirectorySize(directoryPath);
 
             return finalDirectorySize == initialDirectorySize;
         }
