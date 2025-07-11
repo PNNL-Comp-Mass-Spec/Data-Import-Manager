@@ -347,6 +347,10 @@ namespace DataImportManager
                 LogErrorToDatabase("Exception in MainProcess.DoImport()", ex);
                 return false;
             }
+            finally
+            {
+                DataImportTask.DisposeSemaphore();
+            }
         }
 
         /// <summary>

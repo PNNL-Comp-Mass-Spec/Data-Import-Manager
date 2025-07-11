@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Text.RegularExpressions;
+using System.Threading;
 using PRISM.AppSettings;
 using PRISMDatabaseUtils;
 
@@ -14,7 +15,18 @@ namespace DataImportManager
         private string mDataImportErrorMessageForDatabase;
         private string mStoredProc;
 
-        private static readonly object dbCallLock = new();
+        private static readonly SemaphoreSlim dbCallLimiter;
+        private const int MAX_PARALLEL_DB_CALLS = 10;
+
+        static DataImportTask()
+        {
+            dbCallLimiter = new SemaphoreSlim(MAX_PARALLEL_DB_CALLS, MAX_PARALLEL_DB_CALLS);
+        }
+
+        public static void DisposeSemaphore()
+        {
+            dbCallLimiter.Dispose();
+        }
 
         /// <summary>
         /// Error message returned by procedure add_new_dataset (which in turn calls add_update_dataset)
@@ -127,11 +139,11 @@ namespace DataImportManager
                     LogMessage($"Replaced capture subdirectory \"{captureInfo.OriginalCaptureSubdirectory}\" with \"{captureInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
 
                     // Call the procedure (typically add_new_dataset)
-                    return ImportDataTaskLocked(updatedTriggerFileXML);
+                    return ImportDataTaskLimited(updatedTriggerFileXML);
                 }
 
                 // Call the procedure (typically add_new_dataset)
-                return ImportDataTaskLocked(triggerFileXML);
+                return ImportDataTaskLimited(triggerFileXML);
             }
             catch (Exception ex)
             {
@@ -141,15 +153,20 @@ namespace DataImportManager
         }
 
         /// <summary>
-        /// Posts the given XML to DMS using procedure add_new_dataset, using a lock to restrict parallel calls
+        /// Posts the given XML to DMS using procedure add_new_dataset, using a semaphore to restrict parallel calls to a certain count
         /// </summary>
         /// <param name="triggerFileXML">Dataset metadata XML</param>
         /// <returns>True if success, false if an error</returns>
-        private bool ImportDataTaskLocked(string triggerFileXML)
+        private bool ImportDataTaskLimited(string triggerFileXML)
         {
-            lock (dbCallLock)
+            dbCallLimiter.Wait();
+            try
             {
                 return ImportDataTask(triggerFileXML);
+            }
+            finally
+            {
+                dbCallLimiter.Release();
             }
         }
 
