@@ -177,15 +177,20 @@ namespace DataImportManager
                 }
 
                 // Call the procedure
-                DBTools.ExecuteSP(cmd);
+                var resultCode = DBTools.ExecuteSP(cmd);
 
-                // Get return code
-                var returnCode = DBToolsBase.GetReturnCode(returnParam);
-
-                if (returnCode == 0)
+                // resultCode will always have a value, even on failure due to errors outside the procedure.
+                // if resultCode is less than zero, it is always an error
+                if (resultCode >= 0)
                 {
-                    // Get values for output parameters
-                    return true;
+                    // Get return code
+                    var returnCode = DBToolsBase.GetReturnCode(returnParam);
+
+                    if (returnCode == 0)
+                    {
+                        // Get values for output parameters
+                        return true;
+                    }
                 }
 
                 mPostTaskErrorMessage = messageParam.Value.CastDBVal<string>();
