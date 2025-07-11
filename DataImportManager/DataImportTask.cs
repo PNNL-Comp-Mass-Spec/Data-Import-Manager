@@ -14,6 +14,8 @@ namespace DataImportManager
         private string mDataImportErrorMessageForDatabase;
         private string mStoredProc;
 
+        private static readonly object dbCallLock = new();
+
         /// <summary>
         /// Error message returned by procedure add_new_dataset (which in turn calls add_update_dataset)
         /// </summary>
@@ -125,16 +127,29 @@ namespace DataImportManager
                     LogMessage($"Replaced capture subdirectory \"{captureInfo.OriginalCaptureSubdirectory}\" with \"{captureInfo.FinalCaptureSubdirectory}\"", writeToLog: true);
 
                     // Call the procedure (typically add_new_dataset)
-                    return ImportDataTask(updatedTriggerFileXML);
+                    return ImportDataTaskLocked(updatedTriggerFileXML);
                 }
 
                 // Call the procedure (typically add_new_dataset)
-                return ImportDataTask(triggerFileXML);
+                return ImportDataTaskLocked(triggerFileXML);
             }
             catch (Exception ex)
             {
                 LogError("DatasetImportTask.PostTask(), Error running PostTask", ex);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Posts the given XML to DMS using procedure add_new_dataset, using a lock to restrict parallel calls
+        /// </summary>
+        /// <param name="triggerFileXML">Dataset metadata XML</param>
+        /// <returns>True if success, false if an error</returns>
+        private bool ImportDataTaskLocked(string triggerFileXML)
+        {
+            lock (dbCallLock)
+            {
+                return ImportDataTask(triggerFileXML);
             }
         }
 
